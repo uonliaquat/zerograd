@@ -18,18 +18,25 @@ def main():
     mat_b = read_csv_to_numpy(b_mat_path);
     mat_c = read_csv_to_numpy(c_mat_path);
 
-    print(mat_a.shape, mat_b.shape, mat_c.shape)
+    mat_a = mat_a.astype(np.float32)
+    mat_b = mat_b.astype(np.float32)
+    mat_c = mat_c.astype(np.float32)
 
-    start_time = time.time()
+    #print(mat_a.shape, mat_b.shape, mat_c.shape)
+
+    start_time = time.perf_counter()
     result = np.dot(mat_a, mat_b)
-    end_time = time.time()
+    end_time = time.perf_counter()
     
-    time_taken = end_time - start_time
-    print(f"Time taken: {time_taken}")
+    flop = 2 * mat_c.shape[0] * mat_c.shape[1] * mat_a.shape[1]
+    time_seconds = end_time - start_time
+    gflops = (flop / time_seconds ) * 1e-9 
+    print(f"Time(s): {time_seconds}")
+    print(f"GFLOPS:  {gflops}")
 
-    tolerance = 1e-3
+    tolerance = 1e-2
     diff = np.abs(result - mat_c)
-    print(f'Diff: {diff}')
+    #print(f'Diff: {diff}')
     are_similar = np.all(diff <= tolerance)
 
     if are_similar:

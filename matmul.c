@@ -2,104 +2,166 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define A_ROWS 100
-#define A_COLS 100
-#define B_ROWS A_COLS
-#define B_COLS 100
-#define C_ROWS A_ROWS
-#define C_COLS B_COLS
+
+#define GET_ELEMENT(tensor, row, col) \
+    (tensor->dtype == FLOAT32) ? \
+        (((float*)tensor->data)[row * tensor->cols + col]) : \
+        (((double*)tensor->data)[row* tensor->cols + col])
+
+#define PUT_ELEMENT(tensor, row, col, val) \
+    (tensor->dtype == FLOAT32) ? \
+        (((float*)tensor->data)[row * tensor->cols + col] = val) : \
+        (((double*)tensor->data)[row * tensor->cols + col] = val)
 
 
 
-void matmul_1(float *, float *, float *);
-void init_mat(float *, unsigned int, unsigned int);
-void save_mat(float *, unsigned int, unsigned int, char *);
-void print_mat(float *, unsigned int, unsigned int);
-float generate_random_float(float, float);
+
+typedef enum DataType{
+    FLOAT32,
+    FLOAT64
+} DataType;
+
+typedef struct Tensor{
+    void *data;
+    DataType dtype;
+    size_t rows;
+    size_t cols;
+} Tensor;
+
+
+
+//void matmul(float *, float *, float *);
+
+
+// Tensor Functions
+Tensor create_tensor(const size_t, const size_t, DataType);
+void init_tensor_rand(Tensor*);
+void gemm(Tensor *, Tensor *, Tensor *);
+void print_tensor(Tensor *);
+void save_tensor(Tensor *, char *);
+
+// Dot Product Functions
+void (*dot)(Tensor *, Tensor *, Tensor *);
+
+
+// Utils
+static inline float generate_rand_val(float, float);
+//float cal_flops(unsigned int, double);
+
+
 
 int main(){
     srand(42);
 
-    static float a[A_ROWS*A_COLS] = {0};
-    static float b[B_ROWS*B_COLS] = {0};
-    static float c[C_ROWS*C_COLS] = {0};
-    
-    // initialze matrices
-    init_mat(a, A_ROWS, A_COLS);
-    init_mat(b, B_ROWS, B_COLS);
+    const size_t tensor_size = 1024;
+    Tensor tensor_a = create_tensor(tensor_size, tensor_size, FLOAT32);
+    Tensor tensor_b = create_tensor(tensor_size, tensor_size, FLOAT32);
+    Tensor tensor_c = create_tensor(tensor_size, tensor_size, FLOAT32);
+    init_tensor_rand(&tensor_a);
+    init_tensor_rand(&tensor_b);
+    init_tensor_rand(&tensor_c);
 
-    // save matrices
-    save_mat(a, A_ROWS, A_COLS, "./a_mat.csv");
-    save_mat(b, B_ROWS, B_COLS, "./b_mat.csv");
+    dot = gemm;
+    dot(&tensor_a, &tensor_b, &tensor_c);
 
-    matmul_1(a, b, c);
-    save_mat(c, C_ROWS, C_COLS, "./c_mat.csv");
-    //print_mat(c, C_ROWS, C_COLS);
+
+    //print_tensor(&tensor_a);
+    //print_tensor(&tensor_b);
+    //print_tensor(&tensor_c);
+
+    // save tensors
+    save_tensor(&tensor_a, "./a_mat.csv");
+    save_tensor(&tensor_b, "./b_mat.csv");
+    save_tensor(&tensor_c, "./c_mat.csv");
+
 
     return 0;
 }
 
-float generate_rand_val(float lower, float upper){
-    return lower + ((float)rand() / RAND_MAX) * (upper - lower);
+
+Tensor create_tensor(size_t rows, size_t cols, DataType datatype){
+    size_t element_size = (datatype == FLOAT32) ? 4 : 8;
+    void *data = (void*)calloc(rows * cols, element_size);
+    if (data == NULL){
+        printf("Memory Allocation failed for Tensor of size %ldx%ld\n", rows, cols);
+    }
+    Tensor tensor = {data, datatype, rows, cols};
+    return tensor;
+
 }
 
-float get_element(float *mat, unsigned int rows, unsigned int cols, unsigned int row, unsigned int col){
-    return mat[(row * cols) + col];
-}
-
-void put_element(float *mat, unsigned int rows, unsigned int cols, unsigned int row, unsigned int col, float val){
-    mat[(row * cols) + col] = val;
-}
-
-void init_mat(float *mat, unsigned int rows, unsigned int cols){
-    for(unsigned int i = 0; i < rows; i++){
-        for(unsigned int j = 0; j < cols; j++){
-            float rand_val = generate_rand_val(-10, 10);
-            put_element(mat, rows, cols, i, j, rand_val);
+void init_tensor_rand(Tensor *tensor){
+    for (size_t row = 0; row < tensor->rows; row++){
+        for(size_t col = 0; col < tensor->cols; col++){
+            PUT_ELEMENT(tensor, row, col, generate_rand_val(-10, 10));
         }
     }
 }
 
-void print_mat(float *mat, unsigned int rows, unsigned int cols){
-    for(unsigned int i = 0; i < rows; i++){
+
+void print_tensor(Tensor *tensor){
+    for(size_t row = 0; row < tensor->rows; row++){
         printf("\n");
-        for(unsigned int j = 0; j < cols; j++){
-            printf("|   %f  ", get_element(mat, rows, cols, i, j));
+        for(size_t col = 0; col < tensor->cols; col++){
+            printf("| %.2f ", GET_ELEMENT(tensor, row, col));
         }
         printf("|\n");
     }
+    printf("__________________\n");
 }
 
-void save_mat(float *mat, unsigned int rows, unsigned int cols, char *file_path){
+
+void gemm(Tensor *a, Tensor *b, Tensor *c){
+    clock_t start = clock();
+    for(size_t row_c = 0; row_c < c->rows; row_c++){
+        for(size_t col_c = 0; col_c < c->cols; col_c++){
+            double val_c = 0;
+            for(size_t col_a = 0; col_a < a->cols; col_a++){
+                float val_a = GET_ELEMENT(a, row_c, col_a);
+                float val_b = GET_ELEMENT(b, col_a, col_c);
+                val_c += (val_a * val_b);
+            }
+            PUT_ELEMENT(c, row_c, col_c, val_c);
+        }
+    }
+    clock_t end = clock();
+    double time_seconds = (double)(end - start)/CLOCKS_PER_SEC;
+    double flop = 2*(c->rows * c->cols * a->cols);
+    double gflops = (flop / time_seconds) * 1e-9;
+    printf("Time(s): %.4f \n", time_seconds);
+    printf("GFLOPS:  %.4f \n", gflops);
+}
+
+void save_tensor(Tensor *tensor, char *file_path){
     FILE *file = fopen(file_path, "w");
     if (file == NULL){
         printf("Error opening file %s\n", file_path);
         return;
     }
-    for(unsigned int i = 0; i < rows; i++){
-        for(unsigned int j = 0; j < cols; j++){
-            fprintf(file, "%.6f", get_element(mat, rows, cols, i, j));
-            if (j != cols - 1)
+    for(size_t row = 0; row < tensor->rows; row++){
+        for(size_t col = 0; col < tensor->cols; col++){
+            fprintf(file, "%.6f", GET_ELEMENT(tensor, row, col));
+            if (col != tensor->cols - 1)
                 fprintf(file, ",");
         }
         fprintf(file, "\n");
     }
 }
 
-void matmul_1(float *a, float *b, float *c){ 
-    clock_t start = clock();
-    for(unsigned int i = 0; i < C_ROWS; i++){
-        for(unsigned int j = 0; j < C_COLS; j++){
-            float val_c = 0;
-            for(unsigned int k = 0; k < A_COLS; k++){
-                float val_a = get_element(a, A_ROWS, A_COLS, i, k);
-                float val_b = get_element(b, B_ROWS, B_COLS, k, j);
-                val_c += val_a * val_b;
-            }
-            put_element(c, C_ROWS, C_COLS, i, j, val_c);
-        }
-    }
-    clock_t end = clock();
-    double time_spent = (double)(end - start)/CLOCKS_PER_SEC; 
-    printf("Time taken: %.6f seconds\n", time_spent);
+static inline float generate_rand_val(float lower, float upper){
+    return lower + ((float)rand() / RAND_MAX) * (upper - lower);
 }
+/*
+static inline float cal_flops(unsigned int operations, double time_s){
+    return operations / time_s;
+}
+
+
+
+
+
+
+
+
+*/
+
