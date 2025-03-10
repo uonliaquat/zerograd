@@ -27,7 +27,8 @@ def main():
     start_time = time.perf_counter()
     result = np.dot(mat_a, mat_b)
     end_time = time.perf_counter()
-    
+
+
     flop = 2 * mat_c.shape[0] * mat_c.shape[1] * mat_a.shape[1]
     time_seconds = end_time - start_time
     gflops = (flop / time_seconds ) * 1e-9 
