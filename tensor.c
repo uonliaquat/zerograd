@@ -28,7 +28,8 @@ Tensor tensor_init(const void *data, const size_t * shape, const size_t elem_siz
     
     // Initializing data
     tensor.data = (void*)calloc(tensor.size, elem_size);
-    memcpy(tensor.data, data, elem_size * tensor.size);
+    if(data != NULL)
+        memcpy(tensor.data, data, elem_size * tensor.size);
 
     tensor.requires_grad = requires_grad;
     
@@ -43,6 +44,7 @@ void tensor_free(const Tensor *tensor){
 
 
 void tensor_print(const Tensor *tensor){
+    printf("\n\n");
     printf("size:           %zu\n", tensor->size);
     printf("ndim:           %zu\n", tensor->ndim);
     
@@ -59,11 +61,20 @@ void tensor_print(const Tensor *tensor){
     }
     printf(" )\n");
     printf("elem_size:      %zu\n", tensor->elem_size);
-    printf("data:           [ ");
-    for(size_t i = 0; i < tensor->size; i++){
-        printf("%f ", ((float*)tensor->data)[i]);
+    printf("data:\n");
+
+
+    
+    for(size_t i = 0; i < tensor->shape[0]; i++){    
+        
+        if(tensor->shape[1] != 1)
+            printf("[ ");
+        for(size_t j = 0; j < tensor->shape[1]; j++){
+            int val_index = i * tensor->stride[0] + j * tensor->stride[1];
+            printf("%f ", ((double*)tensor->data)[val_index]);
+        }
+        printf(" ]\n");
     }
-    printf(" ]\n");
 
     printf("requires_grad:  %s\n", tensor->requires_grad ? "true" : "false");
 
