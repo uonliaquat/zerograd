@@ -14,7 +14,7 @@ typedef struct Tensor {
     bool requires_grad;
 } Tensor;
 
-Tensor  tensor_init(const void *data, const size_t *shape, const size_t elem_size, bool requires_grad);
+Tensor  tensor_init(const void *data, const size_t *shape, const size_t ndim, const size_t elem_size, const bool requires_grad, const bool random_init);
 void    tensor_free(const Tensor *tensor);
 void    tensor_print(const Tensor *tensor);
 

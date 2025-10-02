@@ -1,25 +1,36 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <cblas.h>
 
-#include "tensor.h"
-#include "blas.h"
+
+#include "../include/tensor.h"
+#include "../include/blas.h"
+#include "../include/layers/linear.h"
 
 int main(){
-    printf("Running Main...\n\n");
+    // printf("Testing Tensors...\n\n");
     
+    // // Seed the random number generator
+    // srand((unsigned int)time(NULL));
 
-    Tensor tensor_a = tensor_init((double[]){1,2,3,4,5,6}, (size_t[]){2,3,1,1}, sizeof(double), false);
-    printf("tensor_a");
-    tensor_print(&tensor_a);
+    // Tensor tensor_a = tensor_init((double[]){1,2,3,4,5,6}, (size_t[]){2,3}, 2, sizeof(double), false, false);
+    // printf("tensor_a");
+    // tensor_print(&tensor_a);
     
-    Tensor tensor_b = tensor_init((double[]){7,8,9,10,11,12}, (size_t[]){3,2,1,1}, sizeof(double), false);
-    printf("tensor_b");
-    tensor_print(&tensor_b);
+    // Tensor tensor_b = tensor_init((double[]){7,8,9,10,11,12}, (size_t[]){3,2}, 2, sizeof(double), false, false);
+    // printf("tensor_b");
+    // tensor_print(&tensor_b);
 
     
-    Tensor tensor_c = dot_product_tensor(&tensor_a, &tensor_b);
-    tensor_print(&tensor_c);
+    // Tensor tensor_c = dot_product_tensor(&tensor_a, &tensor_b);
+    // tensor_print(&tensor_c);
+
+
+
+    printf("Testing layers...");
+    LinearLayer layer1 = LinearLayer(3, 5, false);
+
     
     // Taking dot product
     // double A[2*3] = {

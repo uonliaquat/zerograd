@@ -1,7 +1,7 @@
 #include <cblas.h>
 #include <assert.h>
-#include "blas.h"
-#include "tensor.h"
+#include "../include/blas.h"
+#include "../include/tensor.h"
 
 void dot_product(const double *A, const double *B, double *C,
                                int m, int n, int k)
@@ -29,7 +29,7 @@ Tensor dot_product_tensor(const Tensor *tensor_a, const Tensor *tensor_b)
     assert(tensor_a->shape[1] == tensor_b->shape[0]);
 
 
-    Tensor tensor_c = tensor_init(NULL, (size_t[]){tensor_a->shape[0], tensor_b->shape[1], 1, 1}, tensor_a->elem_size, false);
+    Tensor tensor_c = tensor_init(NULL, (size_t[]){tensor_a->shape[0], tensor_b->shape[1]}, 2, tensor_a->elem_size, false, false);
 
     int m = (int)tensor_a->shape[0]; // No of Rows of A and C
     int n = (int)tensor_b->shape[1]; // No of Cols of B and C
