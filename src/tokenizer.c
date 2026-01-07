@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 #include "../include/tokenizer.h"
 #include "../include/utils.h"
@@ -25,19 +26,28 @@ size_t tokenizer_match_tokens(Token *token1, Token *token2){
 
 int tokenizer_get_token_index(Vocab *vocab, Token *token){
     for(size_t i = 0; i < vocab->len; i++){
+        // tokenizer_print_token(vocab->tokens[i]);
+        // printf("   |  ");
+        // tokenizer_print_token(token);
+        // printf(" | %zu,   %zu  \n", vocab->tokens[i]->len, token->len);
         int res = tokenizer_match_tokens(vocab->tokens[i], token);
         if(res == 1) return i;
     }
     printf("\nToken not found in vocab\n");
     tokenizer_print_token(token);
+    exit(1);
     return -1;
 }
 
 Token *tokenizer_concat_tokens(Token *token1, Token *token2){
-    size_t new_token_len = token1->len + token2->len;
+    // size_t new_token_len = token1->len + token2->len + 1;
+    // Token *new_token = tokenizer_create_token(token1->val, new_token_len);
+    // memcpy(new_token->val + token1->len, token2->val, token2->len);
+    // return new_token;
+
     Token *new_token = calloc(1, sizeof(Token));
-    new_token->len = new_token_len;
-    new_token->val = calloc(new_token_len, sizeof(char));
+    new_token->len = token1->len + token2->len;
+    new_token->val = calloc(new_token->len+1, sizeof(char));
     memcpy(new_token->val, token1->val, token1->len);
     memcpy(new_token->val + token1->len, token2->val, token2->len);
     return new_token;
@@ -51,7 +61,7 @@ void tokenizer_free_token(Token *token){
 }
 
 void tokenizer_print_token(Token *token){
-    printf("[%s] ", token->val);
+    printf("[%s] | len: %zu", token->val, token->len);
 }
 
 Word *tokenizer_create_word(Token **tokens, size_t len){
@@ -115,10 +125,6 @@ int tokenizer_get_byte_pair_index(BytePair **pairs, size_t no_of_byte_pairs, Byt
 }
 
 BytePair *tokenizer_get_most_frequent_byte_pair(BytePair **byte_pairs, size_t no_of_byte_pairs){
-    if(no_of_byte_pairs == 0){
-        printf("\nno_of_byte_pairs: %zu\n", no_of_byte_pairs);
-        return NULL;
-    } 
     BytePair *most_frequent_byte_pair = tokenizer_create_byte_pair(byte_pairs[0]->token1, byte_pairs[0]->token2, byte_pairs[0]->freq);
     for(size_t i = 1; i <no_of_byte_pairs; i++){
         if(byte_pairs[i]->freq > most_frequent_byte_pair->freq){
@@ -176,7 +182,7 @@ void tokenizer_print_byte_pair(BytePair *byte_pair){
 }
 
 
-Data *tokenizer_create_data(char *data, Vocab *vocab){
+Data *tokenizer_create_data(char *data){
     size_t data_size = strlen(data);
 
     Word **words = calloc(MAX_WORDS, sizeof(Word*));
@@ -194,10 +200,6 @@ Data *tokenizer_create_data(char *data, Vocab *vocab){
                 for(size_t j = 0; j < curr_word_index; j++){
                     Token *new_token = tokenizer_create_token(&curr_word[j], 1);
                     tokens[j] = new_token;
-                    int token_index = tokenizer_get_token_index(vocab, new_token);
-                    if(token_index == -1){
-                        vocab->tokens[vocab->len++] = tokenizer_create_token(&curr_word[j], 1);
-                    }
                 }
                 Word *new_word = tokenizer_create_word(tokens, curr_word_index);
                 int word_index = tokenizer_get_word_index(words, total_unique_words, new_word);
@@ -279,18 +281,23 @@ void tokenizer_free_vocab(Vocab *vocab){
 }
 
 void tokenizer_write_vocab(char *filename, Vocab *vocab){
-    printf("\nWriting Vocab to file");
+    printf("\n\n---------------Writing Vocab------------------\n");
     FILE *fptr = fopen(filename, "w");  // fresh file
     fclose(fptr);
     fptr = fopen(filename, "a");
     for(size_t i = 0; i < vocab->len; i++){
-        fprintf(fptr, "{%s}\n", vocab->tokens[i]->val);
+        fprintf(fptr, "%c%s%c\n", 
+            STX, 
+            vocab->tokens[i]->val,
+            ETX
+        );
     }
     fclose(fptr);
+    printf("-------------Done Writing Vocab----------------\n");
 }
 
 void tokenizer_read_vocab(char *filename, Vocab *vocab){
-    printf("\nReading Vocab\n");
+    printf("\n\n---------------Reading Vocab------------------\n");
 
     char *data = read_data_from_file(filename);
     size_t data_size = strlen(data);
@@ -298,35 +305,24 @@ void tokenizer_read_vocab(char *filename, Vocab *vocab){
     char token_text[48] = {0};
     size_t token_text_index = 0;
     Token *token = NULL;
+    bool read = false;
     for(size_t i = 0; i < data_size; i++){
-        if(data[i] == '{'){
+        if(data[i] == STX){
+            read = true;
             memset(token_text, 0, strlen(token_text));
             token_text_index = 0;
         }
-        else if(data[i] == '}'){
+        else if(data[i] == ETX){
+            read = false;
             token = tokenizer_create_token(token_text, token_text_index);
             vocab->tokens[vocab->len++] = token;
+            
         }
-        else{
+        else if(read){
             token_text[token_text_index++] = data[i];
         }
     }
-
-    // for(size_t i = 0; i < vocab->len; i++){
-    //     tokenizer_print_token(vocab->tokens[i])
-    // }
-
-    // FILE *fptr = fopen(filename, "r");
-    // if(fptr == NULL){
-    //     printf("\nError Opening file %s\n", filename);
-    //     exit(1);
-    // }
-    // char buffer[64] = {0};
-    // while(fgets(buffer, 64, fptr)){
-    //     vocab->tokens[vocab->len++] = tokenizer_create_token(buffer, strlen(buffer)-1);
-
-    // }
-    // fclose(fptr);
+    printf("-------------Done Reading Vocab----------------\n");
 }
 
 MergeRules *tokenizer_init_merge_rules(){
@@ -344,18 +340,27 @@ void tokenizer_free_merge_rules(MergeRules *merge_rules){
 }
 
 void tokenizer_write_merge_rules(char *filename, MergeRules *merge_rules){
+    printf("\n\n-------------Wriring Merge Rules----------------\n");
     printf("\nWriting Merge Rules to file\n");
     FILE *fptr = fopen(filename, "w");  // fresh file
     fclose(fptr);
     fptr = fopen(filename, "a");
     for(size_t i = 0; i < merge_rules->len; i++){
-        fprintf(fptr, "{%s}{%s}\n", merge_rules->byte_pairs[i]->token1->val, merge_rules->byte_pairs[i]->token2->val);
+        fprintf(fptr, "%c%s%c%c%s%c\n", 
+            STX, 
+            merge_rules->byte_pairs[i]->token1->val, 
+            ETX,
+            STX,
+            merge_rules->byte_pairs[i]->token2->val,
+            ETX
+        );
     }
-       fclose(fptr);
+    fclose(fptr);
+     printf("\n----------Done Writing Merge Rules--------------\n");
 }
 
 void tokenizer_read_merge_rules(char *filename, MergeRules *merge_rules){
-    printf("\nReading Merge Rules\n");
+    printf("\n\n----------Reading Merge Rules---------------\n");
     char *data = read_data_from_file(filename);
     size_t data_size = strlen(data);
 
@@ -364,12 +369,15 @@ void tokenizer_read_merge_rules(char *filename, MergeRules *merge_rules){
     size_t no_of_tokens_created = 0;
     Token *token1 = NULL;
     Token *token2 = NULL;
+    bool read = false;
     for(size_t i = 0; i < data_size; i++){
-        if(data[i] == '{'){
+        if(data[i] == STX){
+            read = true;
             memset(token_text, 0, strlen(token_text));
             token_text_index = 0;
         }
-        else if(data[i] == '}'){
+        else if(data[i] == ETX){
+            read = false;
             if(no_of_tokens_created == 0) token1 = tokenizer_create_token(token_text, token_text_index);
             else if(no_of_tokens_created == 1) token2 = tokenizer_create_token(token_text, token_text_index);
             no_of_tokens_created++;
@@ -379,10 +387,11 @@ void tokenizer_read_merge_rules(char *filename, MergeRules *merge_rules){
                 no_of_tokens_created = 0;
             }
         }
-        else{
+        if(read){
             token_text[token_text_index++] = data[i];
         }   
     }
+    printf("--------Done Reading Merge Rules------------\n");
 }
 
 void tokenizer_train(Data *data, Vocab *vocab, MergeRules *merge_rules){
@@ -394,10 +403,8 @@ void tokenizer_train(Data *data, Vocab *vocab, MergeRules *merge_rules){
         size_t no_of_byte_pairs = tokenizer_get_byte_pairs(data, byte_pairs);
         //print_byte_pairs(byte_pairs, no_of_byte_pairs);
         printf("no_of_byte_pairs %zu\n", no_of_byte_pairs);
-
+        if(no_of_byte_pairs == 0) break;
         most_frequent_byte_pair = tokenizer_get_most_frequent_byte_pair(byte_pairs, no_of_byte_pairs);
-        //printf("\nMost frquent byte pair: "); print_byte_pair(most_frequent_byte_pair);
-        if(most_frequent_byte_pair == NULL) break;
         Token *new_vocab_token = tokenizer_concat_tokens(most_frequent_byte_pair->token1, most_frequent_byte_pair->token2);
         vocab->tokens[vocab->len++] = new_vocab_token;
         merge_rules->byte_pairs[merge_rules->len++] = tokenizer_create_byte_pair(most_frequent_byte_pair->token1, most_frequent_byte_pair->token2, most_frequent_byte_pair->freq);
@@ -406,11 +413,15 @@ void tokenizer_train(Data *data, Vocab *vocab, MergeRules *merge_rules){
         itr++;
         printf("=============================================================================================");
     }
+    //Adding Assci Characters
+    for(int i = 0; i < 126; i++){
+        vocab->tokens[vocab->len++] = tokenizer_create_token((char[]){i, '\0'}, 1);
+    }
 }
 
 
 void tokenizer_encode(char *data, int *token_ids, size_t *token_ids_len, Vocab *vocab, MergeRules *merge_rules){
-    printf("\nEncoding\n");
+    //printf("\n--------Encoding------------\n");
     size_t data_size = strlen(data);
     Word **words = calloc(MAX_WORDS, sizeof(Word*));
     size_t total_words = 0;
@@ -476,6 +487,7 @@ void tokenizer_encode(char *data, int *token_ids, size_t *token_ids_len, Vocab *
         }
     }
     tokenizer_free_data(new_data);
+    //printf("--------Done Encoding-------\n");
 }
 
 void tokenizer_decode(int *token_ids, Vocab *vocab){

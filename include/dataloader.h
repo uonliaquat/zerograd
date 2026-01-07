@@ -1,14 +1,17 @@
-// #ifndef __DATALOADER_H__
-// #define __DATALOADER_H_
+#ifndef __DATALOADER_H__
+#define __DATALOADER_H_
 
 
-// struct DataLoader{
-//     void *  ;
+#include "./dataset.h"
+typedef struct DataLoader{
+    void *dataset;
+    size_t batch_size;
+    size_t curr_sample;
 
-// };
+} DataLoader;
 
-// void dataloader_init();
-// void dataloader_get_next_batch();
+DataLoader dataloader_init(void *dataset, size_t batch_size);
+void* dataloader_get_next_batch();
 
 
 // #endif

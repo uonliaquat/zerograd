@@ -8,6 +8,8 @@
 #define MAX_BYTE_PAIRS 16000
 #define MAX_MERGE_RULES 8000
 #define MAX_VOCAB_SIZE 8000
+#define STX 2
+#define ETX 3
 
 
 typedef struct Token{
@@ -43,6 +45,7 @@ typedef struct MergeRules{
 } MergeRules;
 
 
+
 Token *tokenizer_create_token(char *data, size_t data_size);
 size_t tokenizer_match_tokens(Token *token1, Token *token2);
 int tokenizer_get_token_index(Vocab *vocab, Token *token);
@@ -67,7 +70,7 @@ void tokenizer_free_byte_pair(BytePair *byte_pair);
 void tokenizer_print_byte_pair(BytePair *byte_pair);
 
 
-Data *tokenizer_create_data(char *data, Vocab *vocab);
+Data *tokenizer_create_data(char *data);
 void tokenizer_free_data(Data *data);
 void tokenizer_print_data(Data *data);
 

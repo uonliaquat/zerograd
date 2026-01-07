@@ -4,7 +4,7 @@
 
 EmbeddingLayer embedding_layer_init(const size_t inputs, const size_t outputs, const bool bias, const DataType dtype){
     EmbeddingLayer embedding_layer;
-    embedding_layer.weights = tensor_init(NULL, (size_t[]){outputs, inputs}, 2, dtype, false, true);
+    embedding_layer.weights = tensor_init(NULL, (size_t[]){inputs, outputs}, 2, dtype, false, true);
     embedding_layer.dtype = dtype;
     return embedding_layer;
 }

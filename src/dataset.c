@@ -5,7 +5,7 @@
 #include <string.h>
 
 
-DatasetGPT2 dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, size_t ctx_win, size_t stride){
+Dataset dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, size_t ctx_win, size_t stride){
     size_t token_ids_len = 0;
     int token_ids[MAX_WORDS];
 
@@ -14,7 +14,7 @@ DatasetGPT2 dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules
     // for(size_t i = 0; i < token_ids_len; i++){
     //     printf("%d ", token_ids[i]);
     // }
-    DatasetGPT2 dataset_gpt2;
+    Dataset dataset_gpt2;
     dataset_gpt2.len = 0;
     for(size_t i = 0; i < token_ids_len - 1; i = i + stride){
         int *x = calloc(ctx_win, sizeof(int));
@@ -33,7 +33,7 @@ DatasetGPT2 dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules
     return dataset_gpt2;
 }
 
-void dataset_print_gpt(DatasetGPT2 *dataset_gpt2){
+void dataset_print_gpt(Dataset *dataset_gpt2){
     for(size_t i = 0; i < dataset_gpt2->len; i++){
         printf("\n========================================DATASET==============================================\n");
         tensor_print(&dataset_gpt2->x[i]);
@@ -42,7 +42,7 @@ void dataset_print_gpt(DatasetGPT2 *dataset_gpt2){
     }
 }
 
-void dataset_write_gpt2(DatasetGPT2 *dataset_gpt2, const char *filename){
+void dataset_write_gpt2(Dataset *dataset_gpt2, const char *filename){
     FILE *fptr = fopen(filename, "w");
     if(fptr == NULL){
         printf("Error opening file %s\n", filename);
