@@ -4,6 +4,7 @@
 #include "../include/utils.h"
 #include "../include/tokenizer.h"
 #include "../include/dataset.h"
+#include "../include/dataloader.h"
 #include "../include/layers/embedding.h"
 
 
@@ -34,7 +35,6 @@ int main(){
     
     tokenizer_read_merge_rules("/Users/uonliaquat/workspace/zerograd/merge_rules.txt", merge_rules);
     
-    printf("%zu\n", vocab->len);
     // printf("Vocab Size: %zu\n", vocab->len);
     // for(size_t i = 0; i < vocab->len; i++){
     //     printf("%zu ",i);
@@ -53,8 +53,22 @@ int main(){
     Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , ctx_win, stride);
     dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
 
-    // EmbeddingLayer embeddings_table = embedding_layer_init(vocab->len, 32, false, DTYPE_DOUBLE);
-    // embedding_layer_write(&embeddings_table, "./output/embeddings_table.csv");
+    EmbeddingLayer embeddings_table = embedding_layer_init(vocab->len, 32, false, DTYPE_DOUBLE);
+    embedding_layer_write(&embeddings_table, "./output/embeddings_table.csv");
+    
+
+    DataLoader data_loader = dataloader_init(&dataset_gpt2, 1);
+    DataSample data_sample = dataloader_get_next_batch(&data_loader);
+    dataloader_print_sample(&data_sample);
+
+    data_sample = dataloader_get_next_batch(&data_loader);
+    dataloader_print_sample(&data_sample);
+
+    data_sample = dataloader_get_next_batch(&data_loader);
+    dataloader_print_sample(&data_sample);
+
+    data_sample = dataloader_get_next_batch(&data_loader);
+    dataloader_print_sample(&data_sample);
     
 
     tokenizer_free_vocab(vocab);
