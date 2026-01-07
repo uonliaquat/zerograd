@@ -48,28 +48,25 @@ int main(){
 
     size_t ctx_win = 20;
     size_t stride = 15;
+    size_t embed_len = 16;
 
 
     Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , ctx_win, stride);
     dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
 
-    EmbeddingLayer embeddings_table = embedding_layer_init(vocab->len, 32, false, DTYPE_DOUBLE);
-    embedding_layer_write(&embeddings_table, "./output/embeddings_table.csv");
-    
-
     DataLoader data_loader = dataloader_init(&dataset_gpt2, 1);
     DataSample data_sample = dataloader_get_next_batch(&data_loader);
-    dataloader_print_sample(&data_sample);
+    //dataloader_print_sample(&data_sample);
 
-    data_sample = dataloader_get_next_batch(&data_loader);
-    dataloader_print_sample(&data_sample);
 
-    data_sample = dataloader_get_next_batch(&data_loader);
-    dataloader_print_sample(&data_sample);
-
-    data_sample = dataloader_get_next_batch(&data_loader);
-    dataloader_print_sample(&data_sample);
+    EmbeddingLayer embedding_layer = embedding_layer_init(vocab->len, embed_len, ctx_win, DTYPE_DOUBLE);
+    embedding_layer_forward(&embedding_layer, data_sample.x);
     
+    embedding_layer_write(&embedding_layer, "./output/embedding_layer.csv");
+
+    tensor_print(&embedding_layer.output);
+    
+
 
     tokenizer_free_vocab(vocab);
     tokenizer_free_merge_rules(merge_rules);

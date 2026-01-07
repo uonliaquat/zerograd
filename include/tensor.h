@@ -20,8 +20,9 @@ typedef struct Tensor {
     bool requires_grad;
 } Tensor;
 
-Tensor  tensor_init(const void *data, const size_t *shape, const size_t ndim, DataType dtype, const bool requires_grad, const bool random_init);
+Tensor  tensor_init(void *data, const size_t *shape, const size_t ndim, DataType dtype, const bool requires_grad, const bool random_init);
 void    tensor_free(const Tensor *tensor);
+void    tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items);
 void    tensor_print(const Tensor *tensor);
 void    tensor_write(const Tensor *tensor, FILE *fptr);
 size_t  tensor_dtype_size(const DataType dtype);

@@ -5,7 +5,7 @@
 #include "../include/tensor.h"
 #include "../include/utils.h"
 
-Tensor tensor_init(const void *data, const size_t * shape, const size_t ndim, const DataType dtype, const bool requires_grad, const bool random_init){
+Tensor tensor_init(void *data, const size_t * shape, const size_t ndim, const DataType dtype, const bool requires_grad, const bool random_init){
 
     Tensor tensor = { 0 };
 
@@ -73,6 +73,13 @@ void tensor_free(const Tensor *tensor){
 }
 
 
+void tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items){
+    void *dest_data = &((double*)dest_tensor->data)[dest_row * dest_tensor->shape[1]];
+    void *src_data =  &((double*)src_tensor->data)[src_row * src_tensor->shape[1]];
+    memcpy(dest_data, src_data, no_of_items * src_tensor->elem_size);
+}
+
+
 
 void tensor_print(const Tensor *tensor){
     printf("\n\n");
@@ -96,7 +103,7 @@ void tensor_print(const Tensor *tensor){
         printf("[ ");
         for(size_t i = 0; i < tensor->shape[0]; i++){    
             if(tensor->dtype == DTYPE_DOUBLE)
-                printf("%.2f ", ((double*)tensor->data)[i]);
+                printf("%5.2f ", ((double*)tensor->data)[i]);
             else
                 printf("%5d ", ((int*)tensor->data)[i]);
         }
@@ -109,7 +116,7 @@ void tensor_print(const Tensor *tensor){
             for(size_t j = 0; j < tensor->shape[1]; j++){
                 int val_index = i * tensor->stride[0] + j * tensor->stride[1];
                 if(tensor->dtype == DTYPE_DOUBLE)
-                    printf("%.2f ", ((double*)tensor->data)[val_index]);
+                    printf("%5.2f ", ((double*)tensor->data)[val_index]);
                 else
                     printf("%5d ", ((int*)tensor->data)[val_index]);
             }
@@ -127,7 +134,7 @@ void tensor_write(const Tensor *tensor, FILE *fptr){
     if(tensor->ndim == 1){
         for(size_t i = 0; i < tensor->shape[0]; i++){    
             if(tensor->dtype == DTYPE_DOUBLE)
-                fprintf(fptr, "%.2f,", ((double*)tensor->data)[i]);
+                fprintf(fptr, "%5.2f,", ((double*)tensor->data)[i]);
             else
                 fprintf(fptr, "%5d,", ((int*)tensor->data)[i]);
         }
@@ -138,7 +145,7 @@ void tensor_write(const Tensor *tensor, FILE *fptr){
             for(size_t j = 0; j < tensor->shape[1]; j++){
                 int val_index = i * tensor->stride[0] + j * tensor->stride[1];
                 if(tensor->dtype == DTYPE_DOUBLE)
-                    fprintf(fptr, "%.2f,", ((double*)tensor->data)[val_index]);
+                    fprintf(fptr, "%5.2f,", ((double*)tensor->data)[val_index]);
                 else
                     fprintf(fptr, "%5d,", ((int*)tensor->data)[val_index]);
             }
