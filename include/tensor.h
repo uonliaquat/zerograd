@@ -3,6 +3,11 @@
 
 #include <stdbool.h>
 
+typedef enum DataType {
+    DTYPE_INT = sizeof(int),
+    DTYPE_DOUBLE = sizeof(double)
+} DataType;
+
 typedef struct Tensor {
     void * data;
     size_t size;
@@ -10,12 +15,15 @@ typedef struct Tensor {
     size_t shape[4];
     size_t stride[4];
     size_t elem_size;
+    enum DataType dtype;
 
     bool requires_grad;
 } Tensor;
 
-Tensor  tensor_init(const void *data, const size_t *shape, const size_t ndim, const size_t elem_size, const bool requires_grad, const bool random_init);
+Tensor  tensor_init(const void *data, const size_t *shape, const size_t ndim, DataType dtype, const bool requires_grad, const bool random_init);
 void    tensor_free(const Tensor *tensor);
 void    tensor_print(const Tensor *tensor);
+void    tensor_write(const Tensor *tensor, FILE *fptr);
+size_t  tensor_dtype_size(const DataType dtype);
 
 #endif

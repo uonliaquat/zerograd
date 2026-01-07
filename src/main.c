@@ -1,91 +1,62 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <cblas.h>
+
+#include <string.h>
+
+#include "../include/utils.h"
+#include "../include/tokenizer.h"
+#include "../include/dataset.h"
+#include "../include/layers/embedding.h"
 
 
-#include "../include/tensor.h"
-#include "../include/blas.h"
-#include "../include/layers/linear.h"
 
 int main(){
-    // printf("Testing Tensors...\n\n");
+
+    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/the-verdict.txt");
+    size_t data_len = strlen(data);
+
+
+    // printf("Data:\n%s\n\n", data);
+    // printf("data_size: %zu\n", data_len);
+
+    // struct Vocab *vocab = tokenizer_init_vocab();
+    // struct Data *corpus = tokenizer_create_data(data, vocab);
+
+
+
+    // struct MergeRules *merge_rules = tokenizer_init_merge_rules();
+    // tokenizer_train(corpus, vocab, merge_rules);
+
+    // //tokenizer_print_corpus(corpus);
+
+    // tokenizer_write_vocab("./vocab.txt", vocab);
+    // tokenizer_write_merge_rules("merge_rules.txt", merge_rules);
+
+
+
+
+    Vocab *vocab = tokenizer_init_vocab();
+    tokenizer_read_vocab("/Users/uonliaquat/workspace/zerograd/vocab.txt", vocab);
+    // printf("Vocab Size: %zu\n", vocab_size);
+    // // for(size_t i = 0; i < vocab_size; i++){
+    // //     print_token(vocab[i]);
+    // //     printf("\n");
+    // // }
+
+    MergeRules *merge_rules = tokenizer_init_merge_rules();
+    tokenizer_read_merge_rules("/Users/uonliaquat/workspace/zerograd/merge_rules.txt", merge_rules);
+    // // for(size_t i = 0; i < merge_rules_size; i++){
+    //     print_byte_pair(merge_rules[i]);
+    // }
+
+
+    DatasetGPT2 dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules, 20, 15);
+    dataset_write_gpt2(&dataset_gpt2, "dataset_gpt.csv");
+    //dataset_print_dataset_gpt2(&dataset_gpt2);
+
+    // EmbeddingLayer embeddings_table = embedding_layer_init(100, 32, false, DTYPE_DOUBLE);
+    // embedding_layer_write(&embeddings_table, "embedding_table.csv");
     
-    // // Seed the random number generator
-    // srand((unsigned int)time(NULL));
 
-    // Tensor tensor_a = tensor_init((double[]){1,2,3,4,5,6}, (size_t[]){2,3}, 2, sizeof(double), false, false);
-    // printf("tensor_a");
-    // tensor_print(&tensor_a);
-    
-    // Tensor tensor_b = tensor_init((double[]){7,8,9,10,11,12}, (size_t[]){3,2}, 2, sizeof(double), false, false);
-    // printf("tensor_b");
-    // tensor_print(&tensor_b);
+    tokenizer_free_vocab(vocab);
+    tokenizer_free_merge_rules(merge_rules);
 
-    
-    // Tensor tensor_c = dot_product_tensor(&tensor_a, &tensor_b);
-    // tensor_print(&tensor_c);
-
-
-
-    printf("Testing layers...");
-    LinearLayer layer1 = LinearLayer(3, 5, false);
-
-    
-    // Taking dot product
-    // double A[2*3] = {
-    //     1, 2, 3,
-    //     4, 5, 6
-    // };
-    // double B[3*2] = {
-    //     7,  8,
-    //     9, 10,
-    //     11,12
-    // };
-    // double C[2*2] = {0};
-
-    // dot_product(A, B, C, /*m=*/2, /*n=*/2, /*k=*/3);
-
-    // printf("[ %g %g ]\n", C[0], C[1]);   // row 0
-    // printf("[ %g %g ]\n", C[2], C[3]);   // row 1
-
-    //     int m = 2, k = 3, n = 2;
-    // double alpha = 1.0, beta = 0.0;
-
-    // // dynamically allocate
-    // void *A = malloc(m * k * sizeof(double));
-    // void *B = malloc(k * n * sizeof(double));
-    // double *C = malloc(m * n * sizeof(double));
-
-    // // initialize A
-    // double tmpA[6] = {1, 2, 3,
-    //                   4, 5, 6};
-    // for (int i = 0; i < 6; i++) ((double*)A)[i] = tmpA[i];
-
-    // // initialize B
-    // double tmpB[6] = {7, 8,
-    //                   9, 10,
-    //                   11, 12};
-    // for (int i = 0; i < 6; i++) ((double*)B)[i] = tmpB[i];
-
-    // // initialize C
-    // for (int i = 0; i < m*n; i++) C[i] = 0.0;
-
-    // // call BLAS
-    // cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-    //             m, n, k,
-    //             alpha, A, k,
-    //             B, n,
-    //             beta, C, n);
-
-    // // print result
-    // printf("[ %f %f ]\n", C[0], C[1]);
-    // printf("[ %f %f ]\n", C[2], C[3]);
-
-    // free(A);
-    // free(B);
-    // free(C);
-
-
-    return 0;
 }
