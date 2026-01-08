@@ -49,6 +49,7 @@ int main(){
     size_t ctx_win = 20;
     size_t stride = 15;
     size_t embed_len = 16;
+    size_t vocab_size = vocab->len;
 
 
     Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , ctx_win, stride);
@@ -59,12 +60,19 @@ int main(){
     //dataloader_print_sample(&data_sample);
 
 
-    EmbeddingLayer embedding_layer = embedding_layer_init(vocab->len, embed_len, ctx_win, DTYPE_DOUBLE);
-    embedding_layer_forward(&embedding_layer, data_sample.x);
+    EmbeddingLayer token_embedding_layer = embedding_layer_init(vocab_size, embed_len, ctx_win, DTYPE_DOUBLE);
+    Tensor embedding_layer_token_output = embedding_layer_token_forward(&token_embedding_layer, data_sample.x);
+    //embedding_layer_write(&token_embedding_layer, "./output/token_embedding_layer.csv");
+    tensor_print(&embedding_layer_token_output);
     
-    embedding_layer_write(&embedding_layer, "./output/embedding_layer.csv");
+    EmbeddingLayer pos_embedding_layer = embedding_layer_init(ctx_win, embed_len, ctx_win, DTYPE_DOUBLE);
+    Tensor embedding_layer_positional_output =embedding_layer_positional_forward(&pos_embedding_layer);
+    //embedding_layer_write(&pos_embedding_layer, "./output/pos_embedding_layer.csv");
+    tensor_print(&embedding_layer_positional_output);
 
-    tensor_print(&embedding_layer.output);
+    Tensor input_embeddings = tensor_add(&embedding_layer_token_output, &embedding_layer_positional_output);
+    tensor_print(&input_embeddings);
+
     
 
 

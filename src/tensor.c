@@ -72,6 +72,21 @@ void tensor_free(const Tensor *tensor){
     free(tensor->data);
 }
 
+Tensor tensor_add(Tensor *tensor1, Tensor *tensor2){
+    Tensor new_tensor = tensor_init(
+        tensor1->data, 
+        tensor1->shape, 
+        tensor1->ndim, 
+        tensor1->dtype, 
+        tensor1->requires_grad, 
+        false
+    );
+    for(size_t i = 0; i < new_tensor.size; i++){
+        ((double*)new_tensor.data)[i] = ((double*)new_tensor.data)[i] + ((double*)tensor2->data)[i];
+    }
+    return new_tensor;
+}
+
 
 void tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items){
     void *dest_data = &((double*)dest_tensor->data)[dest_row * dest_tensor->shape[1]];
