@@ -70,7 +70,17 @@ int main(){
     //embedding_layer_write(&pos_embedding_layer, "./output/pos_embedding_layer.csv");
     tensor_print(&embedding_layer_positional_output);
 
-    Tensor input_embeddings = tensor_add(&embedding_layer_token_output, &embedding_layer_positional_output);
+    // Tensor input_embeddings = tensor_add(&embedding_layer_token_output, &embedding_layer_positional_output);
+    // tensor_print(&input_embeddings);
+    // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
+
+    Tensor input_embeddings = tensor_init((double[]){
+        0.43, 0.15, 0.89,
+        0.55, 0.87, 0.66,
+        0.57, 0.85, 0.64,
+        0.22, 0.58, 0.33,
+        0.77, 0.25, 0.10,
+        0.05, 0.80, 0.55    }, (size_t[]){6,3}, 2, sizeof(double), false, false);   
     tensor_print(&input_embeddings);
     tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
@@ -80,6 +90,9 @@ int main(){
 
     Tensor attention_scores = tensor_dot_product_matrix(&input_embeddings, &input_embeddings_transposed);
     tensor_print(&attention_scores);
+
+    Tensor attention_weights = tensor_softmax(&attention_scores, 1);
+    tensor_print(&attention_weights);
 
     
 

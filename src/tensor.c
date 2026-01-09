@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 #include "../include/tensor.h"
 #include "../include/utils.h"
@@ -110,6 +111,37 @@ Tensor tensor_transpose(Tensor *tensor){
 }
 
 
+Tensor tensor_softmax(Tensor *tensor, size_t dim){
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        (size_t[]){tensor->shape[1],  
+        tensor->shape[0]}, 
+        2,
+        tensor->dtype,
+        tensor->requires_grad,
+        true
+    );
+    if(dim == 1){
+        for(size_t i = 0; i < tensor->shape[0]; i++){
+            double exp_sum = 0;
+            for(size_t j = 0; j < tensor->shape[1]; j++){
+                double elem = tensor_get_elem(tensor, i, j);
+                exp_sum = exp_sum + expf(elem);
+            }
+            for(size_t j = 0; j < tensor->shape[1]; j++){
+                double elem = tensor_get_elem(tensor, i, j);
+
+                double new_elem = expf(elem) / exp_sum;
+                tensor_put_elem(&output_tensor, i, j, new_elem);
+            }
+        }
+    }
+    return output_tensor;
+}
+
+
+
+
 Tensor tensor_dot_product_matrix(Tensor *tensor1, Tensor *tensor2){
     assert(tensor1->shape[1] == tensor2->shape[0]);
     Tensor output_tensor =  tensor_init(
@@ -163,7 +195,6 @@ void tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tens
     void *src_data =  &((double*)src_tensor->data)[src_row * src_tensor->shape[1]];
     memcpy(dest_data, src_data, no_of_items * src_tensor->elem_size);
 }
-
 
 
 void tensor_print(const Tensor *tensor){
