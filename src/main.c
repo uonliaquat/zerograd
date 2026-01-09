@@ -46,9 +46,9 @@ int main(){
     //     print_byte_pair(merge_rules[i]);
     // }
 
-    size_t ctx_win = 20;
+    size_t ctx_win = 10;
     size_t stride = 15;
-    size_t embed_len = 16;
+    size_t embed_len = 10;
     size_t vocab_size = vocab->len;
 
 
@@ -72,6 +72,14 @@ int main(){
 
     Tensor input_embeddings = tensor_add(&embedding_layer_token_output, &embedding_layer_positional_output);
     tensor_print(&input_embeddings);
+    tensor_write(&input_embeddings, "./output/input_embeddings.csv");
+
+    Tensor input_embeddings_transposed = tensor_transpose(&input_embeddings);
+    tensor_print(&input_embeddings_transposed);
+    tensor_write(&input_embeddings_transposed, "./output/input_embeddings_transposed.csv");
+
+    Tensor attention_scores = tensor_dot_product_matrix(&input_embeddings, &input_embeddings_transposed);
+    tensor_print(&attention_scores);
 
     
 

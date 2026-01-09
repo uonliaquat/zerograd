@@ -50,11 +50,11 @@ void dataset_write_gpt2(Dataset *dataset_gpt2, const char *filename){
     }
     fprintf(fptr, "Inputs:\n");
     for(size_t i = 0; i < dataset_gpt2->len; i++){
-        tensor_write(&dataset_gpt2->x[i], fptr);
+        tensor_write_fp(&dataset_gpt2->x[i], fptr);
     }
     fprintf(fptr, "\n\nTargets:\n");
     for(size_t i = 0; i < dataset_gpt2->len; i++){
-        tensor_write(&dataset_gpt2->y[i], fptr);
+        tensor_write_fp(&dataset_gpt2->y[i], fptr);
     }
     fclose(fptr);
 }

@@ -22,10 +22,15 @@ typedef struct Tensor {
 
 Tensor  tensor_init(void *data, const size_t *shape, const size_t ndim, DataType dtype, const bool requires_grad, const bool random_init);
 void    tensor_free(const Tensor *tensor);
+double  tensor_get_elem(Tensor *tensor, size_t row, size_t col);
+void    tensor_put_elem(Tensor *tensor, size_t row, size_t col, double elem);
+Tensor  tensor_transpose(Tensor *tensor);
+Tensor  tensor_dot_product_matrix(Tensor *tensor1, Tensor *tensor2);
 Tensor  tensor_add(Tensor *tensor1, Tensor *tensor2);
 void    tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items);
 void    tensor_print(const Tensor *tensor);
-void    tensor_write(const Tensor *tensor, FILE *fptr);
+void    tensor_write_fp(const Tensor *tensor, FILE *fptr);
+void    tensor_write(const Tensor *tensor, char *filename);
 size_t  tensor_dtype_size(const DataType dtype);
 
 #endif

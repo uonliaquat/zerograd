@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../include/tensor.h"
 #include "../include/utils.h"
@@ -70,6 +71,75 @@ Tensor tensor_init(void *data, const size_t * shape, const size_t ndim, const Da
 
 void tensor_free(const Tensor *tensor){
     free(tensor->data);
+}
+
+double tensor_get_elem(Tensor *tensor, size_t row, size_t col){
+    size_t rows = tensor->shape[0];
+    size_t cols = tensor->shape[1];
+    assert(row < rows && col < cols);
+    size_t index = row * tensor->stride[0] + col * tensor->stride[1];
+    return ((double*)tensor->data)[index];
+}
+
+void tensor_put_elem(Tensor *tensor, size_t row, size_t col, double elem){
+    size_t rows = tensor->shape[0];
+    size_t cols = tensor->shape[1];
+    assert(row < rows && col < cols);
+    size_t index = row * tensor->stride[0] + col * tensor->stride[1];
+    ((double*)tensor->data)[index] = elem;
+}
+
+Tensor tensor_transpose(Tensor *tensor){
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        (size_t[]){tensor->shape[1],  
+        tensor->shape[0]}, 
+        2,
+        tensor->dtype,
+        tensor->requires_grad,
+        true
+    );
+
+    for(size_t i = 0; i < tensor->shape[0]; i++){
+        for(size_t j = 0; j < tensor->shape[1]; j++){
+            double elem = tensor_get_elem(tensor, i, j);
+            tensor_put_elem(&output_tensor, j, i, elem);
+        }
+    }
+    return output_tensor;
+}
+
+
+Tensor tensor_dot_product_matrix(Tensor *tensor1, Tensor *tensor2){
+    assert(tensor1->shape[1] == tensor2->shape[0]);
+    Tensor output_tensor =  tensor_init(
+        NULL, 
+        (size_t[]){tensor1->shape[0],  
+        tensor2->shape[1]}, 
+        2,
+        tensor1->dtype,
+        tensor1->requires_grad,
+        true
+    );
+    size_t t1_rows = tensor1->shape[0];
+    size_t t1_cols = tensor1->shape[1];
+    size_t t2_rows = tensor2->shape[0];
+    size_t t2_cols = tensor2->shape[1];
+    size_t out_rows = output_tensor.shape[0];
+    size_t out_cols = output_tensor.shape[1];
+    for(size_t i = 0; i < out_rows; i++){
+        for(size_t j = 0; j < out_cols; j++){
+            double result = 0;
+            for(size_t k = 0; k < t1_cols; k++){
+                double elem1 = tensor_get_elem(tensor1, i, k);
+                double elem2 = tensor_get_elem(tensor2, k, j);
+                result += elem1 * elem2;
+            }
+            tensor_put_elem(&output_tensor, i, j, result);
+        }
+    }
+    return output_tensor;
+
 }
 
 Tensor tensor_add(Tensor *tensor1, Tensor *tensor2){
@@ -145,7 +215,7 @@ void tensor_print(const Tensor *tensor){
 }
 
 
-void tensor_write(const Tensor *tensor, FILE *fptr){
+void tensor_write_fp(const Tensor *tensor, FILE *fptr){
     if(tensor->ndim == 1){
         for(size_t i = 0; i < tensor->shape[0]; i++){    
             if(tensor->dtype == DTYPE_DOUBLE)
@@ -167,8 +237,37 @@ void tensor_write(const Tensor *tensor, FILE *fptr){
             fprintf(fptr, "\n");
         }
     }
-
 }
+
+void tensor_write(const Tensor *tensor, char *filename){
+    FILE *fptr = fopen(filename, "w");
+    if(fptr == NULL){
+        printf("Error opening file %s\n", filename);
+        exit(1);
+    }
+    if(tensor->ndim == 1){
+        for(size_t i = 0; i < tensor->shape[0]; i++){    
+            if(tensor->dtype == DTYPE_DOUBLE)
+                fprintf(fptr, "%5.2f,", ((double*)tensor->data)[i]);
+            else
+                fprintf(fptr, "%5d,", ((int*)tensor->data)[i]);
+        }
+        fprintf(fptr, "\n");
+    }
+    else if(tensor->ndim == 2){
+        for(size_t i = 0; i < tensor->shape[0]; i++){
+            for(size_t j = 0; j < tensor->shape[1]; j++){
+                int val_index = i * tensor->stride[0] + j * tensor->stride[1];
+                if(tensor->dtype == DTYPE_DOUBLE)
+                    fprintf(fptr, "%5.2f,", ((double*)tensor->data)[val_index]);
+                else
+                    fprintf(fptr, "%5d,", ((int*)tensor->data)[val_index]);
+            }
+            fprintf(fptr, "\n");
+        }
+    }
+}
+
 
 size_t tensor_dtype_size(const DataType dtype){
     switch (dtype){
