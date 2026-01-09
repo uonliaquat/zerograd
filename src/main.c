@@ -94,6 +94,9 @@ int main(){
     Tensor attention_weights = tensor_softmax(&attention_scores, 1);
     tensor_print(&attention_weights);
 
+    Tensor context_vectors = tensor_dot_product_matrix(&attention_weights, &input_embeddings);
+    tensor_print(&context_vectors);
+
     
 
 
