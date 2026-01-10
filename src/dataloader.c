@@ -21,7 +21,7 @@ DataSample dataloader_get_next_batch(DataLoader *data_loader){
 
 void dataloader_print_sample(DataSample *data_sample){
     printf("\n====================SAMPLE %zu ==================\n", data_sample->idx);
-    printf("X:"); tensor_print(data_sample->x);
-    printf("Y:"); tensor_print(data_sample->y);
+    tensor_print(data_sample->x, "X");
+    tensor_print(data_sample->y, "Y");
     printf("========================================= ========\n");
 }

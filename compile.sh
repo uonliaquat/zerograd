@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -Iinclude src/main.c src/tokenizer.c src/tensor.c src/dataset.c src/dataloader.c src/utils.c src/layers/linear.c src/layers/embedding.c
+gcc -Iinclude src/main.c src/tokenizer.c src/tensor.c src/dataset.c src/dataloader.c src/utils.c src/layers/linear.c src/layers/embedding.c src/layers/self_attention.c

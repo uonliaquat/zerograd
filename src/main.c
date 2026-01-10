@@ -6,6 +6,7 @@
 #include "../include/dataset.h"
 #include "../include/dataloader.h"
 #include "../include/layers/embedding.h"
+#include "../include/layers/self_attention.h"
 
 
 
@@ -60,15 +61,15 @@ int main(){
     //dataloader_print_sample(&data_sample);
 
 
-    EmbeddingLayer token_embedding_layer = embedding_layer_init(vocab_size, embed_len, ctx_win, DTYPE_DOUBLE);
-    Tensor embedding_layer_token_output = embedding_layer_token_forward(&token_embedding_layer, data_sample.x);
-    //embedding_layer_write(&token_embedding_layer, "./output/token_embedding_layer.csv");
-    tensor_print(&embedding_layer_token_output);
+    // EmbeddingLayer token_embedding_layer = embedding_layer_init(vocab_size, embed_len, ctx_win, DTYPE_DOUBLE);
+    // Tensor embedding_layer_token_output = embedding_layer_token_forward(&token_embedding_layer, data_sample.x);
+    // //embedding_layer_write(&token_embedding_layer, "./output/token_embedding_layer.csv");
+    // tensor_print(&embedding_layer_token_output);
     
-    EmbeddingLayer pos_embedding_layer = embedding_layer_init(ctx_win, embed_len, ctx_win, DTYPE_DOUBLE);
-    Tensor embedding_layer_positional_output =embedding_layer_positional_forward(&pos_embedding_layer);
-    //embedding_layer_write(&pos_embedding_layer, "./output/pos_embedding_layer.csv");
-    tensor_print(&embedding_layer_positional_output);
+    // EmbeddingLayer pos_embedding_layer = embedding_layer_init(ctx_win, embed_len, ctx_win, DTYPE_DOUBLE);
+    // Tensor embedding_layer_positional_output =embedding_layer_positional_forward(&pos_embedding_layer);
+    // //embedding_layer_write(&pos_embedding_layer, "./output/pos_embedding_layer.csv");
+    // tensor_print(&embedding_layer_positional_output);
 
     // Tensor input_embeddings = tensor_add(&embedding_layer_token_output, &embedding_layer_positional_output);
     // tensor_print(&input_embeddings);
@@ -81,24 +82,14 @@ int main(){
         0.22, 0.58, 0.33,
         0.77, 0.25, 0.10,
         0.05, 0.80, 0.55    }, (size_t[]){6,3}, 2, sizeof(double), false, false);   
-    tensor_print(&input_embeddings);
+    tensor_print(&input_embeddings, "Input Embeddings");
     tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
-    Tensor input_embeddings_transposed = tensor_transpose(&input_embeddings);
-    tensor_print(&input_embeddings_transposed);
-    tensor_write(&input_embeddings_transposed, "./output/input_embeddings_transposed.csv");
+    SelfAttentionLayer self_attention_layer = self_attention_layer_init(input_embeddings.shape[1], 2, false, false, DTYPE_DOUBLE);
+    self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
 
-    Tensor attention_scores = tensor_dot_product_matrix(&input_embeddings, &input_embeddings_transposed);
-    tensor_print(&attention_scores);
-
-    Tensor attention_weights = tensor_softmax(&attention_scores, 1);
-    tensor_print(&attention_weights);
-
-    Tensor context_vectors = tensor_dot_product_matrix(&attention_weights, &input_embeddings);
-    tensor_print(&context_vectors);
-
-    
-
+    Tensor self_attention_layer_output = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
+    tensor_print(&self_attention_layer_output, "Context Vectors");
 
     tokenizer_free_vocab(vocab);
     tokenizer_free_merge_rules(merge_rules);

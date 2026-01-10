@@ -74,7 +74,7 @@ void tensor_free(const Tensor *tensor){
     free(tensor->data);
 }
 
-double tensor_get_elem(Tensor *tensor, size_t row, size_t col){
+double tensor_get_elem(const Tensor *tensor, const size_t row, const size_t col){
     size_t rows = tensor->shape[0];
     size_t cols = tensor->shape[1];
     assert(row < rows && col < cols);
@@ -90,7 +90,7 @@ void tensor_put_elem(Tensor *tensor, size_t row, size_t col, double elem){
     ((double*)tensor->data)[index] = elem;
 }
 
-Tensor tensor_transpose(Tensor *tensor){
+Tensor tensor_transpose(const Tensor *tensor){
     Tensor output_tensor = tensor_init(
         NULL, 
         (size_t[]){tensor->shape[1],  
@@ -139,10 +139,28 @@ Tensor tensor_softmax(Tensor *tensor, size_t dim){
     return output_tensor;
 }
 
+Tensor tensor_mul(Tensor *tensor, double elem){
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        (size_t[]){tensor->shape[0],  
+        tensor->shape[1]}, 
+        2,
+        tensor->dtype,
+        tensor->requires_grad,
+        true
+    );
+    for(size_t i = 0; i < tensor->shape[0]; i++){
+        for(size_t j = 0; j < tensor->shape[1]; j++){
+            double old_elem = tensor_get_elem(tensor, i, j);
+            double new_elem = old_elem * elem;
+            tensor_put_elem(&output_tensor, i, j, new_elem);
+        }
+    }
+    return output_tensor;
+}
 
 
-
-Tensor tensor_dot_product_matrix(Tensor *tensor1, Tensor *tensor2){
+Tensor tensor_dot_product_matrix(const Tensor *tensor1, const Tensor *tensor2){
     assert(tensor1->shape[1] == tensor2->shape[0]);
     Tensor output_tensor =  tensor_init(
         NULL, 
@@ -197,8 +215,8 @@ void tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tens
 }
 
 
-void tensor_print(const Tensor *tensor){
-    printf("\n\n");
+void tensor_print(const Tensor *tensor, const char *heading){
+    printf("\n============== %s ==================\n", heading);
     printf("size:           %zu\n", tensor->size);
     printf("ndim:           %zu\n", tensor->ndim);
     
@@ -242,7 +260,7 @@ void tensor_print(const Tensor *tensor){
 
     printf("requires_grad:  %s\n", tensor->requires_grad ? "true" : "false");
 
-    printf("\n\n");
+    printf("\n");
 }
 
 
@@ -268,6 +286,7 @@ void tensor_write_fp(const Tensor *tensor, FILE *fptr){
             fprintf(fptr, "\n");
         }
     }
+    fprintf(fptr, "\n");
 }
 
 void tensor_write(const Tensor *tensor, char *filename){

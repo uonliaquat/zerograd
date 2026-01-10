@@ -36,8 +36,8 @@ Dataset dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, si
 void dataset_print_gpt(Dataset *dataset_gpt2){
     for(size_t i = 0; i < dataset_gpt2->len; i++){
         printf("\n========================================DATASET==============================================\n");
-        tensor_print(&dataset_gpt2->x[i]);
-        tensor_print(&dataset_gpt2->y[i]);
+        tensor_print(&dataset_gpt2->x[i], "X");
+        tensor_print(&dataset_gpt2->y[i], "Y");
         printf("\n===============================================================================================\n\n");
     }
 }
