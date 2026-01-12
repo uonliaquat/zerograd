@@ -150,6 +150,67 @@ Tensor tensor_scale(Tensor *tensor, double elem){
     return output_tensor;
 }
 
+Tensor tensor_concat(Tensor *tensors, size_t no_of_tensors, size_t dim){
+    //this function doesn't work on batch of tensors
+    if(dim == 1){
+        //concat across columns
+        size_t new_cols = tensors[0].shape[1];
+        for(size_t i = 1; i < no_of_tensors; i++){
+            assert(tensors[i].shape[0] == tensors[i-1].shape[0]);
+            new_cols += tensors[i].shape[1];
+        }
+        Tensor output_tensor = tensor_init(
+            NULL, 
+            (size_t[]){tensors[0].shape[0], new_cols}, 
+            2,
+            tensors[0].dtype,
+            tensors[0].requires_grad,
+            false
+        );
+        for(size_t t = 0; t < no_of_tensors; t++){
+            for(size_t i = 0; i < tensors[t].shape[0]; i++){
+                for(size_t j = 0; j < tensors[t].shape[1]; j++){
+                    double elem = tensor_get_elem(&tensors[t], (size_t[]){i, j});
+                    tensor_put_elem(&output_tensor, (size_t[]){i, j + (t * no_of_tensors)}, elem);
+                }
+            }
+        }
+        return output_tensor;
+    }
+    return (Tensor){};
+}
+
+Tensor *tensor_chunk(Tensor *tensor, size_t chunks, size_t dim){
+    assert(tensor->ndim == 2);
+    Tensor *output_tensors = calloc(chunks, sizeof(Tensor));
+    if(dim == 1){
+        assert(tensor->shape[1] % chunks == 0);
+        //split columns
+        size_t cols = tensor->shape[1] / chunks;
+
+        for(size_t chunk = 0; chunk < chunks; chunk++){
+            Tensor output_tensor = tensor_init(
+                NULL, 
+                (size_t[]){tensor->shape[0], cols}, 
+                2,
+                tensor->dtype,
+                tensor->requires_grad,
+                false
+            );
+
+            for(size_t i = 0; i < tensor->shape[0]; i++){
+                for(size_t j = 0; j < cols; j++){
+                    double elem = tensor_get_elem(tensor, (size_t[]){i, j + (chunk * chunks)});
+                    tensor_put_elem(&output_tensor, (size_t[]){i, j}, elem);
+                }
+            }
+            output_tensors[chunk] = output_tensor;
+        }
+    }
+    return output_tensors;
+}
+
+
 Tensor tensor_cat(Tensor **tensors, size_t len){
     
     Tensor output_tensor = tensor_init(
@@ -216,8 +277,10 @@ void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output
 
 Tensor tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2){
     //assert(tensor1->ndim == tensor2->ndim);
+    // tensor_print(tensor1, "================== TENSOR 1 ==================");
+    // tensor_print(tensor2, "================== TENSOR 2 ==================");
     if(tensor1->ndim == 3 && tensor2->ndim == 2){
-        assert(tensor1->shape[1] == tensor2->shape[1]);
+        assert(tensor1->shape[2] == tensor2->shape[0]);
         size_t batch_size = tensor1->shape[0];
         Tensor output_tensor =  tensor_init(
             NULL, 

@@ -28,6 +28,8 @@ void    tensor_put_elem(Tensor *tensor, size_t *coords, double elem);
 Tensor  tensor_transpose(const Tensor *tensor);
 Tensor  tensor_softmax(Tensor *tensor, size_t dim);
 Tensor  tensor_scale(Tensor *tensor, double elem);
+Tensor  tensor_concat(Tensor *tensors, size_t no_of_tensors, size_t dim);
+Tensor  *tensor_chunk(Tensor *tensor, size_t chunks, size_t dim);
 Tensor  tensor_cat(Tensor **tensors, size_t len);
 void    tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim);
 Tensor  tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2);

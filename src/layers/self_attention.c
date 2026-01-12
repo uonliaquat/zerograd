@@ -37,60 +37,14 @@ Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_lay
 
     // attenion_scroes = Q.K^t
     Tensor keys_transposed = tensor_transpose(&keys);
-    tensor_print(&keys_transposed, "keys_transposed");
+    //tensor_print(&keys_transposed, "keys_transposed");
     Tensor attention_scores = tensor_dot_product(&queries, &keys_transposed);
-    tensor_print(&attention_scores, "attention_scores");
+    //tensor_print(&attention_scores, "attention_scores");
     Tensor attention_scores_scaled = tensor_scale(&attention_scores, 1/sqrt(keys.shape[1]));
-    tensor_print(&attention_scores_scaled, "attention_scores_scaled");
+    //tensor_print(&attention_scores_scaled, "attention_scores_scaled");
     Tensor attention_weights = tensor_softmax(&attention_scores_scaled, 1);
-    tensor_print(&attention_weights, "attention_weights");
+    //tensor_print(&attention_weights, "attention_weights");
     Tensor context_vec = tensor_dot_product(&attention_weights, &values);
-    tensor_print(&context_vec, "context_vecs");
+    //tensor_print(context_vec)
     return context_vec;
-
 }
-
-// void self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, const char *heading){
-//     for(size_t i = 0; i < self_attention_layer->num_heads; i++){
-//         printf("\033[36m==============================HEAD %d==============================\033[0m\n", heading);
-//         printf("\033[36m==============================LINEAR LAYER %s (WEIGHTS)==============================\033[0m\n", heading);
-//         linear_layer_print(&self_attention_layer->W_query[i], "W_Query");
-//         linear_layer_print(&self_attention_layer->W_key[i], "W_key");
-//         linear_layer_print(&self_attention_layer->W_value[i], "W_value");
-//     }
-// }
-
-
-void self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, const char *filename){
-    FILE *fptr = fopen(filename, "w");
-    if(fptr == NULL){
-        printf("Couldn't open file %s\n", filename);
-        exit(1);
-    }
-    fprintf(fptr, "%s\n", "W_Query");
-    linear_layer_write_fp(&self_attention_layer->W_query, fptr);
-    fprintf(fptr, "%s\n", "W_Key");
-    linear_layer_write_fp(&self_attention_layer->W_key, fptr);
-    fprintf(fptr, "%s\n", "W_Value");
-    linear_layer_write_fp(&self_attention_layer->W_value, fptr);
-    fprintf(fptr, "\n");
-}
-
-
-// Tensor self_attention_simplified(Tensor *input_embeddings){
-
-//     Tensor input_embeddings_transposed = tensor_transpose(input_embeddings);
-//     tensor_print(&input_embeddings_transposed);
-//     tensor_write(&input_embeddings_transposed, "./output/input_embeddings_transposed.csv");
-
-//     Tensor attention_scores = tensor_dot_product(input_embeddings, &input_embeddings_transposed);
-//     tensor_print(&attention_scores);
-
-//     Tensor attention_weights = tensor_softmax(&attention_scores, 1);
-//     tensor_print(&attention_weights);
-
-//     Tensor context_vectors = tensor_dot_product(&attention_weights, input_embeddings);
-//     tensor_print(&context_vectors);
-
-//     return input_embeddings_transposed;
-// }

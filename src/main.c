@@ -7,6 +7,7 @@
 // #include "../include/dataset.h"
 // #include "../include/dataloader.h"
 // #include "../include/layers/embedding.h"
+//#include "../include/layers/self_attention.h"
 #include "../include/layers/self_attention.h"
 
 
@@ -93,11 +94,11 @@ int main(){
     // tensor_print(&tensor1, "Tensor 1");
     // tensor_write(&tensor1, "./output/tensor1.csv");
 
-    const size_t shape2[] = {seq_len, embed_dim};
-    const size_t ndim2 = sizeof(shape2) / sizeof(size_t);
-    Tensor tensor2 = tensor_init(NULL, shape2, ndim2, DTYPE_DOUBLE, false, true);
-    tensor_print(&tensor2, "Input Embeddings");
-    tensor_write(&tensor2, "./output/input_embeddings.csv");
+    const size_t shape_input_embeddings[] = {seq_len, embed_dim};
+    const size_t ndim_input_embeddings = sizeof(shape_input_embeddings) / sizeof(size_t);
+    Tensor input_embeddings = tensor_init(NULL, shape_input_embeddings, ndim_input_embeddings, DTYPE_DOUBLE, false, true);
+    tensor_print(&input_embeddings, "Input Embeddings");
+    tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
 
 
@@ -108,7 +109,10 @@ int main(){
 
     SelfAttentionLayer self_attention_layer = self_attention_layer_init(seq_len, embed_dim, num_heads, false, false, DTYPE_DOUBLE);
     self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
-    Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &tensor2);
+    // Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
+    // tensor_print(&context_vecs, "context vecs");
+
+    Tensor context_vecs = self_attention_layer_mult_head_forward(&self_attention_layer, &input_embeddings);
     // tensor_print(&context_vecs, "context vecs");
 
     // Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
