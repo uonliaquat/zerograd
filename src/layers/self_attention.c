@@ -27,13 +27,13 @@ SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t 
 }
 
 Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x){
-    Tensor keys = linear_layer_forward(&self_attention_layer->W_key, x);
     Tensor queries = linear_layer_forward(&self_attention_layer->W_query, x);
+    Tensor keys = linear_layer_forward(&self_attention_layer->W_key, x);
     Tensor values = linear_layer_forward(&self_attention_layer->W_value, x);
 
-    tensor_print(&keys, "keys");
-    tensor_print(&queries, "queries");
-    tensor_print(&values, "values");
+    // tensor_print(&queries, "queries");
+    // tensor_print(&keys, "keys");
+    // tensor_print(&values, "values");
 
     // attenion_scroes = Q.K^t
     Tensor keys_transposed = tensor_transpose(&keys);
@@ -45,6 +45,7 @@ Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_lay
     Tensor attention_weights = tensor_softmax(&attention_scores_scaled, 1);
     tensor_print(&attention_weights, "attention_weights");
     Tensor context_vec = tensor_dot_product(&attention_weights, &values);
+    tensor_print(&context_vec, "context_vecs");
     return context_vec;
 
 }
@@ -70,7 +71,7 @@ void self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, 
     linear_layer_write_fp(&self_attention_layer->W_query, fptr);
     fprintf(fptr, "%s\n", "W_Key");
     linear_layer_write_fp(&self_attention_layer->W_key, fptr);
-    fprintf(fptr, "%s\n", "W_value");
+    fprintf(fptr, "%s\n", "W_Value");
     linear_layer_write_fp(&self_attention_layer->W_value, fptr);
     fprintf(fptr, "\n");
 }

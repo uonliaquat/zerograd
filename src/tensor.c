@@ -51,7 +51,7 @@ Tensor tensor_init(void *data, const size_t * shape, const size_t ndim, const Da
         memcpy(tensor.data, data, tensor.elem_size * tensor.size);
     else if(random_init == true){
         for(size_t i = 0; i < tensor.size; i++){
-            double rand_number = rand_double(-10.0, 10.0);
+            double rand_number = rand_double(-1.0, 1.0);
             ((double*)tensor.data)[i] = rand_number;
         }
     }

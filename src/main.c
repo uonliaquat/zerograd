@@ -87,29 +87,29 @@ int main(){
     // }, (size_t[]){seq_len, embed_dim}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
 
 
-    const size_t shape1[] = {seq_len, embed_dim};
-    const size_t ndim1 = sizeof(shape1) / sizeof(size_t);
-    Tensor tensor1 = tensor_init(NULL, shape1, ndim1, DTYPE_DOUBLE, false, true);
-    tensor_print(&tensor1, "Tensor 1");
-    tensor_write(&tensor1, "./output/tensor1.csv");
+    // const size_t shape1[] = {seq_len, embed_dim};
+    // const size_t ndim1 = sizeof(shape1) / sizeof(size_t);
+    // Tensor tensor1 = tensor_init(NULL, shape1, ndim1, DTYPE_DOUBLE, false, true);
+    // tensor_print(&tensor1, "Tensor 1");
+    // tensor_write(&tensor1, "./output/tensor1.csv");
 
-    const size_t shape2[] = {embed_dim, seq_len};
+    const size_t shape2[] = {seq_len, embed_dim};
     const size_t ndim2 = sizeof(shape2) / sizeof(size_t);
     Tensor tensor2 = tensor_init(NULL, shape2, ndim2, DTYPE_DOUBLE, false, true);
     tensor_print(&tensor2, "Input Embeddings");
-    tensor_write(&tensor2, "./output/tensor2.csv");
+    tensor_write(&tensor2, "./output/input_embeddings.csv");
 
 
 
-    Tensor output_tensor = tensor_dot_product(&tensor1, &tensor2);
-    tensor_print(&output_tensor, "Output Tensor");
-    tensor_write(&output_tensor, "./output/output_tensor.csv");
+    // Tensor output_tensor = tensor_dot_product(&tensor1, &tensor2);
+    // tensor_print(&output_tensor, "Output Tensor");
+    // tensor_write(&output_tensor, "./output/output_tensor.csv");
 
 
-    // SelfAttentionLayer self_attention_layer = self_attention_layer_init(seq_len, embed_dim, num_heads, false, false, DTYPE_DOUBLE);
-    // Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &tensor2);
+    SelfAttentionLayer self_attention_layer = self_attention_layer_init(seq_len, embed_dim, num_heads, false, false, DTYPE_DOUBLE);
+    self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
+    Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &tensor2);
     // tensor_print(&context_vecs, "context vecs");
-    //self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
 
     // Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
     // //tensor_print(&context_vecs, "Context Vectors");
