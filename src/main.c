@@ -54,11 +54,6 @@ int main(){
     size_t embed_dim = 128;
     size_t num_heads = 2;
     //size_t vocab_size = vocab->len;
-    const size_t shape[] = {2, 4, 3};
-    const size_t ndim = sizeof(shape) / sizeof(size_t);
-    Tensor tensor = tensor_init(NULL, shape, ndim, DTYPE_DOUBLE, false, true);
-    tensor_print(&tensor, "tensor");
-    tensor_write(&tensor, "./output/tensor.csv");
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);
     // dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
@@ -89,7 +84,29 @@ int main(){
     //     0.22, 0.58, 0.33, 0.33,
     //     0.77, 0.25, 0.10, 0.10,
     //     0.05, 0.80, 0.55, 0.55,
-    // }, (size_t[]){seq_len, embed_dim}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);   
+    // }, (size_t[]){seq_len, embed_dim}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
+
+
+    const size_t shape1[] = {2, 4, 3};
+    const size_t ndim1 = sizeof(shape1) / sizeof(size_t);
+    Tensor tensor1 = tensor_init(NULL, shape1, ndim1, DTYPE_DOUBLE, false, true);
+    tensor_print(&tensor1, "Tensor 1");
+    tensor_write(&tensor1, "./output/tensor1.csv");
+
+    const size_t shape2[] = {3, 4};
+    const size_t ndim2 = sizeof(shape2) / sizeof(size_t);
+    Tensor tensor2 = tensor_init(NULL, shape2, ndim2, DTYPE_DOUBLE, false, true);
+    tensor_print(&tensor2, "Tensor 2");
+    tensor_write(&tensor2, "./output/tensor2.csv");
+
+    Tensor output_tensor = tensor_dot_product(&tensor1, &tensor2);
+    tensor_print(&output_tensor, "Output Tensor");
+    tensor_write(&output_tensor, "./output/output_tensor.csv");
+    
+    // const size_t shape[] = {2, 4, 3};
+    // const size_t ndim = sizeof(shape) / sizeof(size_t);
+    // Tensor input_embeddings = tensor_init(NULL, shape, ndim, DTYPE_DOUBLE, false, true);
+
     // tensor_print(&input_embeddings, "Input Embeddings");
     // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
