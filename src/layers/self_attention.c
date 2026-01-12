@@ -13,15 +13,12 @@ SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t 
     SelfAttentionLayer self_attention_layer;
     size_t head_dim = embed_dim / num_heads;
 
-    self_attention_layer.W_query = calloc(num_heads, sizeof(LinearLayer));
-    self_attention_layer.W_key = calloc(num_heads, sizeof(LinearLayer));
-    self_attention_layer.W_value = calloc(num_heads, sizeof(LinearLayer));
-
-    for(size_t i = 0; i < num_heads; i++){
-        self_attention_layer.W_query[i] = linear_layer_init(embed_dim, head_dim, bias, requires_grad, dtype);
-        self_attention_layer.W_key[i] = linear_layer_init(embed_dim, head_dim, bias, requires_grad, dtype);
-        self_attention_layer.W_value[i] = linear_layer_init(embed_dim, head_dim, bias, requires_grad, dtype);
-    }
+    self_attention_layer.W_query = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
+    self_attention_layer.W_key = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
+    self_attention_layer.W_value = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
+    linear_layer_print(&self_attention_layer.W_query, "W_query");
+    linear_layer_print(&self_attention_layer.W_key, "W_key");
+    linear_layer_print(&self_attention_layer.W_value, "W_value");
     self_attention_layer.seq_len = seq_len;
     self_attention_layer.embed_dim = embed_dim;
     self_attention_layer.num_heads = num_heads;
@@ -30,27 +27,25 @@ SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t 
 }
 
 Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x){
-    Tensor *context_vecs = calloc(self_attention_layer->num_heads, sizeof(Tensor));
-    for(size_t i = 0; i < self_attention_layer->num_heads; i++){
-        Tensor keys = linear_layer_forward(&self_attention_layer->W_key[i], x);
-        Tensor queries = linear_layer_forward(&self_attention_layer->W_query[i], x);
-        Tensor values = linear_layer_forward(&self_attention_layer->W_value[i], x);
+    Tensor keys = linear_layer_forward(&self_attention_layer->W_key, x);
+    Tensor queries = linear_layer_forward(&self_attention_layer->W_query, x);
+    Tensor values = linear_layer_forward(&self_attention_layer->W_value, x);
 
-        // attenion_scroes = Q.K^t
-        Tensor keys_transposed = tensor_transpose(&keys);
-        Tensor attention_scores = tensor_dot_product(&queries, &keys_transposed);
-        Tensor attention_scores_scaled = tensor_scale(&attention_scores, 1/sqrt(keys.shape[1]));
-        Tensor attention_weights = tensor_softmax(&attention_scores_scaled, 1);
-        Tensor context_vec = tensor_dot_product(&attention_weights, &values);
-        memcpy(&context_vecs[i], &context_vec, sizeof(Tensor));
-        tensor_print(&context_vecs[i], "context_vecs[i]");
-        //context_vecs[i] = context_vec;
-    }
-    // for(size_t i = 0; i < self_attention_layer->num_heads; i++){
-    //     tensor_print(&context_vecs[i], "context_vecs[i]");
-    // }
-    Tensor output = tensor_cat(&context_vecs, self_attention_layer->num_heads);
-    return output;
+    tensor_print(&keys, "keys");
+    tensor_print(&queries, "queries");
+    tensor_print(&values, "values");
+
+    // attenion_scroes = Q.K^t
+    Tensor keys_transposed = tensor_transpose(&keys);
+    tensor_print(&keys_transposed, "keys_transposed");
+    Tensor attention_scores = tensor_dot_product(&queries, &keys_transposed);
+    tensor_print(&attention_scores, "attention_scores");
+    Tensor attention_scores_scaled = tensor_scale(&attention_scores, 1/sqrt(keys.shape[1]));
+    tensor_print(&attention_scores_scaled, "attention_scores_scaled");
+    Tensor attention_weights = tensor_softmax(&attention_scores_scaled, 1);
+    tensor_print(&attention_weights, "attention_weights");
+    Tensor context_vec = tensor_dot_product(&attention_weights, &values);
+    return context_vec;
 
 }
 
@@ -71,16 +66,13 @@ void self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, 
         printf("Couldn't open file %s\n", filename);
         exit(1);
     }
-    for(size_t i = 0; i < self_attention_layer->num_heads; i++){
-        fprintf(fptr, "Head: %zu\n", i);
-        fprintf(fptr, "%s\n", "W_Query");
-        linear_layer_write_fp(&self_attention_layer->W_query[i], fptr);
-        fprintf(fptr, "%s\n", "W_Key");
-        linear_layer_write_fp(&self_attention_layer->W_key[i], fptr);
-        fprintf(fptr, "%s\n", "W_value");
-        linear_layer_write_fp(&self_attention_layer->W_value[i], fptr);
-        fprintf(fptr, "\n");
-    }
+    fprintf(fptr, "%s\n", "W_Query");
+    linear_layer_write_fp(&self_attention_layer->W_query, fptr);
+    fprintf(fptr, "%s\n", "W_Key");
+    linear_layer_write_fp(&self_attention_layer->W_key, fptr);
+    fprintf(fptr, "%s\n", "W_value");
+    linear_layer_write_fp(&self_attention_layer->W_value, fptr);
+    fprintf(fptr, "\n");
 }
 
 

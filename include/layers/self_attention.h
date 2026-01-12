@@ -6,9 +6,9 @@
 
 
 typedef struct SelfAttentionLayer{
-    LinearLayer *W_query;
-    LinearLayer *W_key;
-    LinearLayer *W_value;
+    LinearLayer W_query;
+    LinearLayer W_key;
+    LinearLayer W_value;
     size_t seq_len;
     size_t embed_dim;
     size_t num_heads;

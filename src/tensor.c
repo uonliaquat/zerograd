@@ -55,19 +55,6 @@ Tensor tensor_init(void *data, const size_t * shape, const size_t ndim, const Da
             ((double*)tensor.data)[i] = rand_number;
         }
     }
-    
-    
-
-
-    // Initializing shape
-    // memset(tensor.shape[0], 1, sizeof(tensor.shape[0]));
-    // memset(tensor.shape[1], 1, sizeof(tensor.shape[1]));
-    // memset(tensor.shape[2], 1, sizeof(tensor.shape[2]));
-    // memset(tensor.shape[3], 1, sizeof(tensor.shape[3]));
-    // memcpy(tensor.shape, shape, 8);
-
-    
-
     return tensor;
 }
 
@@ -176,10 +163,8 @@ Tensor tensor_cat(Tensor **tensors, size_t len){
     );
     size_t out_col = 0;
     for(size_t i = 0; i < len; i++){
-        tensor_print(tensors[i], "tensor    [i]");
         for(size_t j = 0; j < tensors[i]->shape[0]; j++){
             for(size_t k = 0; k < tensors[i]->shape[1]; k++){
-                printf("j: %zu, k: %zu\n", j, k+out_col);
                 double elem = tensor_get_elem(tensors[i], (size_t[]){j, k});
                 tensor_put_elem(&output_tensor, (size_t[]){j, k+out_col}, elem);
             }
@@ -189,12 +174,12 @@ Tensor tensor_cat(Tensor **tensors, size_t len){
     return output_tensor;
 }
 void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim){
-    size_t t1_rows = tensor1->shape[0];
-    size_t t1_cols = tensor1->shape[1];
-    size_t t2_rows = tensor2->shape[0];
-    size_t t2_cols = tensor2->shape[1];
-    size_t out_rows = output_tensor->shape[0];
-    size_t out_cols = output_tensor->shape[1];
+    size_t t1_rows = 0;
+    size_t t1_cols = 0;
+    size_t t2_rows = 0;
+    size_t t2_cols = 0;
+    size_t out_rows = 0;
+    size_t out_cols = 0;
     if(output_tensor->ndim == 3){
         t1_rows = tensor1->shape[1];
         t1_cols = tensor1->shape[2];
@@ -203,16 +188,27 @@ void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output
         out_rows = output_tensor->shape[1];
         out_cols = output_tensor->shape[2];
     }
+    else if(output_tensor->ndim == 2){
+        t1_rows = tensor1->shape[0];
+        t1_cols = tensor1->shape[1];
+        t2_rows = tensor2->shape[0];
+        t2_cols = tensor2->shape[1];
+        out_rows = output_tensor->shape[0];
+        out_cols = output_tensor->shape[1];
+    }
 
     for(size_t i = 0; i < out_rows; i++){
         for(size_t j = 0; j < out_cols; j++){
             double result = 0;
             for(size_t k = 0; k < t1_cols; k++){
-                double elem1 = tensor_get_elem(tensor1, (size_t[]){batch_dim, i, k});
+                double elem1 = 0;
+                if(output_tensor->ndim == 3) elem1 = tensor_get_elem(tensor1, (size_t[]){batch_dim, i, k});
+                else if(output_tensor->ndim == 2) elem1 = tensor_get_elem(tensor1, (size_t[]){i, k});
                 double elem2 = tensor_get_elem(tensor2, (size_t[]){k, j});
                 result += elem1 * elem2;
             }
-            tensor_put_elem(output_tensor, (size_t[]){batch_dim, i, j}, result);
+            if(output_tensor->ndim == 3) tensor_put_elem(output_tensor, (size_t[]){batch_dim, i, j}, result);
+            else if(output_tensor->ndim == 2)  tensor_put_elem(output_tensor, (size_t[]){i, j}, result);
         }
     }
 }

@@ -5,7 +5,7 @@ LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const b
     LinearLayer linear_layer;
     linear_layer.weights  = tensor_init(NULL, (size_t[]){inputs, outputs}, 2, dtype, requires_grad, true);
     if(bias == true)
-        linear_layer.bias     = tensor_init(NULL, (size_t[]){1, outputs}, 2, dtype, requires_grad, true);
+        linear_layer.bias = tensor_init(NULL, (size_t[]){1, outputs}, 2, dtype, requires_grad, true);
     linear_layer.dtype = dtype;
     return linear_layer;
 }
