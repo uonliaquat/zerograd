@@ -108,6 +108,7 @@ int main(){
 
 
     SelfAttentionLayer self_attention_layer = self_attention_layer_init(seq_len, embed_dim, num_heads, false, false, DTYPE_DOUBLE);
+    self_attention_layer_print(&self_attention_layer, "Multi Head Self Attention");
     self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
     // Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
     // tensor_print(&context_vecs, "context vecs");
