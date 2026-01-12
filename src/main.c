@@ -1,27 +1,28 @@
 
 #include <string.h>
 
-#include "../include/utils.h"
-#include "../include/tokenizer.h"
-#include "../include/dataset.h"
-#include "../include/dataloader.h"
-#include "../include/layers/embedding.h"
-#include "../include/layers/self_attention.h"
+#include "../include/tensor.h"
+// #include "../include/utils.h"
+// #include "../include/tokenizer.h"
+// #include "../include/dataset.h"
+// #include "../include/dataloader.h"
+// #include "../include/layers/embedding.h"
+// #include "../include/layers/self_attention.h"
 
 
 
 int main(){
 
-    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/the-verdict.txt");
-    size_t data_len = strlen(data);
+    // char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/the-verdict.txt");
+    // size_t data_len = strlen(data);
 
 
     // printf("Data:\n%s\n\n", data);
     // printf("data_size: %zu\n", data_len);
 
-    struct Vocab *vocab = tokenizer_init_vocab();
-    struct Data *corpus = tokenizer_create_data(data);
-    struct MergeRules *merge_rules = tokenizer_init_merge_rules();
+    // struct Vocab *vocab = tokenizer_init_vocab();
+    // struct Data *corpus = tokenizer_create_data(data);
+    // struct MergeRules *merge_rules = tokenizer_init_merge_rules();
 
     //tokenizer_train(corpus, vocab, merge_rules);
 
@@ -32,9 +33,9 @@ int main(){
 
 
 
-    tokenizer_read_vocab("/Users/uonliaquat/workspace/zerograd/vocab.txt", vocab);
+    // tokenizer_read_vocab("/Users/uonliaquat/workspace/zerograd/vocab.txt", vocab);
     
-    tokenizer_read_merge_rules("/Users/uonliaquat/workspace/zerograd/merge_rules.txt", merge_rules);
+    // tokenizer_read_merge_rules("/Users/uonliaquat/workspace/zerograd/merge_rules.txt", merge_rules);
     
     // printf("Vocab Size: %zu\n", vocab->len);
     // for(size_t i = 0; i < vocab->len; i++){
@@ -47,17 +48,23 @@ int main(){
     //     print_byte_pair(merge_rules[i]);
     // }
 
-    size_t ctx_win = 10;
-    size_t stride = 15;
-    size_t embed_len = 10;
-    size_t vocab_size = vocab->len;
+    size_t batch_size = 4;
+    size_t seq_len = 64;
+    //size_t stride = 15;
+    size_t embed_dim = 128;
+    size_t num_heads = 2;
+    //size_t vocab_size = vocab->len;
+    const size_t shape[] = {2, 4, 3};
+    const size_t ndim = sizeof(shape) / sizeof(size_t);
+    Tensor tensor = tensor_init(NULL, shape, ndim, DTYPE_DOUBLE, false, true);
+    tensor_print(&tensor, "tensor");
+    tensor_write(&tensor, "./output/tensor.csv");
 
+    // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);
+    // dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
 
-    Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , ctx_win, stride);
-    dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
-
-    DataLoader data_loader = dataloader_init(&dataset_gpt2, 1);
-    DataSample data_sample = dataloader_get_next_batch(&data_loader);
+    // DataLoader data_loader = dataloader_init(&dataset_gpt2, 1);
+    // DataSample data_sample = dataloader_get_next_batch(&data_loader);
     //dataloader_print_sample(&data_sample);
 
 
@@ -75,23 +82,24 @@ int main(){
     // tensor_print(&input_embeddings);
     // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
-    Tensor input_embeddings = tensor_init((double[]){
-        0.43, 0.15, 0.89,
-        0.55, 0.87, 0.66,
-        0.57, 0.85, 0.64,
-        0.22, 0.58, 0.33,
-        0.77, 0.25, 0.10,
-        0.05, 0.80, 0.55    }, (size_t[]){6,3}, 2, sizeof(double), false, false);   
-    tensor_print(&input_embeddings, "Input Embeddings");
-    tensor_write(&input_embeddings, "./output/input_embeddings.csv");
+    // Tensor input_embeddings = tensor_init((double[]){
+    //     0.43, 0.15, 0.89, 0.89,
+    //     0.55, 0.87, 0.66, 0.66,
+    //     0.57, 0.85, 0.64, 0.64,
+    //     0.22, 0.58, 0.33, 0.33,
+    //     0.77, 0.25, 0.10, 0.10,
+    //     0.05, 0.80, 0.55, 0.55,
+    // }, (size_t[]){seq_len, embed_dim}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);   
+    // tensor_print(&input_embeddings, "Input Embeddings");
+    // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
-    SelfAttentionLayer self_attention_layer = self_attention_layer_init(input_embeddings.shape[1], 2, false, false, DTYPE_DOUBLE);
-    self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
+    // SelfAttentionLayer self_attention_layer = self_attention_layer_init(seq_len, embed_dim, num_heads, false, false, DTYPE_DOUBLE);
+    // self_attention_layer_write(&self_attention_layer, "./output/self_attention_layer.csv");
 
-    Tensor self_attention_layer_output = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
-    tensor_print(&self_attention_layer_output, "Context Vectors");
+    // Tensor context_vecs = self_attention_layer_forward(&self_attention_layer, &input_embeddings);
+    // //tensor_print(&context_vecs, "Context Vectors");
 
-    tokenizer_free_vocab(vocab);
-    tokenizer_free_merge_rules(merge_rules);
+    // tokenizer_free_vocab(vocab);
+    // tokenizer_free_merge_rules(merge_rules);
 
 }

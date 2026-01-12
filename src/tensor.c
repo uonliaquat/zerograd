@@ -34,7 +34,6 @@ Tensor tensor_init(void *data, const size_t * shape, const size_t ndim, const Da
     tensor.stride[0] = 1;
     tensor.stride[1] = 1;
     tensor.stride[2] = 1;
-    tensor.stride[3] = 1;
     //memset(tensor.stride, 0, sizeof(tensor.stride));
     for(size_t i = 0; i < ndim-1; i++){
         tensor.stride[i] = tensor.shape[i+1];
@@ -56,6 +55,7 @@ Tensor tensor_init(void *data, const size_t * shape, const size_t ndim, const Da
         }
     }
     
+    
 
 
     // Initializing shape
@@ -74,11 +74,14 @@ void tensor_free(const Tensor *tensor){
     free(tensor->data);
 }
 
-double tensor_get_elem(const Tensor *tensor, const size_t row, const size_t col){
-    size_t rows = tensor->shape[0];
-    size_t cols = tensor->shape[1];
-    assert(row < rows && col < cols);
-    size_t index = row * tensor->stride[0] + col * tensor->stride[1];
+double tensor_get_elem(const Tensor *tensor, size_t *coords){
+    // size_t rows = tensor->shape[0];
+    // size_t cols = tensor->shape[1];
+    // assert(row < rows && col < cols);
+    size_t index = 0;
+    for(size_t d = 0; d < tensor->ndim; d++){
+        index += coords[d] * tensor->stride[d];
+    }
     return ((double*)tensor->data)[index];
 }
 
@@ -103,7 +106,7 @@ Tensor tensor_transpose(const Tensor *tensor){
 
     for(size_t i = 0; i < tensor->shape[0]; i++){
         for(size_t j = 0; j < tensor->shape[1]; j++){
-            double elem = tensor_get_elem(tensor, i, j);
+            double elem = tensor_get_elem(tensor, (size_t[]){i, j});
             tensor_put_elem(&output_tensor, j, i, elem);
         }
     }
@@ -125,11 +128,11 @@ Tensor tensor_softmax(Tensor *tensor, size_t dim){
         for(size_t i = 0; i < tensor->shape[0]; i++){
             double exp_sum = 0;
             for(size_t j = 0; j < tensor->shape[1]; j++){
-                double elem = tensor_get_elem(tensor, i, j);
+                double elem = tensor_get_elem(tensor, (size_t[]){i, j});
                 exp_sum = exp_sum + expf(elem);
             }
             for(size_t j = 0; j < tensor->shape[1]; j++){
-                double elem = tensor_get_elem(tensor, i, j);
+                double elem = tensor_get_elem(tensor, (size_t[]){i, j});
 
                 double new_elem = expf(elem) / exp_sum;
                 tensor_put_elem(&output_tensor, i, j, new_elem);
@@ -139,7 +142,7 @@ Tensor tensor_softmax(Tensor *tensor, size_t dim){
     return output_tensor;
 }
 
-Tensor tensor_mul(Tensor *tensor, double elem){
+Tensor tensor_scale(Tensor *tensor, double elem){
     Tensor output_tensor = tensor_init(
         NULL, 
         (size_t[]){tensor->shape[0],  
@@ -151,7 +154,7 @@ Tensor tensor_mul(Tensor *tensor, double elem){
     );
     for(size_t i = 0; i < tensor->shape[0]; i++){
         for(size_t j = 0; j < tensor->shape[1]; j++){
-            double old_elem = tensor_get_elem(tensor, i, j);
+            double old_elem = tensor_get_elem(tensor, (size_t[]){i, j});
             double new_elem = old_elem * elem;
             tensor_put_elem(&output_tensor, i, j, new_elem);
         }
@@ -159,8 +162,33 @@ Tensor tensor_mul(Tensor *tensor, double elem){
     return output_tensor;
 }
 
+Tensor tensor_cat(Tensor **tensors, size_t len){
+    
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        (size_t[]){tensors[0]->shape[0],  
+        tensors[0]->shape[1]*len}, 
+        2,
+        tensors[0]->dtype,
+        tensors[0]->requires_grad,
+        false
+    );
+    size_t out_col = 0;
+    for(size_t i = 0; i < len; i++){
+        tensor_print(tensors[i], "tensor    [i]");
+        for(size_t j = 0; j < tensors[i]->shape[0]; j++){
+            for(size_t k = 0; k < tensors[i]->shape[1]; k++){
+                printf("j: %zu, k: %zu\n", j, k+out_col);
+                double elem = tensor_get_elem(tensors[i], (size_t[]){j, k});
+                tensor_put_elem(&output_tensor, j, k+out_col, elem);
+            }
+        }
+        out_col += tensors[i]->shape[1];
+    }
+    return output_tensor;
+}
 
-Tensor tensor_dot_product_matrix(const Tensor *tensor1, const Tensor *tensor2){
+Tensor tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2){
     assert(tensor1->shape[1] == tensor2->shape[0]);
     Tensor output_tensor =  tensor_init(
         NULL, 
@@ -181,8 +209,8 @@ Tensor tensor_dot_product_matrix(const Tensor *tensor1, const Tensor *tensor2){
         for(size_t j = 0; j < out_cols; j++){
             double result = 0;
             for(size_t k = 0; k < t1_cols; k++){
-                double elem1 = tensor_get_elem(tensor1, i, k);
-                double elem2 = tensor_get_elem(tensor2, k, j);
+                double elem1 = tensor_get_elem(tensor1, (size_t[]){i, k});
+                double elem2 = tensor_get_elem(tensor2, (size_t[]){k, j});
                 result += elem1 * elem2;
             }
             tensor_put_elem(&output_tensor, i, j, result);
@@ -231,57 +259,57 @@ void tensor_print(const Tensor *tensor, const char *heading){
     }
     printf(" )\n");
     printf("elem_size:      %zu\n", tensor->elem_size);
+    printf("requires_grad:  %s\n", tensor->requires_grad ? "true" : "false");
     printf("data:\n");
-
-    if(tensor->ndim == 1){
-        printf("[ ");
-        for(size_t i = 0; i < tensor->shape[0]; i++){    
-            if(tensor->dtype == DTYPE_DOUBLE)
-                printf("%5.2f ", ((double*)tensor->data)[i]);
-            else
-                printf("%5d ", ((int*)tensor->data)[i]);
+    
+    if(tensor->ndim == 3){
+        printf("[\n");
+        for(size_t b = 0; b < tensor->shape[0]; b++){
+            for(size_t i = 0; i < tensor->shape[1]; i++){
+                printf("    [ ");
+                for(size_t j = 0; j < tensor->shape[2]; j++){
+                    double elem = tensor_get_elem(tensor, (size_t[]){b, i, j});
+                    printf("%10.2f ", elem);
+                }
+                printf(" ]\n");
+            }
+            if(b <= tensor->shape[0] - 2) printf("\n\n");
         }
-        printf(" ]\n");
+        printf("]\n");
     }
     else if(tensor->ndim == 2){
-        for(size_t i = 0; i < tensor->shape[0]; i++){    
-            if(tensor->shape[1] != 1)
-                printf("[ ");
-            for(size_t j = 0; j < tensor->shape[1]; j++){
-                int val_index = i * tensor->stride[0] + j * tensor->stride[1];
-                if(tensor->dtype == DTYPE_DOUBLE)
-                    printf("%5.2f ", ((double*)tensor->data)[val_index]);
-                else
-                    printf("%5d ", ((int*)tensor->data)[val_index]);
+        for(size_t i = 0; i < tensor->shape[1]; i++){
+            printf("[ ");
+            for(size_t j = 0; j < tensor->shape[2]; j++){
+                double elem = tensor_get_elem(tensor, (size_t[]){i, j});
+                printf("%10.2f ", elem);
             }
             printf(" ]\n");
         }
     }
-
-    printf("requires_grad:  %s\n", tensor->requires_grad ? "true" : "false");
-
     printf("\n");
 }
 
 
 void tensor_write_fp(const Tensor *tensor, FILE *fptr){
-    if(tensor->ndim == 1){
-        for(size_t i = 0; i < tensor->shape[0]; i++){    
-            if(tensor->dtype == DTYPE_DOUBLE)
-                fprintf(fptr, "%5.2f,", ((double*)tensor->data)[i]);
-            else
-                fprintf(fptr, "%5d,", ((int*)tensor->data)[i]);
+    if(tensor->ndim == 3){
+        for(size_t b = 0; b < tensor->shape[0]; b++){
+            for(size_t i = 0; i < tensor->shape[1]; i++){
+                for(size_t j = 0; j < tensor->shape[2]; j++){
+                    double elem = tensor_get_elem(tensor, (size_t[]){b, i, j});
+                    fprintf(fptr, "%5.2f,", elem);
+                }
+                fprintf(fptr, "\n");
+            }
+            if(b <= tensor->shape[0] - 2)  fprintf(fptr, "\n\n");
         }
         fprintf(fptr, "\n");
     }
     else if(tensor->ndim == 2){
-        for(size_t i = 0; i < tensor->shape[0]; i++){
-            for(size_t j = 0; j < tensor->shape[1]; j++){
-                int val_index = i * tensor->stride[0] + j * tensor->stride[1];
-                if(tensor->dtype == DTYPE_DOUBLE)
-                    fprintf(fptr, "%5.2f,", ((double*)tensor->data)[val_index]);
-                else
-                    fprintf(fptr, "%5d,", ((int*)tensor->data)[val_index]);
+        for(size_t i = 0; i < tensor->shape[1]; i++){
+            for(size_t j = 0; j < tensor->shape[2]; j++){
+                double elem = tensor_get_elem(tensor, (size_t[]){i, j});
+                fprintf(fptr, "%5.2f,", elem);
             }
             fprintf(fptr, "\n");
         }
@@ -295,27 +323,7 @@ void tensor_write(const Tensor *tensor, char *filename){
         printf("Error opening file %s\n", filename);
         exit(1);
     }
-    if(tensor->ndim == 1){
-        for(size_t i = 0; i < tensor->shape[0]; i++){    
-            if(tensor->dtype == DTYPE_DOUBLE)
-                fprintf(fptr, "%5.2f,", ((double*)tensor->data)[i]);
-            else
-                fprintf(fptr, "%5d,", ((int*)tensor->data)[i]);
-        }
-        fprintf(fptr, "\n");
-    }
-    else if(tensor->ndim == 2){
-        for(size_t i = 0; i < tensor->shape[0]; i++){
-            for(size_t j = 0; j < tensor->shape[1]; j++){
-                int val_index = i * tensor->stride[0] + j * tensor->stride[1];
-                if(tensor->dtype == DTYPE_DOUBLE)
-                    fprintf(fptr, "%5.2f,", ((double*)tensor->data)[val_index]);
-                else
-                    fprintf(fptr, "%5d,", ((int*)tensor->data)[val_index]);
-            }
-            fprintf(fptr, "\n");
-        }
-    }
+    tensor_write_fp(tensor, fptr);
 }
 
 
