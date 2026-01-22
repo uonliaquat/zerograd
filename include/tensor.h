@@ -17,7 +17,7 @@ typedef struct Tensor {
     size_t stride[3];
     size_t elem_size;
     enum DataType dtype;
-
+    
     bool requires_grad;
 } Tensor;
 

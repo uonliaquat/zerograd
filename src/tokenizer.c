@@ -401,7 +401,7 @@ void tokenizer_train(Data *data, Vocab *vocab, MergeRules *merge_rules){
         printf("\n\n\n========================================= ITERATION %zu ========================================= \n", itr);
         BytePair **byte_pairs = calloc(MAX_BYTE_PAIRS, sizeof(BytePair*));
         size_t no_of_byte_pairs = tokenizer_get_byte_pairs(data, byte_pairs);
-        //print_byte_pairs(byte_pairs, no_of_byte_pairs);
+        tokenizer_print_byte_pairs(byte_pairs, no_of_byte_pairs);
         printf("no_of_byte_pairs %zu\n", no_of_byte_pairs);
         if(no_of_byte_pairs == 0) break;
         most_frequent_byte_pair = tokenizer_get_most_frequent_byte_pair(byte_pairs, no_of_byte_pairs);
