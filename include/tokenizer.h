@@ -4,10 +4,10 @@
 #include <stdio.h>
 
 
-#define MAX_WORDS 64000
-#define MAX_BYTE_PAIRS 16000
-#define MAX_MERGE_RULES 8000
-#define MAX_VOCAB_SIZE 8000
+#define MAX_WORDS 256000
+#define MAX_BYTE_PAIRS 256000
+#define MAX_MERGE_RULES 32000
+#define MAX_VOCAB_SIZE 32000
 #define STX 2
 #define ETX 3
 

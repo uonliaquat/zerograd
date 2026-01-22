@@ -12,11 +12,11 @@
 
 int main(){
 
-    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/dataset/dataset.txt");
+    char *data = read_data_from_file("/opt/dlami/nvme/zerograd/dataset/dataset.txt");
     size_t data_len = strlen(data);
 
 
-    printf("Data:\n%s\n\n", data);
+    //printf("Data:\n%s\n\n", data);
     printf("data_size: %zu\n", data_len);
 
     struct Vocab *vocab = tokenizer_init_vocab();

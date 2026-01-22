@@ -181,13 +181,22 @@ void tokenizer_print_byte_pair(BytePair *byte_pair){
     printf(" | freq: %zu\n", byte_pair->freq);
 }
 
+int tokenizer_is_ascii_string(const char *s) {
+    for (size_t i = 0; i < strlen(s); i++) {
+        if ((unsigned char)s[i] > 127) {
+            return 0; // non-ASCII, skip
+        }
+    }
+    return 1; // all ASCII
+}
 
 Data *tokenizer_create_data(char *data){
+    printf("\n ******************* Creating Data ******************* \n");
     size_t data_size = strlen(data);
 
     Word **words = calloc(MAX_WORDS, sizeof(Word*));
     size_t total_unique_words = 0;
-    char curr_word[48] = {0};
+    char curr_word[4096] = {0};
     size_t curr_word_index = 0;
     for(size_t i = 0; i < data_size; i++){
         char c =  tolower((unsigned char)data[i]);
@@ -195,6 +204,14 @@ Data *tokenizer_create_data(char *data){
         if (c == ' '    || c == '\n'    || c == '\t'    || c == '!' ||
             c == ';'    || c == ','     || c == ':'     || c == '"' ||
             c == '\''   || c == '.'     || c == '-'     || c == '?' ){
+
+                if(tokenizer_is_ascii_string(curr_word) == 0){
+                    curr_word_index = 0;
+                    memset(curr_word, 0, 4096);
+                };
+
+                if(i%1000000 == 0) printf("total_unique_words %zu\n", total_unique_words);
+                if(curr_word_index >= 30) printf("\n%s\n", curr_word);
             
                 Token **tokens = calloc(curr_word_index, sizeof(Token*));
                 for(size_t j = 0; j < curr_word_index; j++){
@@ -210,12 +227,13 @@ Data *tokenizer_create_data(char *data){
                     words[word_index]->freq++;
                 }
                 curr_word_index = 0;
-                memset(curr_word, 0, strlen(curr_word));
+                memset(curr_word, 0, 4096);
         }
     }
     Data *new_data = calloc(1, sizeof(Data));
     new_data->words = words;
     new_data->len = total_unique_words;
+    printf("******************* Data Created ****************** \n");
     return new_data;
 }
 
@@ -267,9 +285,11 @@ int tokenizer_get_merge_rule_index(MergeRules *merge_rules, Token *token1, Token
 }
 
 Vocab *tokenizer_init_vocab(){
+    printf("\n***************** Initializing Vocab ***************** \n");
     Vocab *vocab = calloc(1, sizeof(Vocab));
     vocab->tokens = calloc(MAX_VOCAB_SIZE, sizeof(Token*));
     vocab->len = 0;
+    printf("***************** Vocab Initialized ****************** \n");
     return vocab;
 }
 
@@ -395,14 +415,20 @@ void tokenizer_read_merge_rules(char *filename, MergeRules *merge_rules){
 }
 
 void tokenizer_train(Data *data, Vocab *vocab, MergeRules *merge_rules){
+    printf("\n ========================================= Started Training ========================================= \n");
     BytePair *most_frequent_byte_pair = NULL;
     size_t itr = 0;
     while(1){
         printf("\n\n\n========================================= ITERATION %zu ========================================= \n", itr);
         BytePair **byte_pairs = calloc(MAX_BYTE_PAIRS, sizeof(BytePair*));
         size_t no_of_byte_pairs = tokenizer_get_byte_pairs(data, byte_pairs);
-        tokenizer_print_byte_pairs(byte_pairs, no_of_byte_pairs);
-        printf("no_of_byte_pairs %zu\n", no_of_byte_pairs);
+        
+        if((itr+1) % 1000 == 0) {
+            tokenizer_write_vocab("./vocab.txt", vocab);
+            tokenizer_write_merge_rules("merge_rules.txt", merge_rules);
+            tokenizer_print_byte_pairs(byte_pairs, no_of_byte_pairs);
+        }
+        printf("Max No of Byte Pairs: %zu\n", no_of_byte_pairs);
         if(no_of_byte_pairs == 0) break;
         most_frequent_byte_pair = tokenizer_get_most_frequent_byte_pair(byte_pairs, no_of_byte_pairs);
         Token *new_vocab_token = tokenizer_concat_tokens(most_frequent_byte_pair->token1, most_frequent_byte_pair->token2);
@@ -417,6 +443,7 @@ void tokenizer_train(Data *data, Vocab *vocab, MergeRules *merge_rules){
     for(int i = 0; i < 126; i++){
         vocab->tokens[vocab->len++] = tokenizer_create_token((char[]){i, '\0'}, 1);
     }
+    printf("========================================= Done Training ========================================= \n");
 }
 
 
