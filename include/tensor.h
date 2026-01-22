@@ -34,6 +34,8 @@ Tensor  tensor_cat(Tensor **tensors, size_t len);
 void    tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim);
 Tensor  tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2);
 Tensor  tensor_add(Tensor *tensor1, Tensor *tensor2);
+Tensor  tensor_tril(const size_t * shape, const size_t ndim, const DataType dtype, int elem);
+void    tensor_masked_fill(Tensor *tensor, double mask, double fill);
 void    tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items);
 void    tensor_print(const Tensor *tensor, const char *heading);
 void    tensor_write_fp(const Tensor *tensor, FILE *fptr);

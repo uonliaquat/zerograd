@@ -358,6 +358,32 @@ Tensor tensor_add(Tensor *tensor1, Tensor *tensor2){
 }
 
 
+Tensor tensor_tril(const size_t * shape, const size_t ndim, const DataType dtype, int elem){
+    assert(ndim == 2);
+    Tensor new_tensor = tensor_init(NULL, shape, ndim, dtype, false, false);
+    for(size_t i = 0; i < shape[0]; i++){
+        for(size_t j = 0; j < shape[1]; j++){
+            if(j < i+1) tensor_put_elem(&new_tensor, (size_t[]){i,j}, elem);
+            else tensor_put_elem(&new_tensor, (size_t[]){i,j}, 0);
+        }
+    }
+    return new_tensor;
+}
+
+void tensor_masked_fill(Tensor *tensor, double mask, double fill){
+    assert(tensor->ndim == 2);
+    for(size_t i = 0; i < tensor->shape[0]; i++){
+        for(size_t j = 0; j < tensor->shape[1]; j++){
+            double elem = tensor_get_elem(tensor, (size_t[]){i, j});
+            if(elem == mask){
+                tensor_put_elem(tensor, (size_t[]){i, j}, fill);
+            }
+        }
+    }
+}
+
+
+
 void tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items){
     void *dest_data = &((double*)dest_tensor->data)[dest_row * dest_tensor->shape[1]];
     void *src_data =  &((double*)src_tensor->data)[src_row * src_tensor->shape[1]];
