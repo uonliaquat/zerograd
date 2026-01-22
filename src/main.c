@@ -1,20 +1,18 @@
 
 #include <string.h>
-
-#include "../include/tensor.h"
 #include "../include/utils.h"
 #include "../include/tokenizer.h"
-#include "../include/dataset.h"
-#include "../include/dataloader.h"
-#include "../include/layers/embedding.h"
-#include "../include/layers/self_attention.h"
-#include "../include/layers/self_attention.h"
+#include "../include/tensor.h"
+// #include "../include/dataset.h"
+// #include "../include/dataloader.h"
+// #include "../include/layers/embedding.h"
+// #include "../include/layers/self_attention.h"
 
 
 
 int main(){
 
-    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/dataset/train.txt");
+    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/dataset/dataset.txt");
     size_t data_len = strlen(data);
 
 
