@@ -196,7 +196,7 @@ Data *tokenizer_create_data(char *data){
 
     Word **words = calloc(MAX_WORDS, sizeof(Word*));
     size_t total_unique_words = 0;
-    char curr_word[4096] = {0};
+    char curr_word[8192] = {0};
     size_t curr_word_index = 0;
     for(size_t i = 0; i < data_size; i++){
         char c =  tolower((unsigned char)data[i]);
@@ -207,11 +207,10 @@ Data *tokenizer_create_data(char *data){
 
                 if(tokenizer_is_ascii_string(curr_word) == 0){
                     curr_word_index = 0;
-                    memset(curr_word, 0, 4096);
+                    memset(curr_word, 0, 8192);
                 };
 
                 if(i%1000000 == 0) printf("total_unique_words %zu\n", total_unique_words);
-                if(curr_word_index >= 30) printf("\n%s\n", curr_word);
             
                 Token **tokens = calloc(curr_word_index, sizeof(Token*));
                 for(size_t j = 0; j < curr_word_index; j++){
@@ -227,8 +226,9 @@ Data *tokenizer_create_data(char *data){
                     words[word_index]->freq++;
                 }
                 curr_word_index = 0;
-                memset(curr_word, 0, 4096);
+                memset(curr_word, 0, 8192);
         }
+        if(curr_word_index >= 30) printf("\n%s\n", curr_word);
     }
     Data *new_data = calloc(1, sizeof(Data));
     new_data->words = words;
