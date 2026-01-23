@@ -199,6 +199,7 @@ Data *tokenizer_create_data(char *data){
     char curr_word[8192] = {0};
     size_t curr_word_index = 0;
     for(size_t i = 0; i < data_size; i++){
+        printf("%zu | %zu | %s \n", i, curr_word_index, curr_word);
         char c =  tolower((unsigned char)data[i]);
         curr_word[curr_word_index++] = c;
         if (c == ' '    || c == '\n'    || c == '\t'    || c == '!' ||
