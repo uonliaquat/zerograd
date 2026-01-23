@@ -61,7 +61,7 @@ void tokenizer_free_token(Token *token){
 }
 
 void tokenizer_print_token(Token *token){
-    printf("[%s] | len: %zu", token->val, token->len);
+    printf("[%s] | len: %u", token->val, token->len);
 }
 
 Word *tokenizer_create_word(Token **tokens, size_t len){
@@ -102,7 +102,7 @@ void tokenizer_print_word(Word *word){
     for(size_t i = 0; i < word->len; i++){
         tokenizer_print_token(word->tokens[i]);
     }
-    printf(" | len: %zu | freq: %zu\n", word->len, word->freq);
+    printf(" | len: %u | freq: %zu\n", word->len, word->freq);
 }
 
 
