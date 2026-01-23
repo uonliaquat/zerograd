@@ -225,6 +225,7 @@ Data *tokenizer_create_data(char *data){
                 }
                 else{
                     words[word_index]->freq++;
+                    tokenizer_free_word(new_word);
                 }
                 curr_word_index = 0;
                 memset(curr_word, 0, MAX_WORD_LEN);
