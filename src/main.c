@@ -12,7 +12,7 @@
 
 int main(){
 
-    char *data = read_data_from_file("/opt/dlami/nvme/zerograd/dataset/dataset.txt");
+    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/dataset/train.txt");
     size_t data_len = strlen(data);
 
 

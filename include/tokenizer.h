@@ -8,18 +8,19 @@
 #define MAX_BYTE_PAIRS 512000
 #define MAX_MERGE_RULES 512000
 #define MAX_VOCAB_SIZE 512000
+#define MAX_WORD_LEN 48
 #define STX 2
 #define ETX 3
 
 
 typedef struct Token{
     char *val;
-    size_t len;
+    short len;
 } Token;
 
 typedef struct Word{
     struct Token **tokens;
-    size_t len;
+    short len;
     size_t freq;
 } Word;
 

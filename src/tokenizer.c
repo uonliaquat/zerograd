@@ -196,7 +196,7 @@ Data *tokenizer_create_data(char *data){
 
     Word **words = calloc(MAX_WORDS, sizeof(Word*));
     size_t total_unique_words = 0;
-    char curr_word[8192] = {0};
+    char curr_word[MAX_WORD_LEN] = {0};
     size_t curr_word_index = 0;
     for(size_t i = 0; i < data_size; i++){
         printf("%zu | %zu | %s \n", i, curr_word_index, curr_word);
@@ -206,9 +206,9 @@ Data *tokenizer_create_data(char *data){
             c == ';'    || c == ','     || c == ':'     || c == '"' ||
             c == '\''   || c == '.'     || c == '-'     || c == '?' ){
 
-                if(tokenizer_is_ascii_string(curr_word) == 0){
+                if(curr_word_index > MAX_WORD_LEN || tokenizer_is_ascii_string(curr_word) == 0){
                     curr_word_index = 0;
-                    memset(curr_word, 0, 8192);
+                    memset(curr_word, 0, MAX_WORD_LEN);
                 };
 
                 if(i%1000000 == 0) printf("total_unique_words %zu\n", total_unique_words);
@@ -227,7 +227,7 @@ Data *tokenizer_create_data(char *data){
                     words[word_index]->freq++;
                 }
                 curr_word_index = 0;
-                memset(curr_word, 0, 8192);
+                memset(curr_word, 0, MAX_WORD_LEN);
         }
         if(curr_word_index >= 30) printf("\n%s\n", curr_word);
     }
