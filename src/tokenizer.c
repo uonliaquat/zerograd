@@ -190,7 +190,7 @@ static inline void tokenizer_add_token_to_vocab(BytePair *byte_pair){
 
 static inline void tokenizer_add_merge_rule_to_merge_rules(BytePair *byte_pair){
     merge_rules.pairs[merge_rules.len].token1_id = byte_pair->token1_id;
-    merge_rules.pairs[merge_rules.len].token1_id = byte_pair->token1_id;
+    merge_rules.pairs[merge_rules.len].token2_id = byte_pair->token2_id;
     merge_rules.pairs[merge_rules.len].freq = byte_pair->freq;
     merge_rules.len++;
     printf("****************************** Merge Rule Added to Vocab ****************************\n");
