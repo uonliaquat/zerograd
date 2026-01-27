@@ -68,13 +68,13 @@ int main(){
 
 
     Tensor input_tokens = tensor_init((double[]){
-        1, 2, 0, 2
+        1, 2, 0, 2, 5, 3
         // 0.55, 0.87, 0.66, 0.66,
         // 0.57, 0.85, 0.64, 0.64,
         // 0.22, 0.58, 0.33, 0.33,
         // 0.77, 0.25, 0.10, 0.10,
         // 0.05, 0.80, 0.55, 0.55,
-    }, (size_t[]){1, 4}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
+    }, (size_t[]){1, 6}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
 
     model_gpt_forward(&input_tokens);
 

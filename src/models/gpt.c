@@ -23,12 +23,15 @@ void model_gpt_init(){
 void model_gpt_forward(Tensor *input){
     Tensor token_embeddings = embedding_layer_forward(&gpt_model.token_embed_layer, input);     
     tensor_print(&token_embeddings, "token_embeddings");
+
     Tensor indices = tensor_arange(0, gpt_config.context_len, 1);
     tensor_print(&indices, "indices");
     Tensor pos_embeddings   = embedding_layer_forward(&gpt_model.pos_embed_layer,   &indices);
     tensor_print(&pos_embeddings,   "pos_embeddings");
-
     //It works till here
+
+    Tensor input_embeddings = tensor_add(&token_embeddings, &pos_embeddings);
+    tensor_print(&input_embeddings, "input_embeddings");
 }
 
 void model_gpt_write(){

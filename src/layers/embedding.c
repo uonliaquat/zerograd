@@ -17,7 +17,6 @@ void embedding_layer_free(EmbeddingLayer *embedding_layer){
 
 Tensor embedding_layer_forward(EmbeddingLayer *embedding_layer, Tensor *input){
     //This function can be optimized by directly keeping the pointers to rows from weights
-    printf("\n==============Token Embedding Layer Forward Pass==================\n");
     Tensor output = tensor_init(
         NULL, 
         (size_t[]){input->shape[0], input->shape[1], embedding_layer->embed_dim},

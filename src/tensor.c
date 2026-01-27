@@ -235,7 +235,7 @@ Tensor tensor_cat(Tensor **tensors, size_t len){
     return output_tensor;
 }
 
-Tensor tensor_arange(int start, int end, size_t steps){
+Tensor tensor_arange(int start, int end, int steps){
     //returns 1d tensor only
     Tensor output_tensor = tensor_init(
         NULL, 
@@ -246,7 +246,7 @@ Tensor tensor_arange(int start, int end, size_t steps){
         false
     );
     for(size_t i = start; i <=end; i += steps){
-        tensor_put_elem(&output_tensor, (size_t[]){0, i}, i);
+        tensor_put_elem(&output_tensor, (size_t[]){0, (double)i}, i);
     }
     return output_tensor;
 }
@@ -437,7 +437,8 @@ void tensor_print(const Tensor *tensor, const char *heading){
                 printf("    [ ");
                 for(size_t j = 0; j < tensor->shape[2]; j++){
                     double elem = tensor_get_elem(tensor, (size_t[]){b, i, j});
-                    printf("%10.2f ", elem);
+                    if(tensor->dtype == DTYPE_DOUBLE) printf("%10.2f ", elem);
+                    else if(tensor->dtype == DTYPE_INT) printf("%d ", (int)elem);
                 }
                 printf(" ]\n");
             }
@@ -450,7 +451,8 @@ void tensor_print(const Tensor *tensor, const char *heading){
             printf("[ ");
             for(size_t j = 0; j < tensor->shape[1]; j++){
                 double elem = tensor_get_elem(tensor, (size_t[]){i, j});
-                printf("%10.2f ", elem);
+                if(tensor->dtype == DTYPE_DOUBLE) printf("%10.2f ", elem);
+                else if(tensor->dtype == DTYPE_INT) printf("%d    ", (int)elem);
             }
             printf(" ]\n");
         }

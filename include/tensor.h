@@ -31,7 +31,7 @@ Tensor  tensor_scale(Tensor *tensor, double elem);
 Tensor  tensor_concat(Tensor *tensors, size_t no_of_tensors, size_t dim);
 Tensor  *tensor_chunk(Tensor *tensor, size_t chunks, size_t dim);
 Tensor  tensor_cat(Tensor **tensors, size_t len);
-Tensor  tensor_arange(int start, int end, size_t steps);
+Tensor  tensor_arange(int start, int end, int steps);
 void    tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim);
 Tensor  tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2);
 Tensor  tensor_add(Tensor *tensor1, Tensor *tensor2);
