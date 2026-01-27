@@ -4,12 +4,18 @@
 
 #include "../include/utils.h"
 #include "../include/tokenizer.h"
+#include "../include/models/gpt.h"
+
 #include "../include/tensor.h"
 // #include "../include/dataset.h"
 // #include "../include/dataloader.h"
-#include "../include/layers/embedding.h"
+// #include "../include/layers/embedding.h"
 // #include "../include/layers/self_attention.h"
 
+
+
+
+    
 
 
 int main(){
@@ -48,14 +54,30 @@ int main(){
     // for(size_t i = 0; i < merge_rules_size; i++){
     //     print_byte_pair(merge_rules[i]);
     // }
-
     size_t vocab_size = 6;   // Vocab Size
-    size_t context_len = 20;    // Context Length
+    size_t context_len = 6;    // Context Length
     size_t emb_dim = 3;        // Embedding Dimensions
     size_t n_heads = 12;        // No of Attention heads
     size_t n_layers = 12;       // No of layers
     double drop_rate = 0.1;     // Dropout rate
     bool qkv_bias = false;      // Query-Key-Value bias
+
+    model_gpt_init_config(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);
+    model_gpt_init();
+    model_gpt_write();
+
+
+    Tensor input_tokens = tensor_init((double[]){
+        1, 2, 0, 2
+        // 0.55, 0.87, 0.66, 0.66,
+        // 0.57, 0.85, 0.64, 0.64,
+        // 0.22, 0.58, 0.33, 0.33,
+        // 0.77, 0.25, 0.10, 0.10,
+        // 0.05, 0.80, 0.55, 0.55,
+    }, (size_t[]){1, 4}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
+
+    model_gpt_forward(&input_tokens);
+
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);
     // dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
@@ -65,19 +87,24 @@ int main(){
     // dataloader_print_sample(&data_sample);
 
 
-    Tensor token_embeddings = tensor_init((double[]){
-        1, 2, 0, 2
-        // 0.55, 0.87, 0.66, 0.66,
-        // 0.57, 0.85, 0.64, 0.64,
-        // 0.22, 0.58, 0.33, 0.33,
-        // 0.77, 0.25, 0.10, 0.10,
-        // 0.05, 0.80, 0.55, 0.55,
-    }, (size_t[]){1, 4}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
+    // Tensor token_embeddings = tensor_init((double[]){
+    //     1, 2, 0, 2
+    //     // 0.55, 0.87, 0.66, 0.66,
+    //     // 0.57, 0.85, 0.64, 0.64,
+    //     // 0.22, 0.58, 0.33, 0.33,
+    //     // 0.77, 0.25, 0.10, 0.10,
+    //     // 0.05, 0.80, 0.55, 0.55,
+    // }, (size_t[]){1, 4}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
 
-    EmbeddingLayer token_embedding_layer = embedding_layer_init(vocab_size, emb_dim, DTYPE_DOUBLE);
-    Tensor embedding_layer_token_output = embedding_layer_token_forward(&token_embedding_layer, &token_embeddings);
-    embedding_layer_write(&token_embedding_layer, "./output/token_embedding_layer.csv");
-    tensor_print(&embedding_layer_token_output, "embedding_layer_token_output");
+    // EmbeddingLayer token_embed_layer = embedding_layer_init(vocab_size, emb_dim, DTYPE_DOUBLE);
+    // Tensor token_embeddings = embedding_layer_forward(&token_embed_layer, &token_embeddings);
+    // embedding_layer_write(&token_embed_layer, "./output/token_embedding_layer.csv");
+    // tensor_print(&token_embeddings, "token_embeddings");
+
+    // EmbeddingLayer pos_embed_layer = embedding_layer_init(context_len, emb_dim, DTYPE_DOUBLE);
+    // Tensor token_embeddings = embedding_layer_forward(&token_embed_layer, &token_embeddings);
+    // embedding_layer_write(&token_embed_layer, "./output/token_embedding_layer.csv");
+    // tensor_print(&token_embeddings, "token_embeddings");
     
     // EmbeddingLayer pos_embedding_layer = embedding_layer_init(seq_len, embed_dim, seq_len, DTYPE_DOUBLE);
     // Tensor embedding_layer_positional_output =embedding_layer_positional_forward(&pos_embedding_layer);

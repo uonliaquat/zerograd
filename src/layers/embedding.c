@@ -15,7 +15,7 @@ void embedding_layer_free(EmbeddingLayer *embedding_layer){
     tensor_free(&embedding_layer->weights);
 }
 
-Tensor embedding_layer_token_forward(EmbeddingLayer *embedding_layer, Tensor *input){
+Tensor embedding_layer_forward(EmbeddingLayer *embedding_layer, Tensor *input){
     //This function can be optimized by directly keeping the pointers to rows from weights
     printf("\n==============Token Embedding Layer Forward Pass==================\n");
     Tensor output = tensor_init(
@@ -35,27 +35,6 @@ Tensor embedding_layer_token_forward(EmbeddingLayer *embedding_layer, Tensor *in
     }
     return output;
 }
-
-// Tensor embedding_layer_positional_forward(EmbeddingLayer *embedding_layer){
-//     //This function can be optimized by directly keeping the pointers to rows from weights
-//     printf("\n==============Position Embedding Layer Forward Pass==================\n");
-//     Tensor output = tensor_init(
-//         NULL, 
-//         (size_t[]){embedding_layer->seq_len,
-//         embedding_layer->embed_len},
-//         2,
-//         embedding_layer->dtype,
-//         embedding_layer->weights.requires_grad,
-//         false
-//     );
-//     for(size_t i = 0; i < embedding_layer->seq_len; i++){
-//         int row_id = i;
-//         //printf("Copying row: %d \n", row_id);
-//         tensor_copy_row_data(&output, i, &embedding_layer->weights, row_id, embedding_layer->embed_len);
-//     }
-//     return output;
-// }
-
 
 
 void embedding_layer_write(EmbeddingLayer *embedding_layer, const char *filename){

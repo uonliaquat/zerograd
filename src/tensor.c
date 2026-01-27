@@ -234,6 +234,22 @@ Tensor tensor_cat(Tensor **tensors, size_t len){
     }
     return output_tensor;
 }
+
+Tensor tensor_arange(int start, int end, size_t steps){
+    //returns 1d tensor only
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        (size_t[]){1, (int)((end - start)/steps)}, 
+        2,
+        DTYPE_INT,
+        false,
+        false
+    );
+    for(size_t i = start; i <=end; i += steps){
+        tensor_put_elem(&output_tensor, (size_t[]){0, i}, i);
+    }
+    return output_tensor;
+}
 void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim){
     size_t t1_rows = 0;
     size_t t1_cols = 0;
