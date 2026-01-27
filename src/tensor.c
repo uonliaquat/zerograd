@@ -384,10 +384,14 @@ void tensor_masked_fill(Tensor *tensor, double mask, double fill){
 
 
 
-void tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items){
-    void *dest_data = &((double*)dest_tensor->data)[dest_row * dest_tensor->shape[1]];
-    void *src_data =  &((double*)src_tensor->data)[src_row * src_tensor->shape[1]];
-    memcpy(dest_data, src_data, no_of_items * src_tensor->elem_size);
+void tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id, Tensor *src_tensor, size_t src_row, size_t no_of_items){
+    size_t dest_index = batch_id * dest_tensor->stride[0] + row_id * dest_tensor->stride[1];
+    size_t src_index =  src_row * src_tensor->stride[0];
+    // printf("dest index %zu, ", dest_index);
+    // printf("src row: %zu\n", src_index);
+    void *dest = &((double*)dest_tensor->data)[dest_index];
+    void *src =  &((double*)src_tensor->data)[src_index];
+    memcpy(dest, src, no_of_items * src_tensor->elem_size);
 }
 
 

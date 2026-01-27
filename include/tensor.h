@@ -36,7 +36,7 @@ Tensor  tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2);
 Tensor  tensor_add(Tensor *tensor1, Tensor *tensor2);
 Tensor  tensor_tril(const size_t * shape, const size_t ndim, const DataType dtype, int elem);
 void    tensor_masked_fill(Tensor *tensor, double mask, double fill);
-void    tensor_copy_row_data(Tensor *dest_tensor, size_t dest_row, Tensor *src_tensor, size_t src_row, size_t no_of_items);
+void    tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id, Tensor *src_tensor, size_t src_row, size_t no_of_items);
 void    tensor_print(const Tensor *tensor, const char *heading);
 void    tensor_write_fp(const Tensor *tensor, FILE *fptr);
 void    tensor_write(const Tensor *tensor, char *filename);

@@ -9,13 +9,12 @@
 typedef struct EmbeddingLayer{
     Tensor weights;
     DataType dtype;
-    size_t vocab_size;
-    size_t embed_len;
-    size_t seq_len;
+    size_t num_embed;
+    size_t embed_dim;
 } EmbeddingLayer;
 
 
-EmbeddingLayer  embedding_layer_init(size_t vocab_size, size_t embed_len, size_t seq_len, DataType dtype);
+EmbeddingLayer  embedding_layer_init(size_t num_embed, size_t embed_dim, DataType dtype);
 void            embedding_layer_free(EmbeddingLayer *embedding_layer);
 Tensor          embedding_layer_token_forward(EmbeddingLayer *embedding_layer, Tensor *inputs);
 Tensor          embedding_layer_positional_forward(EmbeddingLayer *embedding_layer);

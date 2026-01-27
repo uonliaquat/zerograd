@@ -1,34 +1,36 @@
 
 #include <string.h>
+#include <stdbool.h>
+
 #include "../include/utils.h"
 #include "../include/tokenizer.h"
 #include "../include/tensor.h"
 // #include "../include/dataset.h"
 // #include "../include/dataloader.h"
-// #include "../include/layers/embedding.h"
+#include "../include/layers/embedding.h"
 // #include "../include/layers/self_attention.h"
 
 
 
 int main(){
 
-    char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/dataset/train.txt");
-    size_t data_len = strlen(data);
+    // char *data = read_data_from_file("/Users/uonliaquat/workspace/zerograd/dataset/train.txt");
+    // size_t data_len = strlen(data);
 
 
-    //printf("Data:\n%s\n\n", data);
-    printf("data_size: %zu\n", data_len);
+    // //printf("Data:\n%s\n\n", data);
+    // printf("data_size: %zu\n", data_len);
 
-    struct Vocab *vocab = tokenizer_init_vocab();
-    struct Data *corpus = tokenizer_create_data(data);
-    struct MergeRules *merge_rules = tokenizer_init_merge_rules();
+    // struct Vocab *vocab = tokenizer_init_vocab();
+    // struct Data *corpus = tokenizer_create_data(data);
+    // struct MergeRules *merge_rules = tokenizer_init_merge_rules();
 
-    tokenizer_train(corpus, vocab, merge_rules);
+    // tokenizer_train(corpus, vocab, merge_rules);
 
-    //tokenizer_print_corpus(corpus);
+    // //tokenizer_print_corpus(corpus);
 
-    tokenizer_write_vocab("./vocab.txt", vocab);
-    tokenizer_write_merge_rules("merge_rules.txt", merge_rules);
+    // tokenizer_write_vocab("./vocab.txt", vocab);
+    // tokenizer_write_merge_rules("merge_rules.txt", merge_rules);
 
 
 
@@ -47,25 +49,35 @@ int main(){
     //     print_byte_pair(merge_rules[i]);
     // }
 
-    // size_t batch_size = 4;
-    // size_t seq_len = 6;
-    // size_t stride = 15;
-    // size_t embed_dim = 4;
-    // size_t num_heads = 2;
-    // size_t vocab_size = vocab->len;
+    size_t vocab_size = 6;   // Vocab Size
+    size_t context_len = 20;    // Context Length
+    size_t emb_dim = 3;        // Embedding Dimensions
+    size_t n_heads = 12;        // No of Attention heads
+    size_t n_layers = 12;       // No of layers
+    double drop_rate = 0.1;     // Dropout rate
+    bool qkv_bias = false;      // Query-Key-Value bias
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);
     // dataset_write_gpt2(&dataset_gpt2, "./output/dataset_gpt.csv");
 
     // DataLoader data_loader = dataloader_init(&dataset_gpt2, 1);
-    // DataSample data_sample = dataloader_get_next_batch(&data_loader);
+    //DataSample data_sample = dataloader_get_next_batch(&data_loader);
     // dataloader_print_sample(&data_sample);
 
 
-    // EmbeddingLayer token_embedding_layer = embedding_layer_init(vocab_size, embed_dim, seq_len, DTYPE_DOUBLE);
-    // Tensor embedding_layer_token_output = embedding_layer_token_forward(&token_embedding_layer, data_sample.x);
-    // embedding_layer_write(&token_embedding_layer, "./output/token_embedding_layer.csv");
-    // // //tensor_print(&embedding_layer_token_output);
+    Tensor token_embeddings = tensor_init((double[]){
+        1, 2, 0, 2
+        // 0.55, 0.87, 0.66, 0.66,
+        // 0.57, 0.85, 0.64, 0.64,
+        // 0.22, 0.58, 0.33, 0.33,
+        // 0.77, 0.25, 0.10, 0.10,
+        // 0.05, 0.80, 0.55, 0.55,
+    }, (size_t[]){1, 4}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
+
+    EmbeddingLayer token_embedding_layer = embedding_layer_init(vocab_size, emb_dim, DTYPE_DOUBLE);
+    Tensor embedding_layer_token_output = embedding_layer_token_forward(&token_embedding_layer, &token_embeddings);
+    embedding_layer_write(&token_embedding_layer, "./output/token_embedding_layer.csv");
+    tensor_print(&embedding_layer_token_output, "embedding_layer_token_output");
     
     // EmbeddingLayer pos_embedding_layer = embedding_layer_init(seq_len, embed_dim, seq_len, DTYPE_DOUBLE);
     // Tensor embedding_layer_positional_output =embedding_layer_positional_forward(&pos_embedding_layer);
@@ -76,14 +88,14 @@ int main(){
     // tensor_print(&input_embeddings, "Input Emeddings");
     // // // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
-    // // Tensor input_embeddings = tensor_init((double[]){
-    // //     0.43, 0.15, 0.89, 0.89,
-    // //     0.55, 0.87, 0.66, 0.66,
-    // //     0.57, 0.85, 0.64, 0.64,
-    // //     0.22, 0.58, 0.33, 0.33,
-    // //     0.77, 0.25, 0.10, 0.10,
-    // //     0.05, 0.80, 0.55, 0.55,
-    // // }, (size_t[]){seq_len, embed_dim}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
+    // Tensor input_embeddings = tensor_init((double[]){
+    //     0.43, 0.15, 0.89, 0.89,
+    //     0.55, 0.87, 0.66, 0.66,
+    //     0.57, 0.85, 0.64, 0.64,
+    //     0.22, 0.58, 0.33, 0.33,
+    //     0.77, 0.25, 0.10, 0.10,
+    //     0.05, 0.80, 0.55, 0.55,
+    // }, (size_t[]){seq_len, embed_dim}, 2, tensor_dtype_size(DTYPE_DOUBLE), false, false);
 
 
     // // const size_t shape1[] = {seq_len, embed_dim};
