@@ -27,6 +27,8 @@ void model_gpt_forward(Tensor *input){
     tensor_print(&indices, "indices");
     Tensor pos_embeddings   = embedding_layer_forward(&gpt_model.pos_embed_layer,   &indices);
     tensor_print(&pos_embeddings,   "pos_embeddings");
+
+    //It works till here
 }
 
 void model_gpt_write(){
