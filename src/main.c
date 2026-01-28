@@ -62,7 +62,7 @@ int main(){
     double drop_rate = 0.1;     // Dropout rate
     bool qkv_bias = false;      // Query-Key-Value bias
 
-    model_gpt_init_config(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);
+    model_gpt_config_init(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);
     model_gpt_init();
     model_gpt_write();
 

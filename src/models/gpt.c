@@ -1,23 +1,29 @@
 //#include "../../../include/models/gpt2.h"
 
+#include <stdbool.h>
 #include "../../include/models/gpt.h"
 #include "../../include/tensor.h"
 
 static GPTConfig gpt_config;
 static GPTModel gpt_model;
 
-void model_gpt_init_config(size_t vocab_size, size_t context_len, size_t embed_dim, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias){
-    gpt_config.vocab_size = vocab_size;
-    gpt_config.context_len = context_len;
-    gpt_config.embed_dim = embed_dim;
-    gpt_config.n_heads = n_heads;
-    gpt_config.n_layers = n_layers;
-    gpt_config.drop_rate = drop_rate;
-    gpt_config.qkv_bias = qkv_bias;
+void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_dim, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias){
+    gpt_config.vocab_size   = vocab_size;
+    gpt_config.context_len  = context_len;
+    gpt_config.embed_dim    = embed_dim;
+    gpt_config.n_heads      = n_heads;
+    gpt_config.n_layers     = n_layers;
+    gpt_config.drop_rate    = drop_rate;
+    gpt_config.qkv_bias     = qkv_bias;
+    model_gpt_config_print();
 }
+
 void model_gpt_init(){
     gpt_model.token_embed_layer = embedding_layer_init(gpt_config.vocab_size,   gpt_config.embed_dim, DTYPE_DOUBLE);
     gpt_model.pos_embed_layer   = embedding_layer_init(gpt_config.context_len,  gpt_config.embed_dim, DTYPE_DOUBLE);
+    gpt_model.drop_embed_layer  = dropout_layer_init(gpt_config.drop_rate, false);
+    gpt_model.layer_norm        = layer_norm_init(gpt_config.embed_dim);
+    gpt_model.out_head_layer    = linear_layer_init(gpt_config.embed_dim, gpt_config.vocab_size, false, false, DTYPE_DOUBLE);
 }
 
 void model_gpt_forward(Tensor *input){
@@ -32,9 +38,29 @@ void model_gpt_forward(Tensor *input){
 
     Tensor input_embeddings = tensor_add(&token_embeddings, &pos_embeddings);
     tensor_print(&input_embeddings, "input_embeddings");
+
+    dropout_layer_forward(&gpt_model.drop_embed_layer, &input_embeddings);
+    tensor_print(&input_embeddings, "input_embeddings (after dropout)");
+
+    Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &input_embeddings);
+    tensor_print(&output, "output");
+
+    Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
+    tensor_print(&output_norm, "output_norm");
 }
 
 void model_gpt_write(){
     embedding_layer_write(&gpt_model.token_embed_layer, "./output/token_embed_layer.csv");
     embedding_layer_write(&gpt_model.pos_embed_layer,   "./output/pos_embed_layer.csv");
+}
+
+void model_gpt_config_print(){
+    printf("*************** GPT Config **************\n");
+    printf("vocab_size:     %zu\n", gpt_config.vocab_size);
+    printf("context_len:    %zu\n", gpt_config.context_len);
+    printf("embed_dim:      %zu\n", gpt_config.embed_dim);
+    printf("n_heads:        %zu\n", gpt_config.n_heads);
+    printf("n_layers:       %zu\n", gpt_config.n_layers);
+    printf("drop_rate:      %.2f\n", gpt_config.drop_rate);
+    printf("qkv_bias:       %s\n", gpt_config.qkv_bias ? "true": "false");
 }

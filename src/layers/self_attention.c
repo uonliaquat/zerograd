@@ -40,7 +40,7 @@ Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_lay
     //tensor_print(&keys_transposed, "keys_transposed");
     Tensor attention_scores = tensor_dot_product(&queries, &keys_transposed);
     //tensor_print(&attention_scores, "attention_scores");
-    Tensor attention_scores_scaled = tensor_scale(&attention_scores, 1/sqrt(keys.shape[1]));
+    Tensor attention_scores_scaled = tensor_elementwise_scale(&attention_scores, 1/sqrt(keys.shape[1]));
     //tensor_print(&attention_scores_scaled, "attention_scores_scaled");
     Tensor attention_weights = tensor_softmax(&attention_scores_scaled, 1);
     //tensor_print(&attention_weights, "attention_weights");

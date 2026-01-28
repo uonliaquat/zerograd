@@ -9,15 +9,22 @@ DropoutLayer dropout_layer_init(const double dropout, const bool eval){
     return dropout_layer;
 }
 
+static inline double dropout(double x, double dropout){
+    double u = rand_uniform(0.0, 1.0);
+    if(u < dropout) return 0.0;
+    else{
+        return x / (1.0 - dropout);
+    }
+}
 void dropout_layer_forward(const DropoutLayer *dropout_layer, Tensor *tensor){
-    assert(tensor->ndim == 2);
+    assert(tensor->ndim == 3);
     if(dropout_layer->eval == false){
         for(size_t i = 0; i < tensor->shape[0]; i++){
             for(size_t j = 0; j < tensor->shape[1]; j++){
-                double rand_elem = rand_double(0.0, 1.0);
-                if(rand_elem < dropout_layer->dropout){
-                    tensor_put_elem(tensor, (size_t[]){i, j}, 0.0);
-                }
+                for(size_t k = 0; k < tensor->shape[2]; k++){
+                    double x = tensor_get_elem(tensor, (size_t[]){i, j, k});
+                    tensor_put_elem(tensor, (size_t[]){i, j, k}, dropout(x, dropout_layer->dropout));
+                }   
             }
         }
     }
