@@ -9,14 +9,14 @@
 #include "../../include/layers/linear.h"
 
 
-SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t embed_dim, const size_t num_heads, const bool bias, const bool requires_grad, const DataType dtype){
+SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t embed_dim, const size_t num_heads, const bool bias, const bool requires_grad){
     SelfAttentionLayer self_attention_layer;
     size_t head_dim = embed_dim / num_heads;
 
-    self_attention_layer.W_query    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
-    self_attention_layer.W_key      = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
-    self_attention_layer.W_value    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
-    self_attention_layer.heads_proj   = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, dtype);
+    self_attention_layer.W_query    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
+    self_attention_layer.W_key      = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
+    self_attention_layer.W_value    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
+    self_attention_layer.heads_proj   = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
     self_attention_layer.seq_len = seq_len;
     self_attention_layer.embed_dim = embed_dim;
     self_attention_layer.num_heads = num_heads;
@@ -47,7 +47,7 @@ Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_lay
     return context_vec;
 }
 
-Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x){
+Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x, bool masked){
     Tensor queries = linear_layer_forward(&self_attention_layer->W_query, x);
     Tensor keys = linear_layer_forward(&self_attention_layer->W_key, x);
     Tensor values = linear_layer_forward(&self_attention_layer->W_value, x);
@@ -70,6 +70,11 @@ Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_att
             tensor_print(&attention_scores, "attention_scores");
             Tensor attention_scores_scaled = tensor_elementwise_scale(&attention_scores, 1/sqrt(keys_chnuks[head].shape[1]));
             tensor_print(&attention_scores_scaled, "attention_scores_scaled");
+            if(masked == true){
+                attention_scores_scaled = tensor_tril(&attention_scores, -INFINITY);
+                tensor_print(&attention_scores_scaled, "attention_scores_scaled");
+                    
+            }
             Tensor attention_weights = tensor_softmax(&attention_scores_scaled, 1);
             tensor_print(&attention_weights, "attention_weights");
             Tensor context_vec = tensor_dot_product(&attention_weights, &values_chnuks[head]);
@@ -87,6 +92,8 @@ Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_att
 
     return queries;
 }
+
+
 
 
 void self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, const char *heading){

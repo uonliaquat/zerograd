@@ -1,8 +1,8 @@
 //#include "../../../include/models/gpt2.h"
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include "../../include/models/gpt.h"
-#include "../../include/tensor.h"
 
 static GPTConfig gpt_config;
 static GPTModel gpt_model;
@@ -22,11 +22,16 @@ void model_gpt_init(){
     gpt_model.token_embed_layer = embedding_layer_init(gpt_config.vocab_size,   gpt_config.embed_dim, DTYPE_DOUBLE);
     gpt_model.pos_embed_layer   = embedding_layer_init(gpt_config.context_len,  gpt_config.embed_dim, DTYPE_DOUBLE);
     gpt_model.drop_embed_layer  = dropout_layer_init(gpt_config.drop_rate, false);
+    gpt_model.transformer_layers = calloc(gpt_config.n_layers, sizeof(TransformerLayer));
+    for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
+        gpt_model.transformer_layers[layer_no] = transformer_layer_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, false, true);
+    }
     gpt_model.layer_norm        = layer_norm_init(gpt_config.embed_dim);
     gpt_model.out_head_layer    = linear_layer_init(gpt_config.embed_dim, gpt_config.vocab_size, false, false, DTYPE_DOUBLE);
 }
 
-void model_gpt_forward(Tensor *input){
+
+Tensor model_gpt_forward(Tensor *input){
     Tensor token_embeddings = embedding_layer_forward(&gpt_model.token_embed_layer, input);     
     tensor_print(&token_embeddings, "token_embeddings");
 
@@ -39,14 +44,27 @@ void model_gpt_forward(Tensor *input){
     Tensor input_embeddings = tensor_add(&token_embeddings, &pos_embeddings);
     tensor_print(&input_embeddings, "input_embeddings");
 
+    Tensor embeddings = tensor_copy(&input_embeddings);
+    tensor_print(&embeddings, "embeddings");
+    for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
+        Tensor embeddings = transformer_layer_forward(&gpt_model.transformer_layers[layer_no], &embeddings, false);
+    }
+
+
     dropout_layer_forward(&gpt_model.drop_embed_layer, &input_embeddings);
     tensor_print(&input_embeddings, "input_embeddings (after dropout)");
+
+    //Add transformer block here
+
+
 
     Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &input_embeddings);
     tensor_print(&output, "output");
 
     Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
     tensor_print(&output_norm, "output_norm");
+
+    return output_norm;
 }
 
 void model_gpt_write(){

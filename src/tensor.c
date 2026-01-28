@@ -68,6 +68,29 @@ void tensor_free(const Tensor *tensor){
     free(tensor->data);
 }
 
+Tensor tensor_copy(Tensor *input){
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        input->shape,
+        input->ndim,
+        input->dtype,
+        input->requires_grad,
+        true
+    );
+    size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
+    size_t rows = input->ndim == 3 ? input->shape[1]: input->shape[0];
+    size_t cols = input->ndim == 3 ? input->shape[2]: input->shape[1];
+    for(size_t i = 0; i < batch_size; i++){
+        for(size_t j = 0; j < rows; j++){
+            for(size_t k = 0; k < cols; k++){
+                double elem = tensor_get_elem(input, input->ndim == 3 ? (size_t[]){i, j, k}: (size_t[]){j, k});
+                tensor_put_elem(&output_tensor, input->ndim == 3 ? (size_t[]){i, j, k}: (size_t[]){j, k}, elem);
+            }
+        }
+    }
+    return output_tensor;
+}
+
 double tensor_get_elem(const Tensor *tensor, size_t *coords){
     // size_t rows = tensor->shape[0];
     // size_t cols = tensor->shape[1];
@@ -499,16 +522,26 @@ Tensor tensor_vector_add(Tensor *input, Tensor *vector){
     return output_tensor;
 }
 
-Tensor tensor_tril(const size_t * shape, const size_t ndim, const DataType dtype, int elem){
-    assert(ndim == 2);
-    Tensor new_tensor = tensor_init(NULL, shape, ndim, dtype, false, false);
-    for(size_t i = 0; i < shape[0]; i++){
-        for(size_t j = 0; j < shape[1]; j++){
-            if(j < i+1) tensor_put_elem(&new_tensor, (size_t[]){i,j}, elem);
-            else tensor_put_elem(&new_tensor, (size_t[]){i,j}, 0);
+Tensor tensor_tril(Tensor *input, double elem){
+    //assert(ndim == 2);
+    Tensor output_tensor = tensor_init(
+        NULL, 
+        input->shape, 
+        input->ndim, 
+        input->dtype, 
+        input->requires_grad, 
+        false
+    );
+
+
+    // Tensor new_tensor = tensor_init(NULL, shape, ndim, dtype, false, false);
+    for(size_t i = 0; i < input->shape[0]; i++){
+        for(size_t j = 0; j < input->shape[1]; j++){
+            if(j > i) tensor_put_elem(input, (size_t[]){i,j}, elem);
+            // else tensor_put_elem(&new_tensor, (size_t[]){i,j}, 0);
         }
     }
-    return new_tensor;
+    return output_tensor;
 }
 
 void tensor_masked_fill(Tensor *tensor, double mask, double fill){

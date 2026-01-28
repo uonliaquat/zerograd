@@ -23,6 +23,7 @@ typedef struct Tensor {
 
 Tensor  tensor_init(void *data, const size_t *shape, const size_t ndim, const DataType dtype, const bool requires_grad, const bool random_init);
 void    tensor_free(const Tensor *tensor);
+Tensor  tensor_copy(Tensor *input);
 double  tensor_get_elem(const Tensor *tensor, size_t *coords);
 void    tensor_put_elem(Tensor *tensor, size_t *coords, double elem);  
 Tensor  tensor_transpose(const Tensor *tensor);
@@ -39,7 +40,7 @@ Tensor  tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2);
 Tensor  tensor_add(Tensor *tensor1, Tensor *tensor2);
 Tensor  tensor_elementwise_add(Tensor *inpput, double val);
 Tensor  tensor_vector_add(Tensor *inpput, Tensor *vector);
-Tensor  tensor_tril(const size_t * shape, const size_t ndim, const DataType dtype, int elem);
+Tensor  tensor_tril(Tensor *input, double elem);
 void    tensor_masked_fill(Tensor *tensor, double mask, double fill);
 void    tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id, Tensor *src_tensor, size_t src_row, size_t no_of_items);
 Tensor  tensor_mean_var(Tensor *x);
