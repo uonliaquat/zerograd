@@ -2,11 +2,13 @@
 #define __LINEAR_LAYER_H__
 
 #include <stdio.h>
+#include <stdbool.h>
 #include "../tensor.h"
 
 typedef struct LinearLayer{
     Tensor weights;
     Tensor bias;
+    bool has_bias;
     DataType dtype;
 }LinearLayer;
 

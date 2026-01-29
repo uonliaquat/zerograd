@@ -13,7 +13,7 @@ typedef struct SelfAttentionLayer{
     LinearLayer heads_proj;
     size_t seq_len;
     size_t embed_dim;
-    size_t num_heads;
+    size_t n_heads;
     size_t head_dim;
 } SelfAttentionLayer;
 

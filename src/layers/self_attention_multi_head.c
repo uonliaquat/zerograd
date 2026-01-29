@@ -9,17 +9,17 @@
 #include "../../include/layers/linear.h"
 
 
-SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t embed_dim, const size_t num_heads, const bool bias, const bool requires_grad){
+SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t embed_dim, const size_t n_heads, const bool bias, const bool requires_grad){
     SelfAttentionLayer self_attention_layer;
-    size_t head_dim = embed_dim / num_heads;
+    size_t head_dim = embed_dim / n_heads;
 
     self_attention_layer.W_query    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
     self_attention_layer.W_key      = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
     self_attention_layer.W_value    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
-    self_attention_layer.heads_proj   = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
+    self_attention_layer.heads_proj = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
     self_attention_layer.seq_len = seq_len;
     self_attention_layer.embed_dim = embed_dim;
-    self_attention_layer.num_heads = num_heads;
+    self_attention_layer.n_heads = n_heads;
     self_attention_layer.head_dim = head_dim;
     return self_attention_layer;
 }
@@ -47,7 +47,14 @@ Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_lay
     return context_vec;
 }
 
+
 Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x, bool masked){
+
+    // linear_layer_print(&self_attention_layer->W_query, "self_attention_layer->W_query");
+    // linear_layer_print(&self_attention_layer->W_key, "self_attention_layer->W_key");
+    // linear_layer_print(&self_attention_layer->W_value, "self_attention_layer->W_value");
+
+
     Tensor queries = linear_layer_forward(&self_attention_layer->W_query, x);
     Tensor keys = linear_layer_forward(&self_attention_layer->W_key, x);
     Tensor values = linear_layer_forward(&self_attention_layer->W_value, x);
@@ -57,12 +64,17 @@ Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_att
     tensor_print(&values, "values");
 
 
-    Tensor *queries_chnuks = tensor_chunk(&queries, self_attention_layer->num_heads, 1);
-    Tensor *keys_chnuks = tensor_chunk(&keys, self_attention_layer->num_heads, 1);
-    Tensor *values_chnuks = tensor_chunk(&values, self_attention_layer->num_heads, 1);
+    Tensor *queries_chnuks = tensor_chunk(&queries, self_attention_layer->n_heads, 1);
+    Tensor *keys_chnuks = tensor_chunk(&keys, self_attention_layer->n_heads, 1);
+    Tensor *values_chnuks = tensor_chunk(&values, self_attention_layer->n_heads, 1);
 
-    Tensor *context_vecs = calloc(self_attention_layer->num_heads, sizeof(Tensor));
-    for(size_t head = 0; head < self_attention_layer->num_heads; head++){
+    tensor_print(queries_chnuks, "queries_chnuks");
+    tensor_print(keys_chnuks, "keys_chnuks");
+    tensor_print(values_chnuks, "values_chnuks");
+
+    Tensor *context_vecs = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+
+    for(size_t head = 0; head < self_attention_layer->n_heads; head++){
             printf("=================================== HEAD %zu ===================================\n", head);
             Tensor keys_transposed = tensor_transpose(&keys_chnuks[head]);
             tensor_print(&keys_transposed, "keys_transposed");
@@ -80,17 +92,31 @@ Tensor self_attention_layer_mult_head_forward(const SelfAttentionLayer *self_att
             Tensor context_vec = tensor_dot_product(&attention_weights, &values_chnuks[head]);
             tensor_print(&context_vec, "context_vec");
             context_vecs[head] = context_vec;
-            //tensor_print(&context_vecs[head], "head");
+            tensor_print(&context_vecs[head], "context_vecs [head]");
             printf("======================================================================================\n");
+
+            tensor_free(&keys_transposed);
+            tensor_free(&attention_scores);
+            tensor_free(&attention_scores_scaled);
+            tensor_free(&attention_weights);
     }
 
-    Tensor concat_heads = tensor_concat(context_vecs, self_attention_layer->num_heads, 1);
+    Tensor concat_heads = tensor_concat(context_vecs, self_attention_layer->n_heads, 1);
     tensor_print(&concat_heads, "concat_heads");
     Tensor projected_context_vecs = linear_layer_forward(&self_attention_layer->heads_proj, &concat_heads);
     tensor_print(&projected_context_vecs, "projected_context_vecs");
     
 
-    return queries;
+
+    tensor_free(&queries);
+    tensor_free(&keys);
+    tensor_free(&values);
+    for(size_t head = 0; head < self_attention_layer->n_heads; head++){
+        tensor_free(&context_vecs[head]);
+    }
+    tensor_free(&concat_heads);
+
+    return projected_context_vecs;
 }
 
 

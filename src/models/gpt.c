@@ -44,27 +44,37 @@ Tensor model_gpt_forward(Tensor *input){
     Tensor input_embeddings = tensor_add(&token_embeddings, &pos_embeddings);
     tensor_print(&input_embeddings, "input_embeddings");
 
-    Tensor embeddings = tensor_copy(&input_embeddings);
-    tensor_print(&embeddings, "embeddings");
-    for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
-        Tensor embeddings = transformer_layer_forward(&gpt_model.transformer_layers[layer_no], &embeddings, false);
+    //Tensor embeddings = tensor_copy(&input_embeddings);
+    Tensor *embeddings = calloc(gpt_config.n_layers+1, sizeof(Tensor));
+    embeddings[0] =  tensor_copy(&input_embeddings);
+    tensor_print(&embeddings[0], "embeddings (after copy)");
+    for(size_t layer_no = 1; layer_no <= gpt_config.n_layers; layer_no++){
+        tensor_print(&embeddings[layer_no-1], "embeddings[layer_no-1]");
+        embeddings[layer_no] = transformer_layer_forward(&gpt_model.transformer_layers[layer_no-1], &embeddings[layer_no-1], false);
+        tensor_free(&embeddings[layer_no-1]);
     }
 
 
-    dropout_layer_forward(&gpt_model.drop_embed_layer, &input_embeddings);
-    tensor_print(&input_embeddings, "input_embeddings (after dropout)");
-
-    //Add transformer block here
+    //dropout_layer_forward(&gpt_model.drop_embed_layer, &embeddings);
+    // tensor_print(&embeddings[0], "embeddings (after dropout)");
 
 
 
-    Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &input_embeddings);
-    tensor_print(&output, "output");
 
-    Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
-    tensor_print(&output_norm, "output_norm");
+    Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &embeddings[gpt_config.n_layers]);
+    tensor_print(&output, "model_gpt_forward output");
 
-    return output_norm;
+    // Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
+    // tensor_print(&output_norm, "output_norm");
+
+    tensor_free(&token_embeddings);
+    tensor_free(&indices);
+    tensor_free(&pos_embeddings);
+    tensor_free(&input_embeddings);
+    tensor_free(&embeddings[gpt_config.n_layers]);
+
+
+    return  output;
 }
 
 void model_gpt_write(){
