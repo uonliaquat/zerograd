@@ -58,8 +58,8 @@ void embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *fi
     }
     fprintf(fptr, "Weights:\n");
     tensor_write_fp(&embedding_layer->weights, fptr);
-    //fprintf(fptr, "Output:\n");
-    //tensor_write(&embedding_layer->output, fptr);
+    fprintf(fptr, "Output:\n");
+    tensor_write_fp(&embedding_layer->output, fptr);
     fclose(fptr);
 }
 

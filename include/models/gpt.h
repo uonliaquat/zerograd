@@ -5,10 +5,11 @@
 
 #include "./tensor.h"
 #include "../layers/embedding.h"
-#include "../layers/dropout.h"
-#include "../layers/linear.h"
-#include "../layers/layer_norm.h"
-#include "../layers/transformer.h"
+// #include "../layers/dropout.h"
+// #include "../layers/linear.h"
+// #include "../layers/layer_norm.h"
+// #include "../layers/transformer.h"
+#include "../layers/transformer_block.h"
 
 
 
@@ -23,15 +24,27 @@ typedef struct GPTConfig {
 } GPTConfig;
 
 
+
+typedef struct GP2Wrokspace{
+    Tensor position_indicies;
+    Tensor input_embeddings;
+} GP2Wrokspace;
+
+
 typedef struct GPTModel{
     EmbeddingLayer token_embed_layer;
     EmbeddingLayer pos_embed_layer;
-    DropoutLayer drop_embed_layer;
-    // Transformer Blocks
-    TransformerLayer *transformer_layers;
-    LayerNorm layer_norm;
-    LinearLayer out_head_layer;
+    TransformerBlock transformer_block;
+    // DropoutLayer drop_embed_layer;
+    // // Transformer Blocks
+    // TransformerLayer *transformer_layers;
+    // LayerNorm layer_norm;
+    // LinearLayer out_head_layer;
+
+    GP2Wrokspace workspace;
+    Tensor output;
 } GPTModel;
+
 
 
 void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_len, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias);

@@ -78,8 +78,10 @@ int main(){
         // 0.77, 0.25, 0.10, 0.10,
         // 0.05, 0.80, 0.55, 0.55,
     }, (size_t[]){1, 2, 6}, 3, tensor_dtype_size(DTYPE_DOUBLE), false, false);
-    tensor_print(&input_tokens, "input_tokens");
+    tensor_print(&input_tokens, "input_tokens.csv");
+    tensor_write(&input_tokens, "./tensors/input_tokens.csv");
     model_gpt_forward(&input_tokens);
+    model_gpt_write();
 
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);

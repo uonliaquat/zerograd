@@ -550,19 +550,26 @@ Tensor tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2){
 //     return output_tensor;
 // }
 
-Tensor tensor_add(Tensor *tensor1, Tensor *tensor2){
-    Tensor outout_tensor = tensor_init(
-        tensor1->data, 
-        tensor1->shape, 
-        tensor1->ndim, 
-        tensor1->dtype, 
-        tensor1->requires_grad, 
+Tensor tensor_add(Tensor *input1, Tensor *input2){
+    Tensor output = tensor_init(
+        input1->data, 
+        input1->shape, 
+        input1->ndim, 
+        input1->dtype, 
+        input1->requires_grad, 
         false
     );
-    for(size_t i = 0; i < outout_tensor.size; i++){
-        ((double*)outout_tensor.data)[i] = ((double*)outout_tensor.data)[i] + ((double*)tensor2->data)[i];
+    for(size_t i = 0; i < output.size; i++){
+        ((double*)output.data)[i] = ((double*)output.data)[i] + ((double*)input2->data)[i];
     }
-    return outout_tensor;
+    return output;
+}
+
+void tensor_add_inplace(Tensor *input1, Tensor *input2, Tensor *output){
+    memcpy(output->data, input1->data, input1->size * tensor_dtype_size(input1->dtype));
+    for(size_t i = 0; i < output->size; i++){
+        ((double*)output->data)[i] = ((double*)output->data)[i] + ((double*)input2->data)[i];
+    }
 }
 
 Tensor tensor_elementwise_add(Tensor *tensor, double val){

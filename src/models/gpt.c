@@ -9,6 +9,7 @@
 static GPTConfig gpt_config;
 static GPTModel gpt_model;
 
+
 void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_dim, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias){
     gpt_config.vocab_size   = vocab_size;
     gpt_config.context_len  = context_len;
@@ -19,9 +20,16 @@ void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_d
     gpt_config.qkv_bias     = qkv_bias;
 }
 
+static inline void model_gpt_workspace_init(){
+    gpt_model.workspace.input_embeddings    = (Tensor){0};
+    gpt_model.workspace.position_indicies   = (Tensor){0};
+}
+
 void model_gpt_init(){
     gpt_model.token_embed_layer = embedding_layer_init(gpt_config.vocab_size,   gpt_config.embed_dim, DTYPE_DOUBLE);
     gpt_model.pos_embed_layer   = embedding_layer_init(gpt_config.context_len,  gpt_config.embed_dim, DTYPE_DOUBLE);
+    gpt_model.transformer_block = transformer_block_init(gpt_config.n_heads, gpt_config.n_layers, gpt_config.drop_rate, gpt_config.qkv_bias);
+    model_gpt_workspace_init();
     // gpt_model.drop_embed_layer  = dropout_layer_init(gpt_config.drop_rate, false);
     // gpt_model.transformer_layers = calloc(gpt_config.n_layers, sizeof(TransformerLayer));
     // for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
@@ -37,19 +45,29 @@ void model_gpt_forward(Tensor *input){
     embedding_layer_forward(&gpt_model.token_embed_layer, input);  
     embedding_layer_print(&gpt_model.token_embed_layer, "Token Embedding Layer");
 
-    Tensor indices = tensor_arange(0, gpt_config.context_len, 1);
-    tensor_print(&indices, "indices");
-    tensor_repeat_inplace(&indices, (size_t[]){input->shape[1], 1});
-    tensor_print(&indices, "indices_repeat");
-    tensor_unsqueeze_inplace(&indices, 0);
-    tensor_print(&indices, "indices_unsqueezed");
-    embedding_layer_forward(&gpt_model.pos_embed_layer, &indices);
+    if(gpt_model.workspace.position_indicies.size == 0){
+        //This only runs 1 time
+        printf("Initializing gpt_model.workspace.posiiton_indicis\n");
+        gpt_model.workspace.position_indicies = tensor_arange(0, gpt_config.context_len, 1);
+        tensor_repeat_inplace(&gpt_model.workspace.position_indicies, (size_t[]){input->shape[1], 1});
+        tensor_unsqueeze_inplace(&gpt_model.workspace.position_indicies, 0);
+        tensor_print(&gpt_model.workspace.position_indicies, "position_indicies");
+    }
+    embedding_layer_forward(&gpt_model.pos_embed_layer, &gpt_model.workspace.position_indicies);
     embedding_layer_print(&gpt_model.pos_embed_layer,   "Pos Embedding Layer");
 
+    if(gpt_model.workspace.input_embeddings.size == 0){
+        printf("Initializing gpt_model.workspace.input_embeddings\n");
+        gpt_model.workspace.input_embeddings = tensor_add(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output);
+    }
+    else{
+        tensor_add_inplace(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output, &gpt_model.workspace.input_embeddings);
+    }
+    tensor_print(&gpt_model.workspace.input_embeddings, "input_embeddings");
 
-    Tensor input_embeddings = tensor_add(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output);
-    tensor_print(&input_embeddings, "input_embeddings");
-
+    // for(size_t layer_no = 0; layer_no <= gpt_config.n_layers; layer_no++){
+    //     transformer_layer_forward(&gpt_model.transformer_layers[layer_no], &gpt_model.workspace.input_embeddings, false);
+    // }
     // //Tensor embeddings = tensor_copy(&input_embeddings);
     // Tensor *embeddings = calloc(gpt_config.n_layers+1, sizeof(Tensor));
     // embeddings[0] =  tensor_copy(&input_embeddings);
@@ -78,12 +96,13 @@ void model_gpt_forward(Tensor *input){
     // tensor_free(&pos_embeddings);
     // tensor_free(&input_embeddings);
     // tensor_free(&embeddings[gpt_config.n_layers]);
-
+    tensor_write(&gpt_model.workspace.input_embeddings, "./tensors/gpt_model.input_embeddings.csv");
 }
 
 void model_gpt_write(){
-    embedding_layer_write(&gpt_model.token_embed_layer, "./output/token_embed_layer.csv");
-    embedding_layer_write(&gpt_model.pos_embed_layer,   "./output/pos_embed_layer.csv");
+    embedding_layer_write(&gpt_model.token_embed_layer, "./tensors/gpt_model.token_embed_layer.csv");
+    embedding_layer_write(&gpt_model.pos_embed_layer,   "./tensors/gpt_model.pos_embed_layer.csv");
+    tensor_write(&gpt_model.workspace.position_indicies, "./tensors/gpt_model.workspace.position_indicies.csv");
 }
 
 void model_gpt_config_print(){
