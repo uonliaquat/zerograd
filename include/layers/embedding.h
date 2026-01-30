@@ -11,11 +11,13 @@ typedef struct EmbeddingLayer{
     DataType dtype;
     size_t num_embed;
     size_t embed_dim;
+    Tensor output;
 } EmbeddingLayer;
 
 
-EmbeddingLayer  embedding_layer_init(size_t num_embed, size_t embed_dim, DataType dtype);
-void            embedding_layer_free(EmbeddingLayer *embedding_layer);
-Tensor          embedding_layer_forward(EmbeddingLayer *embedding_layer, Tensor *inputs);
-void            embedding_layer_write(EmbeddingLayer *embedding_layer, const char *filename);
+EmbeddingLayer  embedding_layer_init(const size_t num_embed, const size_t embed_dim, const DataType dtype);
+void            embedding_layer_free(const EmbeddingLayer *embedding_layer);
+void            embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *input);
+void            embedding_layer_print(const EmbeddingLayer *embedding_layer, const char *heading);
+void            embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *filename);
 #endif

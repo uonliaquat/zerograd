@@ -36,7 +36,7 @@ typedef struct GPTModel{
 
 void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_len, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias);
 void model_gpt_init();
-Tensor model_gpt_forward(Tensor *input);
+void model_gpt_forward(Tensor *input);
 void model_gpt_write();
 void model_gpt_config_print();
 

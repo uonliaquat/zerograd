@@ -1,11 +1,26 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "../include/utils.h"
 
 
 double rand_uniform(const double min, const double max){
     return min + (max - min) * ((double)rand() / RAND_MAX);
+}
+
+
+void print_centered_heading(const char *heading) {
+    const int width = 68;  // inner width between the bars
+    int len = strlen(heading);
+
+    int left_pad  = (width - len) / 2;
+    int right_pad = width - len - left_pad;
+
+    printf("\n");
+    printf("+====================================================================+\n");
+    printf("|%*s%s%*s|\n", left_pad, "", heading, right_pad, "");
+    printf("+====================================================================+\n");
 }
 
 

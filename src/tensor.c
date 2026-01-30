@@ -68,7 +68,8 @@ void tensor_free(const Tensor *tensor){
     free(tensor->data);
 }
 
-Tensor tensor_copy(Tensor *input){
+Tensor tensor_copy(Tensor *input)
+{
     Tensor output_tensor = tensor_init(
         NULL, 
         input->shape,
@@ -89,6 +90,76 @@ Tensor tensor_copy(Tensor *input){
         }
     }
     return output_tensor;
+}
+
+
+Tensor tensor_repeat(Tensor *input, size_t * repeate_dims){
+     Tensor output_tensor = tensor_init(
+        NULL, 
+        (size_t[]){repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0], repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1] },
+        input->ndim,
+        input->dtype,
+        input->requires_grad,
+        true
+    );
+    // Initializing stride
+    input->stride[0] = 1;
+    input->stride[1] = 1;
+    input->stride[2] = 1;
+    //memset(tensor.stride, 0, sizeof(tensor.stride));
+    //ndim = 3
+    for(int i = input->ndim-2; i >= 0; i--){
+        input->stride[i] = input->stride[i+1] * input->shape[i+1];
+    }
+
+    if(repeate_dims[0] != 0){
+        for(size_t i = 0; i < output_tensor.shape[0]; i++){
+            //printf("%zu, %zu\n", i, input->size);
+            tensor_copy_row_data(&output_tensor, i, 0, input, 0, output_tensor.size+tensor_dtype_size(output_tensor.dtype));
+        }
+    }
+    return output_tensor;
+}
+
+void tensor_repeat_inplace(Tensor *input, size_t * repeate_dims){
+    assert(repeate_dims[0] != 0);
+    input->shape[0] = repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0];
+    input->shape[1] = repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1];
+    input->stride[2] = 1;
+    //memset(tensor.stride, 0, sizeof(tensor.stride));
+    //ndim = 3
+    for(int i = input->ndim-2; i >= 0; i--){
+        input->stride[i] = input->stride[i+1] * input->shape[i+1];
+    }
+
+    input->size *= repeate_dims[0];
+
+    if(repeate_dims[0] != 0){
+        for(size_t i = 0; i < input->shape[0]; i++){
+            //printf("%zu, %zu\n", i, input->size);
+            tensor_copy_row_data(input, i, 0, input, 0, input->size+tensor_dtype_size(input->dtype));
+        }
+    }
+}
+
+void tensor_unsqueeze_inplace(Tensor *input, size_t dim){
+    assert(dim == 0);
+
+    input->ndim += 1;
+
+    for(size_t i = input->ndim; i > dim; i--){
+        input->shape[i] = input->shape[i-1];
+    }
+    input->shape[dim] = 1;
+
+    input->stride[0] = 1;
+    input->stride[1] = 1;
+    input->stride[2] = 1;
+    // memset(tensor.stride, 0, sizeof(tensor.stride));
+    // //ndim = 3
+    for(int i = input->ndim-2; i >= 0; i--){
+        input->stride[i] = input->stride[i+1] * input->shape[i+1];
+    }
 }
 
 double tensor_get_elem(const Tensor *tensor, size_t *coords){
@@ -589,8 +660,9 @@ void tensor_masked_fill(Tensor *tensor, double mask, double fill){
 void tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id, Tensor *src_tensor, size_t src_row, size_t no_of_items){
     size_t dest_index = batch_id * dest_tensor->stride[0] + row_id * dest_tensor->stride[1];
     size_t src_index =  src_row * src_tensor->stride[0];
+    //printf("batch_id %zu, dest_tensor->stride[0]: %zu, row_id: %zu,  dest_tensor->stride[1]: %zu\n", batch_id, dest_tensor->stride[0], row_id, dest_tensor->stride[1]);
     // printf("dest index %zu, ", dest_index);
-    // printf("src row: %zu\n", src_index);
+    // printf("src_index: %zu\n", src_index);
     void *dest = &((double*)dest_tensor->data)[dest_index];
     void *src =  &((double*)src_tensor->data)[src_index];
     memcpy(dest, src, no_of_items * src_tensor->elem_size);
@@ -697,7 +769,7 @@ void tensor_print(const Tensor *tensor, const char *heading){
                 for(size_t j = 0; j < tensor->shape[2]; j++){
                     double elem = tensor_get_elem(tensor, (size_t[]){b, i, j});
                     if(tensor->dtype == DTYPE_DOUBLE) printf("%10.2f ", elem);
-                    else if(tensor->dtype == DTYPE_INT) printf("%d ", (int)elem);
+                    else if(tensor->dtype == DTYPE_INT) printf("%d   ", (int)elem);
                 }
                 printf(" ]\n");
             }

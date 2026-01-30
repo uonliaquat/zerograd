@@ -17,13 +17,15 @@ typedef struct Tensor {
     size_t stride[3];
     size_t elem_size;
     enum DataType dtype;
-    
     bool requires_grad;
 } Tensor;
 
 Tensor  tensor_init(void *data, const size_t *shape, const size_t ndim, const DataType dtype, const bool requires_grad, const bool random_init);
 void    tensor_free(const Tensor *tensor);
 Tensor  tensor_copy(Tensor *input);
+Tensor  tensor_repeat(Tensor *input, size_t * repeate_dims);
+void    tensor_repeat_inplace(Tensor *input, size_t * repeate_dims);
+void    tensor_unsqueeze_inplace(Tensor *input, size_t dim);
 double  tensor_get_elem(const Tensor *tensor, size_t *coords);
 void    tensor_put_elem(Tensor *tensor, size_t *coords, double elem);  
 Tensor  tensor_transpose(const Tensor *tensor);
