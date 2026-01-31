@@ -20,4 +20,5 @@ void            embedding_layer_free(const EmbeddingLayer *embedding_layer);
 void            embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *input);
 void            embedding_layer_print(const EmbeddingLayer *embedding_layer, const char *heading);
 void            embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *filename);
+void            embedding_layer_write_fp(const EmbeddingLayer *embedding_layer, FILE *fptr);
 #endif

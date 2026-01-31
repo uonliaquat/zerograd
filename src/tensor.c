@@ -68,6 +68,18 @@ void tensor_free(const Tensor *tensor){
     free(tensor->data);
 }
 
+static inline size_t tensor_get_batch_size(const Tensor *input){
+    return input->ndim == 3 ? input->shape[0]: 1;
+}
+
+static inline size_t tensor_get_rows(const Tensor *input){
+    return input->ndim == 3 ? input->shape[1]: input->shape[0];
+}
+
+static inline size_t tensor_get_cols(const Tensor *input){
+    return input->ndim == 3 ? input->shape[2]: input->shape[1];
+}
+
 Tensor tensor_copy(Tensor *input)
 {
     Tensor output_tensor = tensor_init(
@@ -121,7 +133,7 @@ Tensor tensor_repeat(Tensor *input, size_t * repeate_dims){
     return output_tensor;
 }
 
-void tensor_repeat_inplace(Tensor *input, size_t * repeate_dims){
+void tensor_repeat_(Tensor *input, size_t * repeate_dims){
     assert(repeate_dims[0] != 0);
     input->shape[0] = repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0];
     input->shape[1] = repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1];
@@ -142,7 +154,7 @@ void tensor_repeat_inplace(Tensor *input, size_t * repeate_dims){
     }
 }
 
-void tensor_unsqueeze_inplace(Tensor *input, size_t dim){
+void tensor_unsqueeze_(Tensor *input, size_t dim){
     assert(dim == 0);
 
     input->ndim += 1;
@@ -442,7 +454,7 @@ Tensor tensor_cat(Tensor **tensors, size_t len){
     return output_tensor;
 }
 
-Tensor tensor_arange(int start, int end, int steps){
+Tensor tensor_arange(const int start, const int end, const int steps){
     //returns 1d tensor only
     Tensor output_tensor = tensor_init(
         NULL, 
@@ -457,6 +469,23 @@ Tensor tensor_arange(int start, int end, int steps){
     }
     return output_tensor;
 }
+void tensor_arange_(const int start, const int end, const int steps, Tensor *output){
+    if(output->size == 0){
+      *output = tensor_init(
+            NULL, 
+            (size_t[]){1, (int)((end - start)/steps)}, 
+            2,
+            DTYPE_INT,
+            false,
+            false
+        );
+    }
+    for(size_t i = start; i <=end; i += steps){
+        tensor_put_elem(output, (size_t[]){0, (double)i}, i);
+    }
+}
+
+
 void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim){
 
 
@@ -487,34 +516,66 @@ void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output
 }
 
 
-Tensor tensor_dot_product(const Tensor *tensor1, const Tensor *tensor2){
+Tensor tensor_dot_product(const Tensor *input1, const Tensor *input2){
     //assert(tensor1->ndim == tensor2->ndim);
     // tensor_print(tensor1, "================== TENSOR 1 ==================");
     // tensor_print(tensor2, "================== TENSOR 2 ==================");
-    size_t t1_batch_size = tensor1->ndim == 3 ? tensor1->shape[0]: 1;
-    size_t t1_rows = tensor1->ndim == 3 ? tensor1->shape[1]: tensor1->shape[0];
-    size_t t1_cols = tensor1->ndim == 3 ? tensor1->shape[2]: tensor1->shape[1];
+    size_t t1_batch_size = tensor_get_batch_size(input1);
+    size_t t1_rows = tensor_get_rows(input1);
+    size_t t1_cols = tensor_get_cols(input1);
 
-    size_t t2_batch_size = tensor2->ndim == 3 ? tensor2->shape[0]: 1;
-    size_t t2_rows = tensor2->ndim == 3 ? tensor2->shape[1]: tensor2->shape[0];
-    size_t t2_cols = tensor2->ndim == 3 ? tensor2->shape[2]: tensor2->shape[1];
+    size_t t2_batch_size = tensor_get_batch_size(input2);
+    size_t t2_rows = tensor_get_rows(input2);
+    size_t t2_cols = tensor_get_rows(input2);
+
+    //printf("t1_cols: %zu, t2_rows: %zu\n", t1_cols, t2_rows);
+    assert(t2_batch_size == 1);
+    assert(t1_cols == t2_rows);
+
+    Tensor output =  tensor_init(
+        NULL, 
+        (size_t[]){t1_batch_size, t1_rows, t2_cols}, input1->ndim,
+        input1->dtype,
+        input1->requires_grad,
+        false
+    );
+    for(size_t b = 0; b < t1_batch_size; b++){
+        tensor_mat_mul(input1, input2, &output, b);
+    }
+    return output;
+}
+
+void tensor_dot_product_(const Tensor *input1, const Tensor *input2, Tensor *output){
+    //assert(tensor1->ndim == tensor2->ndim);
+    // tensor_print(tensor1, "================== TENSOR 1 ==================");
+    // tensor_print(tensor2, "================== TENSOR 2 ==================");
+    size_t t1_batch_size = tensor_get_batch_size(input1);
+    size_t t1_rows = tensor_get_rows(input1);
+    size_t t1_cols = tensor_get_cols(input1);
+
+    size_t t2_batch_size = tensor_get_batch_size(input2);
+    size_t t2_rows = tensor_get_rows(input2);
+    size_t t2_cols = tensor_get_rows(input2);
 
     printf("t1_cols: %zu, t2_rows: %zu\n", t1_cols, t2_rows);
     assert(t2_batch_size == 1);
     assert(t1_cols == t2_rows);
-
-    Tensor output_tensor =  tensor_init(
-        NULL, 
-        (size_t[]){t1_batch_size, t1_rows, t2_cols}, tensor1->ndim,
-        tensor1->dtype,
-        tensor1->requires_grad,
-        false
-    );
-    for(size_t b = 0; b < t1_batch_size; b++){
-        tensor_mat_mul(tensor1, tensor2, &output_tensor, b);
+    
+    if(output->size == 0){
+        *output = tensor_init(
+            NULL, 
+            (size_t[]){t1_batch_size, t1_rows, t2_cols}, input1->ndim,
+            input1->dtype,
+            input1->requires_grad,
+            false
+        );
     }
-    return output_tensor;
+    for(size_t b = 0; b < t1_batch_size; b++){
+        tensor_mat_mul(input1, input2, output, b);
+    }
+
 }
+
 
 
 
@@ -565,7 +626,18 @@ Tensor tensor_add(Tensor *input1, Tensor *input2){
     return output;
 }
 
-void tensor_add_inplace(Tensor *input1, Tensor *input2, Tensor *output){
+void tensor_add_(Tensor *input1, Tensor *input2, Tensor *output){
+    assert(input1->dtype == input2->dtype);
+    if(output->size == 0){
+        *output = tensor_init(
+            input1->data, 
+            input1->shape, 
+            input1->ndim, 
+            input1->dtype, 
+            input1->requires_grad, 
+            false
+        );
+    }
     memcpy(output->data, input1->data, input1->size * tensor_dtype_size(input1->dtype));
     for(size_t i = 0; i < output->size; i++){
         ((double*)output->data)[i] = ((double*)output->data)[i] + ((double*)input2->data)[i];
@@ -835,15 +907,19 @@ void tensor_write_fp(const Tensor *tensor, FILE *fptr){
             fprintf(fptr, "\n");
         }
     }
-    //fprintf(fptr, "\n");
+    fprintf(fptr, "\n");
 }
 
 void tensor_write(const Tensor *tensor, char *filename){
-    FILE *fptr = fopen(filename, "w");
+    FILE *fptr = fopen(filename, "w");  // fresh file
+    fclose(fptr);
+
+    fptr = fopen(filename, "a");
     if(fptr == NULL){
         printf("Error opening file %s\n", filename);
         exit(1);
     }
+    fptr = fopen(filename, "a");
     tensor_write_fp(tensor, fptr);
 }
 

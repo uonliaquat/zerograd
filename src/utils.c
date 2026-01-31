@@ -23,6 +23,12 @@ void print_centered_heading(const char *heading) {
     printf("+====================================================================+\n");
 }
 
+void create_filename(const char *base_path, const char *name, char *filename){
+    memset(filename, 0, strlen(filename));
+    memcpy(filename, base_path, strlen(base_path));
+    strcat(filename, name);
+}
+
 
 // char *read_data_from_file(char *filename){
 //     FILE *fptr = fopen(filename, "r");

@@ -10,12 +10,14 @@ typedef struct LinearLayer{
     Tensor bias;
     bool has_bias;
     DataType dtype;
+    Tensor output;
 }LinearLayer;
 
 LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const bool bias, const bool requires_grad, const DataType dtype);
-void linear_layer_free();
-Tensor linear_layer_forward(const LinearLayer *linear_layer, const Tensor *x);
-void linear_layer_print(const LinearLayer *layer, const char *heading);
-void linear_layer_write_fp(const LinearLayer *layer, FILE *fptr);
+void        linear_layer_free(const LinearLayer *linear_layer);
+void        linear_layer_forward(LinearLayer *linear_layer, const Tensor *x);
+void        linear_layer_print(const LinearLayer *layer, const char *heading);
+void        linear_layer_write_fp(const LinearLayer *layer, FILE *fptr);
+void        linear_layer_write(const LinearLayer *layer, const char *filename);
 
 #endif

@@ -56,10 +56,18 @@ void embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *fi
         printf("Error opening file %s\n", filename);
         exit(1);
     }
-    fprintf(fptr, "Weights:\n");
+    
+    fprintf(fptr, "Weights\n");
     tensor_write_fp(&embedding_layer->weights, fptr);
-    fprintf(fptr, "Output:\n");
+    fprintf(fptr, "Output\n");
     tensor_write_fp(&embedding_layer->output, fptr);
     fclose(fptr);
+}
+
+void embedding_layer_write_fp(const EmbeddingLayer *embedding_layer, FILE *fptr){
+    fprintf(fptr, "Weights\n");
+    tensor_write_fp(&embedding_layer->weights, fptr);
+    fprintf(fptr, "Output\n");
+    tensor_write_fp(&embedding_layer->output, fptr);
 }
 

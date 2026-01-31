@@ -58,8 +58,8 @@ int main(){
     size_t vocab_size = 6;   // Vocab Size
     size_t context_len = 6;    // Context Length
     size_t emb_dim = 6;        // Embedding Dimensions
-    size_t n_heads = 3;        // No of Attention heads
-    size_t n_layers = 2;       // No of layers
+    size_t n_heads = 1;        // No of Attention heads
+    size_t n_layers = 1;       // No of layers
     double drop_rate = 0.1;     // Dropout rate
     bool qkv_bias = false;      // Query-Key-Value bias
 
@@ -79,9 +79,10 @@ int main(){
         // 0.05, 0.80, 0.55, 0.55,
     }, (size_t[]){1, 2, 6}, 3, tensor_dtype_size(DTYPE_DOUBLE), false, false);
     tensor_print(&input_tokens, "input_tokens.csv");
-    tensor_write(&input_tokens, "./tensors/input_tokens.csv");
+    tensor_write(&input_tokens, "./models/input_tokens.csv");
     model_gpt_forward(&input_tokens);
-    model_gpt_write();
+    model_gpt_write("/Users/uonliaquat/workspace/zerograd/models/");
+    //model_gpt_free();
 
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);
