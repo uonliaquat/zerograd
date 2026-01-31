@@ -26,7 +26,8 @@ typedef struct GPTConfig {
 
 
 typedef struct GP2Wrokspace{
-    Tensor position_indicies;
+    Tensor indices;
+    Tensor position_indices;
     Tensor input_embeddings;
 } GP2Wrokspace;
 

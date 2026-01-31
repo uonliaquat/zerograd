@@ -7,10 +7,10 @@
 
 
 typedef struct SelfAttentionWorkspace{
-    Tensor attention_scores;
-    Tensor attention_weights;
-    Tensor keys_transposed;
-    Tensor attention_scores_scaled;
+    Tensor *attention_scores;
+    Tensor *attention_weights;
+    Tensor *keys_transposed;
+    Tensor *attention_scores_scaled;
     Tensor concat_heads;
     Tensor *queries_chnuks;
     Tensor *keys_chnuks;

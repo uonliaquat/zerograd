@@ -127,29 +127,36 @@ Tensor tensor_repeat(Tensor *input, size_t * repeate_dims){
     if(repeate_dims[0] != 0){
         for(size_t i = 0; i < output_tensor.shape[0]; i++){
             //printf("%zu, %zu\n", i, input->size);
-            tensor_copy_row_data(&output_tensor, i, 0, input, 0, output_tensor.size+tensor_dtype_size(output_tensor.dtype));
+            tensor_copy_row_data(&output_tensor, i, 0, input, 0, output_tensor.size*tensor_dtype_size(output_tensor.dtype));
         }
     }
     return output_tensor;
 }
 
-void tensor_repeat_(Tensor *input, size_t * repeate_dims){
-    assert(repeate_dims[0] != 0);
-    input->shape[0] = repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0];
-    input->shape[1] = repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1];
+void tensor_repeat_(Tensor *input, size_t * repeate_dims, Tensor *output){
+    if(output->size == 0){
+        *output = tensor_init(
+            NULL, 
+            (size_t[]){repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0], repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1] },
+            input->ndim,
+            input->dtype,
+            input->requires_grad,
+            false
+        );
+    }
+    // Initializing stride
+    input->stride[0] = 1;
+    input->stride[1] = 1;
     input->stride[2] = 1;
     //memset(tensor.stride, 0, sizeof(tensor.stride));
     //ndim = 3
     for(int i = input->ndim-2; i >= 0; i--){
         input->stride[i] = input->stride[i+1] * input->shape[i+1];
     }
-
-    input->size *= repeate_dims[0];
-
     if(repeate_dims[0] != 0){
-        for(size_t i = 0; i < input->shape[0]; i++){
-            //printf("%zu, %zu\n", i, input->size);
-            tensor_copy_row_data(input, i, 0, input, 0, input->size+tensor_dtype_size(input->dtype));
+        for(size_t i = 0; i < output->shape[0]; i++){
+            //printf("%zu, %zu\n", i,   input->size*tensor_dtype_size(output->dtype));
+            tensor_copy_row_data(output, i, 0, input, 0, input->size*tensor_dtype_size(output->dtype));
         }
     }
 }
@@ -182,7 +189,9 @@ double tensor_get_elem(const Tensor *tensor, size_t *coords){
     for(size_t d = 0; d < tensor->ndim; d++){
         index += coords[d] * tensor->stride[d];
     }
-    return ((double*)tensor->data)[index];
+    if(tensor->dtype == DTYPE_DOUBLE)
+        return ((double*)tensor->data)[index];
+    return ((int*)tensor->data)[index];
 }
 
 void tensor_put_elem(Tensor *tensor, size_t *coords, double elem){
@@ -190,7 +199,15 @@ void tensor_put_elem(Tensor *tensor, size_t *coords, double elem){
     for(size_t d = 0; d < tensor->ndim; d++){
         index += coords[d] * tensor->stride[d];
     }
-    ((double*)tensor->data)[index] = elem;
+    //printf("\nindex: %zu, tensor->size: %zu\n", index, tensor->size);
+    assert(index < tensor->size);
+    if(tensor->dtype == DTYPE_DOUBLE){
+        ((double*)tensor->data)[index] = elem;
+    }
+    else if(tensor->dtype == DTYPE_INT){
+        ((int*)tensor->data)[index] = (int)elem;
+        //printf("%d\n", ((int*)tensor->data)[index]);
+    }
 }
 
 Tensor tensor_transpose(const Tensor *input){
@@ -300,6 +317,7 @@ void tensor_softmax_(Tensor *input, size_t dim, Tensor *output){
         for(size_t b = 0; b < batch_size; b++){
             for(size_t i = 0; i < rows; i++){
                 double exp_sum = 0;
+                
                 for(size_t j = 0; j < cols; j++){
                     double elem = tensor_get_elem(input, input->ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){i, j});
                     exp_sum = exp_sum + expf(elem);
@@ -468,7 +486,7 @@ Tensor tensor_concat(Tensor *input, size_t no_of_tensors, size_t dim){
                 for(size_t i = 0; i < rows; i++){
                     for(size_t j = 0; j < cols; j++){
                         double elem = tensor_get_elem(&input[t], input[t].ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){i, j});
-                        tensor_put_elem(&output,  output.ndim == 3 ? (size_t[]){b, i, j + (t * no_of_tensors)}: (size_t[]){i, j + (t * no_of_tensors)}, elem);
+                        tensor_put_elem(&output,  output.ndim == 3 ? (size_t[]){b, i, j + (t * cols)}: (size_t[]){i, j + (t * cols)}, elem);
                     }
                 }
             }
@@ -488,9 +506,9 @@ void tensor_concat_(Tensor *input, size_t no_of_tensors, size_t dim, Tensor *out
             assert(input[i-1].ndim == input[i].ndim);
             assert(input[i-1].shape[0] == input[i].shape[0]);
             assert(input[i-1].shape[1] == input[i].shape[1]);
-            if(input[i-1].ndim == 3){
-                assert(input[i-1].shape[2] == input[2].shape[2]);
-            }
+            // if(input[i-1].ndim == 3){
+            //     assert(input[i-1].shape[2] == input[2].shape[2]);
+            // }
             new_cols += input[i].shape[input[i].ndim -1];
         }
         //concat across columns
@@ -522,7 +540,7 @@ void tensor_concat_(Tensor *input, size_t no_of_tensors, size_t dim, Tensor *out
                 for(size_t i = 0; i < rows; i++){
                     for(size_t j = 0; j < cols; j++){
                         double elem = tensor_get_elem(&input[t], input[t].ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){i, j});
-                        tensor_put_elem(output,  output->ndim == 3 ? (size_t[]){b, i, j + (t * no_of_tensors)}: (size_t[]){i, j + (t * no_of_tensors)}, elem);
+                        tensor_put_elem(output,  output->ndim == 3 ? (size_t[]){b, i, j + (t * cols)}: (size_t[]){i, j + (t * cols)}, elem);
                     }
                 }
             }
@@ -556,8 +574,8 @@ Tensor *tensor_chunk(Tensor *input, size_t chunks, size_t dim){
             for(size_t b = 0; b < batch_size; b++){
                 for(size_t i = 0; i < rows; i++){
                     for(size_t j = 0; j < cols; j++){
-                        double elem = tensor_get_elem(input, input->ndim == 3 ? (size_t[]){b, i, j + (chunk * chunks)}: (size_t[]){i, j + (chunk * chunks)});
-                        tensor_put_elem(&output_tensor, input->ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){b, i}, elem);
+                        double elem = tensor_get_elem(input, input->ndim == 3 ? (size_t[]){b, i, j + (chunk * cols)}: (size_t[]){i, j + (chunk * cols)});
+                        tensor_put_elem(&output_tensor, output_tensor.ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){b, i}, elem);
                     }
                 }
             }
@@ -568,15 +586,18 @@ Tensor *tensor_chunk(Tensor *input, size_t chunks, size_t dim){
 }
 
 void tensor_chunk_(Tensor *input, size_t chunks, size_t dim, Tensor *output){
+    printf("\n\n\n\n\n ******************* CHUNK ****************\n");
+    tensor_print(input, "input");
     assert(input->ndim <= 3);
     if(dim == 1){
-        //printf("input->shape[input->ndim - 1] chunks: %zu\n", input->shape[input->ndim - 1] % chunks);
         assert(input->shape[input->ndim - 1] % chunks == 0);
         //split columns
         size_t cols = input->shape[input->ndim - 1] / chunks;
 
         size_t batch_size = tensor_get_batch_size(input);
         size_t rows = tensor_get_rows(input);
+        printf("input->shape[input->ndim - 1]: %zu, chunks: %zu\n", input->shape[input->ndim - 1], chunks);
+        printf("batch_size: %zu, rows: %zu, cols: %zu\n", batch_size, rows, cols);
         //size_t cols = tensor_get_cols(input);
         //printf("chunks: %zu\n", chunks);
 
@@ -593,15 +614,15 @@ void tensor_chunk_(Tensor *input, size_t chunks, size_t dim, Tensor *output){
                 );
             }
     
-            //printf("batch_size: %zu, rows: %zu, cols: %zu\n", batch_size, rows, cols);
             for(size_t b = 0; b < batch_size; b++){
                 for(size_t i = 0; i < rows; i++){
                     for(size_t j = 0; j < cols; j++){
-                        double elem = tensor_get_elem(input, input->ndim == 3 ? (size_t[]){b, i, j + (chunk * chunks)}: (size_t[]){i, j + (chunk * chunks)});
-                        tensor_put_elem(&output[chunk], input->ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){b, i}, elem);
+                        double elem = tensor_get_elem(input, input->ndim == 3 ? (size_t[]){b, i, j + (chunk * cols)}: (size_t[]){i, j + (chunk * cols)});
+                        tensor_put_elem(&output[chunk], output[chunk].ndim == 3 ? (size_t[]){b, i, j}: (size_t[]){b, i}, elem);
                     }
                 }
             }
+            tensor_print(&output[chunk], " output[chunk]");
         }
     }
 }
@@ -657,8 +678,9 @@ void tensor_arange_(const int start, const int end, const int steps, Tensor *out
             false
         );
     }
-    for(size_t i = start; i <=end; i += steps){
-        tensor_put_elem(output, (size_t[]){0, (double)i}, i);
+    for(size_t i = start; i < end; i += steps){
+        printf("%zu\n", i);
+        tensor_put_elem(output, (size_t[]){0, i}, i);
     }
 }
 
@@ -926,8 +948,15 @@ void tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id, T
     //printf("batch_id %zu, dest_tensor->stride[0]: %zu, row_id: %zu,  dest_tensor->stride[1]: %zu\n", batch_id, dest_tensor->stride[0], row_id, dest_tensor->stride[1]);
     // printf("dest index %zu, ", dest_index);
     // printf("src_index: %zu\n", src_index);
-    void *dest = &((double*)dest_tensor->data)[dest_index];
-    void *src =  &((double*)src_tensor->data)[src_index];
+    void *dest, *src;
+    if(dest_tensor->dtype == DTYPE_DOUBLE){
+        dest = &((double*)dest_tensor->data)[dest_index];
+        src =  &((double*)src_tensor->data)[src_index];
+    }
+    else if(dest_tensor->dtype == DTYPE_INT){
+        dest = &((int*)dest_tensor->data)[dest_index];
+        src =  &((int*)src_tensor->data)[src_index];
+    }
     memcpy(dest, src, no_of_items * src_tensor->elem_size);
 }
 
@@ -1074,7 +1103,8 @@ void tensor_write_fp(const Tensor *tensor, FILE *fptr){
             for(size_t i = 0; i < tensor->shape[1]; i++){
                 for(size_t j = 0; j < tensor->shape[2]; j++){
                     double elem = tensor_get_elem(tensor, (size_t[]){b, i, j});
-                    fprintf(fptr, ",%5.2f", elem);
+                    if(tensor->dtype == DTYPE_DOUBLE) fprintf(fptr, ",%.17g", elem);
+                    else if(tensor->dtype == DTYPE_INT) fprintf(fptr, ",%d", (int)elem);
                 }
                 fprintf(fptr, "\n");
             }
@@ -1086,7 +1116,7 @@ void tensor_write_fp(const Tensor *tensor, FILE *fptr){
         for(size_t i = 0; i < tensor->shape[0]; i++){
             for(size_t j = 0; j < tensor->shape[1]; j++){
                 double elem = tensor_get_elem(tensor, (size_t[]){i, j});
-                fprintf(fptr, ",%5.2f", elem);
+                fprintf(fptr, ",%.17g", elem);
             }
             fprintf(fptr, "\n");
         }

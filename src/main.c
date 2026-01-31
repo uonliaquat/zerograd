@@ -57,8 +57,8 @@ int main(){
 
     size_t vocab_size = 6;   // Vocab Size
     size_t context_len = 6;    // Context Length
-    size_t emb_dim = 6;        // Embedding Dimensions
-    size_t n_heads = 1;        // No of Attention heads
+    size_t emb_dim = 32;        // Embedding Dimensions
+    size_t n_heads = 2;        // No of Attention heads
     size_t n_layers = 1;       // No of layers
     double drop_rate = 0.1;     // Dropout rate
     bool qkv_bias = false;      // Query-Key-Value bias

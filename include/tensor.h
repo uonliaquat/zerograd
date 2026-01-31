@@ -24,7 +24,7 @@ Tensor  tensor_init(void *data, const size_t *shape, const size_t ndim, const Da
 void    tensor_free(const Tensor *tensor);
 Tensor  tensor_copy(Tensor *input);
 Tensor  tensor_repeat(Tensor *input, size_t * repeate_dims);
-void    tensor_repeat_(Tensor *input, size_t * repeate_dims);
+void    tensor_repeat_(Tensor *input, size_t * repeate_dims, Tensor *output);
 void    tensor_unsqueeze_(Tensor *input, size_t dim);
 double  tensor_get_elem(const Tensor *tensor, size_t *coords);
 void    tensor_put_elem(Tensor *tensor, size_t *coords, double elem);  

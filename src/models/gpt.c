@@ -21,13 +21,15 @@ void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_d
 }
 
 static inline void model_gpt_workspace_init(){
+    gpt_model.workspace.indices             = (Tensor){0};
     gpt_model.workspace.input_embeddings    = (Tensor){0};
-    gpt_model.workspace.position_indicies   = (Tensor){0};
+    gpt_model.workspace.position_indices   = (Tensor){0};
 }
 
 static inline void model_gpt_workspace_free(){
+    tensor_free(&gpt_model.workspace.indices);
     tensor_free(&gpt_model.workspace.input_embeddings);
-    tensor_free(&gpt_model.workspace.position_indicies);
+    tensor_free(&gpt_model.workspace.position_indices);
 }
 
 void model_gpt_init(){
@@ -59,14 +61,18 @@ void model_gpt_forward(Tensor *input){
     embedding_layer_forward(&gpt_model.token_embed_layer, input);  
     embedding_layer_print(&gpt_model.token_embed_layer, "Token Embedding Layer");
 
-    tensor_arange_(0, gpt_config.context_len, 1, &gpt_model.workspace.position_indicies);
-    tensor_repeat_(&gpt_model.workspace.position_indicies, (size_t[]){input->shape[1], 1});
-    tensor_unsqueeze_(&gpt_model.workspace.position_indicies, 0);
+    tensor_arange_(0, gpt_config.context_len, 1, &gpt_model.workspace.indices);
+    tensor_print(&gpt_model.workspace.indices, "indices");
 
-    tensor_print(&gpt_model.workspace.position_indicies, "position_indicies");
+    tensor_repeat_(&gpt_model.workspace.indices, (size_t[]){input->shape[1], 1}, &gpt_model.workspace.position_indices);
+    tensor_print(&gpt_model.workspace.position_indices, "position_indices");
 
-    embedding_layer_forward(&gpt_model.pos_embed_layer, &gpt_model.workspace.position_indicies);
+    tensor_unsqueeze_(&gpt_model.workspace.position_indices, 0);
+    tensor_print(&gpt_model.workspace.position_indices, "position_indices");
+
+    embedding_layer_forward(&gpt_model.pos_embed_layer, &gpt_model.workspace.position_indices);
     embedding_layer_print(&gpt_model.pos_embed_layer,   "Pos Embedding Layer");
+
 
 
     tensor_add_(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output, &gpt_model.workspace.input_embeddings);
@@ -85,7 +91,7 @@ void model_gpt_forward(Tensor *input){
     // }
 
 
-    //dropout_layer_forward(&gpt_model.drop_embed_layer, &embeddings);
+    // dropout_layer_forward(&gpt_model.drop_embed_layer, &embeddings);
     // tensor_print(&embeddings[0], "embeddings (after dropout)");
 
 
@@ -94,15 +100,8 @@ void model_gpt_forward(Tensor *input){
     // Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &embeddings[gpt_config.n_layers]);
     // tensor_print(&output, "model_gpt_forward output");
 
-    // // Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
-    // // tensor_print(&output_norm, "output_norm");
-
-    // tensor_free(&token_embeddings);
-    // tensor_free(&indices);
-    // tensor_free(&pos_embeddings);
-    // tensor_free(&input_embeddings);
-    // tensor_free(&embeddings[gpt_config.n_layers]);
-    //tensor_write(&gpt_model.workspace.input_embeddings, "../models/gpt_model.input_embeddings.csv");
+    // Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
+    // tensor_print(&output_norm, "output_norm");
 }
 
 void model_gpt_write(const char *base_path){
@@ -113,11 +112,12 @@ void model_gpt_write(const char *base_path){
     create_filename(base_path, "gpt_model.pos_embed_layer.csv", filename);
     embedding_layer_write(&gpt_model.pos_embed_layer,    filename);
 
-    create_filename(base_path, "gpt_model.workspace.position_indicies.csv", filename);
-    tensor_write(&gpt_model.workspace.position_indicies, filename);
+    create_filename(base_path, "gpt_model.workspace.position_indices.csv", filename);
+    tensor_write(&gpt_model.workspace.position_indices, filename);
 
     create_filename(base_path, "gpt_model.workspace.input_embeddings.csv", filename);
     tensor_write(&gpt_model.workspace.input_embeddings,  filename);
+
 
     transformer_block_write(&gpt_model.transformer_block, base_path);
 }
