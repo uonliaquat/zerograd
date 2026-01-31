@@ -82,7 +82,7 @@ int main(){
     tensor_write(&input_tokens, "./models/input_tokens.csv");
     model_gpt_forward(&input_tokens);
     model_gpt_write("/Users/uonliaquat/workspace/zerograd/models/");
-    //model_gpt_free();
+    model_gpt_free();
 
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);

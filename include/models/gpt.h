@@ -42,7 +42,7 @@ typedef struct GPTModel{
     // LinearLayer out_head_layer;
 
     GP2Wrokspace workspace;
-    Tensor output;
+    //Tensor output;
 } GPTModel;
 
 

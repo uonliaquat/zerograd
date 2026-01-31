@@ -13,8 +13,9 @@ typedef struct TransformerBlock{
     bool decoder;
 } TransformerBlock;
 
-TransformerBlock transformer_block_init(size_t n_heads, size_t n_layers, size_t drop_rate, bool qkv_bias, bool decoder);
+TransformerBlock transformer_block_init(size_t context_len, size_t embed_dim, size_t n_heads, size_t n_layers, size_t drop_rate, bool qkv_bias, bool decoder);
 void transformer_block_free(TransformerBlock *transformer_block);
 void transformer_block_forward(TransformerBlock *transformer_block, Tensor *input);
+void transformer_block_print(TransformerBlock *transformer_block, const char *heading);
 void transformer_block_write(TransformerBlock *transformer_block, const char *base_path);
 #endif

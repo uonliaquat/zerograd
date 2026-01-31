@@ -30,7 +30,8 @@ void linear_layer_forward(LinearLayer *linear_layer, const Tensor *x){
 
 void linear_layer_print(const LinearLayer *layer, const char *heading){
     printf("\033[33m============================== LINEAR LAYER %s ==============================\033[0m", heading);
-    tensor_print(&layer->weights, "Weights");
+    tensor_print(&layer->weights,   "Weights");
+    tensor_print(&layer->output,    "Output");
 }
 
 void linear_layer_write_fp(const LinearLayer *layer, FILE *fptr){

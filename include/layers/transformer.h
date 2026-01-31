@@ -6,8 +6,8 @@
 
 
 typedef struct FeedForwardNetwork{
-    LinearLayer linear_layer_input;
-    LinearLayer linear_layer_output;
+    LinearLayer layer1;
+    LinearLayer layer2;
 } FeedForwardNetwork;
 
 typedef struct TransformerLayer{
@@ -19,6 +19,7 @@ typedef struct TransformerLayer{
 TransformerLayer transformer_layer_init(size_t context_len, size_t emebd_dim, size_t n_heads, bool bias, bool requires_grad);
 void transformer_layer_free(TransformerLayer *transformer_layer);
 void transformer_layer_forward(TransformerLayer *transformer_write_fp, Tensor *x, bool masked);
+void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading);
 void transformer_layer_write(TransformerLayer *transformer_layer, const char *filename);
 
 #endif

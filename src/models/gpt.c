@@ -35,7 +35,7 @@ void model_gpt_init(){
 
     gpt_model.token_embed_layer = embedding_layer_init(gpt_config.vocab_size,   gpt_config.embed_dim, DTYPE_DOUBLE);
     gpt_model.pos_embed_layer   = embedding_layer_init(gpt_config.context_len,  gpt_config.embed_dim, DTYPE_DOUBLE);
-    gpt_model.transformer_block = transformer_block_init(gpt_config.n_heads, gpt_config.n_layers, gpt_config.drop_rate, gpt_config.qkv_bias, true);
+    gpt_model.transformer_block = transformer_block_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, gpt_config.n_layers, gpt_config.drop_rate, gpt_config.qkv_bias, true);
     // gpt_model.drop_embed_layer  = dropout_layer_init(gpt_config.drop_rate, false);
     // gpt_model.transformer_layers = calloc(gpt_config.n_layers, sizeof(TransformerLayer));
     // for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
@@ -50,7 +50,7 @@ void model_gpt_free(){
     embedding_layer_free(&gpt_model.token_embed_layer);
     embedding_layer_free(&gpt_model.pos_embed_layer);
     transformer_block_free(&gpt_model.transformer_block);
-    tensor_free(&gpt_model.output);
+    // tensor_free(&gpt_model.output);
 }
 
 
@@ -72,9 +72,8 @@ void model_gpt_forward(Tensor *input){
     tensor_add_(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output, &gpt_model.workspace.input_embeddings);
     tensor_print(&gpt_model.workspace.input_embeddings, "input_embeddings");
 
-    // for(size_t layer_no = 0; layer_no <= gpt_config.n_layers; layer_no++){
-    //     transformer_layer_forward(&gpt_model.transformer_layers[layer_no], &gpt_model.workspace.input_embeddings, false);
-    // }
+    transformer_block_forward(&gpt_model.transformer_block,  &gpt_model.workspace.input_embeddings);
+    //transformer_block_print(&gpt_model.transformer_block, "Transformer Block");
     // //Tensor embeddings = tensor_copy(&input_embeddings);
     // Tensor *embeddings = calloc(gpt_config.n_layers+1, sizeof(Tensor));
     // embeddings[0] =  tensor_copy(&input_embeddings);

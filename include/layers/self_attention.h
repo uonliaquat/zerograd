@@ -6,11 +6,20 @@
 #include "./linear.h"
 
 
-// typedef struct SelfAttentionWorkspace{
-//     // Tensor queries;
-//     // Tensor keys;
-//     // Tensor values;
-// } SelfAttentionWorkspace;
+typedef struct SelfAttentionWorkspace{
+    Tensor attention_scores;
+    Tensor attention_weights;
+    Tensor keys_transposed;
+    Tensor attention_scores_scaled;
+    Tensor concat_heads;
+    Tensor *queries_chnuks;
+    Tensor *keys_chnuks;
+    Tensor *values_chnuks;
+    Tensor *context_vecs;
+    // Tensor queries;
+    // Tensor keys;
+    // Tensor values;
+} SelfAttentionWorkspace;
 
 typedef struct SelfAttentionLayer{
     LinearLayer W_query;
@@ -22,8 +31,7 @@ typedef struct SelfAttentionLayer{
     size_t n_heads;
     size_t head_dim;
 
-    // SelfAttentionWorkspace self_attention_workspace;
-    Tensor output;
+    SelfAttentionWorkspace workspace;
 } SelfAttentionLayer;
 
 SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t embed_dim, const size_t num_heads, const bool bias, const bool requires_grad);

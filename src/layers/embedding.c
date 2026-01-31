@@ -1,5 +1,6 @@
-#include "../../include/utils.h"
+
 #include "../../include/layers/embedding.h"
+#include "../../include/utils.h"
 
 #include <stdlib.h>
 
