@@ -20,6 +20,6 @@ TransformerLayer transformer_layer_init(size_t context_len, size_t emebd_dim, si
 void transformer_layer_free(TransformerLayer *transformer_layer);
 void transformer_layer_forward(TransformerLayer *transformer_write_fp, Tensor *x, bool masked);
 void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading);
-void transformer_layer_write(TransformerLayer *transformer_layer, const char *filename);
+//void transformer_layer_write(TransformerLayer *transformer_layer, const char *filename);
 
 #endif

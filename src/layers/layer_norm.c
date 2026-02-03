@@ -8,10 +8,10 @@ LayerNorm layer_norm_init(size_t embed_dim){
     layer_norm.eps = 1e-5;
     double *ones = (double*)calloc(embed_dim, sizeof(double));
     for(size_t i = 0; i < embed_dim; i++) ones[i] = 1.0;
-    layer_norm.scale = tensor_init(ones, (size_t[]){embed_dim, 1}, 2, DTYPE_DOUBLE, false, false);
+    layer_norm.scale = tensor_init(ones, (uint32_t[]){embed_dim, 1}, 2, DTYPE_FP32, NULL);
     free(ones);
     
-    layer_norm.shift = tensor_init(NULL, (size_t[]){embed_dim, 1}, 2, DTYPE_DOUBLE, false, false);
+    layer_norm.shift = tensor_init(NULL, (uint32_t[]){embed_dim, 1}, 2, DTYPE_FP32, NULL);
 
     return layer_norm;
 }

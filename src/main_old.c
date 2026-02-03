@@ -14,11 +14,11 @@ int main(){
     // // Seed the random number generator
     // srand((unsigned int)time(NULL));
 
-    // Tensor tensor_a = tensor_init((double[]){1,2,3,4,5,6}, (size_t[]){2,3}, 2, sizeof(double), false, false);
+    // Tensor tensor_a = tensor_init((double[]){1,2,3,4,5,6}, (uint32_t[]){2,3}, 2, sizeof(double), false, false);
     // printf("tensor_a");
     // tensor_print(&tensor_a);
     
-    // Tensor tensor_b = tensor_init((double[]){7,8,9,10,11,12}, (size_t[]){3,2}, 2, sizeof(double), false, false);
+    // Tensor tensor_b = tensor_init((double[]){7,8,9,10,11,12}, (uint32_t[]){3,2}, 2, sizeof(double), false, false);
     // printf("tensor_b");
     // tensor_print(&tensor_b);
 

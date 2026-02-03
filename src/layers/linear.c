@@ -3,10 +3,10 @@
 #include <stdlib.h>
 LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const bool bias, const bool requires_grad, const DataType dtype){
     LinearLayer linear_layer;
-    linear_layer.weights  = tensor_init(NULL, (size_t[]){inputs, outputs}, 2, dtype, requires_grad, true);
+    linear_layer.weights  = tensor_init(NULL, (uint32_t[]){inputs, outputs}, 2, dtype, NULL);
     linear_layer.has_bias = bias;
     if(bias == true)
-        linear_layer.bias = tensor_init(NULL, (size_t[]){1, outputs}, 2, dtype, requires_grad, true);
+        linear_layer.bias = tensor_init(NULL, (uint32_t[]){1, outputs}, 2, dtype, NULL);
     linear_layer.dtype = dtype;
     linear_layer.output = (Tensor){0};
     return linear_layer;
@@ -34,22 +34,22 @@ void linear_layer_print(const LinearLayer *layer, const char *heading){
     tensor_print(&layer->output,    "Output");
 }
 
-void linear_layer_write_fp(const LinearLayer *layer, FILE *fptr){
-    fprintf(fptr, "Weights\n");
-    tensor_write_fp(&layer->weights, fptr);
-    fprintf(fptr, "Output\n");
-    tensor_write_fp(&layer->output, fptr);
-}
+// void linear_layer_write_fp(const LinearLayer *layer, FILE *fptr){
+//     fprintf(fptr, "Weights\n");
+//     tensor_write_fp(&layer->weights, fptr);
+//     fprintf(fptr, "Output\n");
+//     tensor_write_fp(&layer->output, fptr);
+// }
 
-void linear_layer_write(const LinearLayer *layer, const char *filename){
-    FILE *fptr = fopen(filename, "w");
-    fclose(fptr);
-    fptr = fopen(filename, "a");
-    if(fptr == NULL){
-        printf("Error Opening file %s\n", filename);
-    }
-    linear_layer_write_fp(layer, fptr);
-    fclose(fptr);
-}
+// void linear_layer_write(const LinearLayer *layer, const char *filename){
+//     FILE *fptr = fopen(filename, "w");
+//     fclose(fptr);
+//     fptr = fopen(filename, "a");
+//     if(fptr == NULL){
+//         printf("Error Opening file %s\n", filename);
+//     }
+//     linear_layer_write_fp(layer, fptr);
+//     fclose(fptr);
+// }
 
 //6x4 . 4x2 -> 6x2

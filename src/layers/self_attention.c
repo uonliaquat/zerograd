@@ -13,9 +13,9 @@
 //     SelfAttentionLayer self_attention_layer;
 //     size_t head_dim = embed_dim / num_heads;
 
-//     self_attention_layer.W_query = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
-//     self_attention_layer.W_key = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
-//     self_attention_layer.W_value = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
+//     self_attention_layer.W_query = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
+//     self_attention_layer.W_key = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
+//     self_attention_layer.W_value = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
 //     linear_layer_print(&self_attention_layer.W_query, "W_query");
 //     linear_layer_print(&self_attention_layer.W_key, "W_key");
 //     linear_layer_print(&self_attention_layer.W_value, "W_value");

@@ -15,6 +15,6 @@ typedef struct Dataset{
 
 Dataset dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, size_t ctx_win, size_t stride);
 void dataset_print_gpt2(Dataset *dataset_gpt2);
-void dataset_write_gpt2(Dataset *dataset_gpt, const char *filename);
+// void dataset_write_gpt2(Dataset *dataset_gpt, const char *filename);
 
 #endif

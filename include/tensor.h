@@ -3,31 +3,38 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
+
+#define TENSOR_MAX_SHAPE_DIM 8
+#define TENSOR_MAX_LEN_NAME 512
 
 typedef enum DataType {
-    DTYPE_INT = sizeof(int),
-    DTYPE_DOUBLE = sizeof(double)
+    DTYPE_FP64,
+    DTYPE_FP32,
+    DTYPE_INT32,
 } DataType;
 
 typedef struct Tensor {
+    char name[TENSOR_MAX_LEN_NAME];
     void * data;
-    size_t size;
-    size_t ndim;
-    size_t shape[3];
-    size_t stride[3];
-    size_t elem_size;
+    uint32_t size;
+    uint8_t ndim;
+    uint32_t shape[TENSOR_MAX_SHAPE_DIM];
+    uint32_t stride[TENSOR_MAX_SHAPE_DIM];
+    uint8_t elem_size;
     enum DataType dtype;
-    bool requires_grad;
 } Tensor;
 
-Tensor  tensor_init(void *data, const size_t *shape, const size_t ndim, const DataType dtype, const bool requires_grad, const bool random_init);
+Tensor  tensor_init(void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
+Tensor  tensor_rand_init(const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
+Tensor  tensor_file_init(FILE *fptr, uint32_t *offset, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 void    tensor_free(const Tensor *tensor);
 Tensor  tensor_copy(Tensor *input);
 Tensor  tensor_repeat(Tensor *input, size_t * repeate_dims);
 void    tensor_repeat_(Tensor *input, size_t * repeate_dims, Tensor *output);
 void    tensor_unsqueeze_(Tensor *input, size_t dim);
-double  tensor_get_elem(const Tensor *tensor, size_t *coords);
-void    tensor_put_elem(Tensor *tensor, size_t *coords, double elem);  
+float   tensor_get_elem(const Tensor *tensor, uint32_t *coords);
+void    tensor_put_elem(Tensor *tensor, uint32_t *coords, double elem);  
 Tensor  tensor_transpose(const Tensor *input);
 void    tensor_transpose_(const Tensor *input, Tensor *output);
 Tensor  tensor_softmax(Tensor *input, size_t dim);
@@ -57,8 +64,22 @@ void    tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id
 Tensor  tensor_mean_var(Tensor *x);
 Tensor  tensor_norm(Tensor *x, Tensor *mean_var_tensor, double eps);
 void    tensor_print(const Tensor *tensor, const char *heading);
-void    tensor_write_fp(const Tensor *tensor, FILE *fptr);
-void    tensor_write(const Tensor *tensor, char *filename);
-size_t  tensor_dtype_size(const DataType dtype);
+//void    tensor_write_fp(const Tensor *tensor, FILE *fptr);
+//void    tensor_write(const Tensor *tensor, char *filename);
+static inline uint8_t tensor_dtype_size(const DataType dtype){
+    switch (dtype){
+        case DTYPE_FP64:    return 64;
+        case DTYPE_FP32:    return 32;
+        case DTYPE_INT32:   return 32;
+    }
+}
 
+static inline char* tensor_dtype_name(const DataType dtype){
+    switch (dtype){
+        case DTYPE_FP64:    return "F64";
+        case DTYPE_FP32:    return "F32";
+        case DTYPE_INT32:   return "I32";
+        default:            return "UNKNOWN";
+    }
+}
 #endif

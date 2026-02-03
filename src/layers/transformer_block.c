@@ -42,10 +42,10 @@ void transformer_block_print(TransformerBlock *transformer_block, const char *he
 }
 
 
-void transformer_block_write(TransformerBlock *transformer_block, const char *base_path){
-    for(size_t layer_no = 0; layer_no < transformer_block->n_layers; layer_no++){
-        char filename[512] = "/0";
-        snprintf(filename, 512, "%stransformer_layer_%zu", base_path, layer_no);
-        transformer_layer_write(&transformer_block->transformer_layers[layer_no], filename);
-    }
-}
+// void transformer_block_write(TransformerBlock *transformer_block, const char *base_path){
+//     for(size_t layer_no = 0; layer_no < transformer_block->n_layers; layer_no++){
+//         char filename[512] = "/0";
+//         snprintf(filename, 512, "%stransformer_layer_%zu", base_path, layer_no);
+//         transformer_layer_write(&transformer_block->transformer_layers[layer_no], filename);
+//     }
+// }

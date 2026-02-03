@@ -5,8 +5,8 @@
 
 static inline FeedForwardNetwork feed_forward_network_init(size_t input_dim, size_t hidden_dim, size_t out_dim, bool bias, bool requires_grad){
     FeedForwardNetwork feed_forward_network;
-    feed_forward_network.layer1 = linear_layer_init(input_dim, hidden_dim, bias, requires_grad, DTYPE_DOUBLE);
-    feed_forward_network.layer2 = linear_layer_init(hidden_dim, out_dim, bias, requires_grad, DTYPE_DOUBLE);
+    feed_forward_network.layer1 = linear_layer_init(input_dim, hidden_dim, bias, requires_grad, DTYPE_FP64);
+    feed_forward_network.layer2 = linear_layer_init(hidden_dim, out_dim, bias, requires_grad, DTYPE_FP64);
     return feed_forward_network;
 }
 
@@ -50,14 +50,14 @@ void transformer_layer_print(TransformerLayer *transformer_layer, const char *he
     print_centered_heading(heading);
 }
 
-void transformer_layer_write(TransformerLayer *transformer_write_fp, const char *base_path){
-    char filename[512] = "\0";
-    snprintf(filename, 512, "%s__%s", base_path, "self_attention_layer");
-    self_attention_layer_write(&transformer_write_fp->self_attention_layer, filename);
+// void transformer_layer_write(TransformerLayer *transformer_write_fp, const char *base_path){
+//     char filename[512] = "\0";
+//     snprintf(filename, 512, "%s__%s", base_path, "self_attention_layer");
+//     self_attention_layer_write(&transformer_write_fp->self_attention_layer, filename);
 
-    snprintf(filename, 512, "%s%s", base_path, "__feed_forward_network_layer1.csv");
-    linear_layer_write(&transformer_write_fp->feed_forward_network.layer1, filename);
+//     snprintf(filename, 512, "%s%s", base_path, "__feed_forward_network_layer1.csv");
+//     // linear_layer_write(&transformer_write_fp->feed_forward_network.layer1, filename);
 
-    snprintf(filename, 512, "%s%s", base_path, "__feed_forward_network_layer2.csv");
-    linear_layer_write(&transformer_write_fp->feed_forward_network.layer2, filename);
-}
+//     snprintf(filename, 512, "%s%s", base_path, "__feed_forward_network_layer2.csv");
+//     linear_layer_write(&transformer_write_fp->feed_forward_network.layer2, filename);
+// }

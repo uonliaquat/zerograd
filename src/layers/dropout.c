@@ -22,8 +22,8 @@ void dropout_layer_forward(const DropoutLayer *dropout_layer, Tensor *tensor){
         for(size_t i = 0; i < tensor->shape[0]; i++){
             for(size_t j = 0; j < tensor->shape[1]; j++){
                 for(size_t k = 0; k < tensor->shape[2]; k++){
-                    double x = tensor_get_elem(tensor, (size_t[]){i, j, k});
-                    tensor_put_elem(tensor, (size_t[]){i, j, k}, dropout(x, dropout_layer->dropout));
+                    double x = tensor_get_elem(tensor, (uint32_t[]){i, j, k});
+                    tensor_put_elem(tensor, (uint32_t[]){i, j, k}, dropout(x, dropout_layer->dropout));
                 }   
             }
         }

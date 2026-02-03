@@ -13,6 +13,49 @@
 
 
 
+typedef struct GPTParameters{
+    struct{
+        Tensor weight;
+    } wpe;
+    struct {
+        Tensor weight;
+    } wte;
+    struct{
+        struct {
+            Tensor bias;
+            struct {
+                Tensor bias;
+                Tensor weight;
+            } c_attn;
+            struct {
+                Tensor bias;
+                Tensor weight;
+            } c_proj;
+        } attn;
+
+        struct {
+            Tensor bias;
+            Tensor weight;
+        } ln_[2];
+
+        struct {
+            struct {
+                Tensor bias;
+                Tensor weight;
+            } c_fc;
+            struct {
+                Tensor bias;
+                Tensor weight;
+            } c_proj;
+        } mlp;
+    } h[12];
+    struct {
+        Tensor bias;
+        Tensor weight;
+    } ln_f;
+} GPTParameters;
+
+
 typedef struct GPTConfig {
     size_t vocab_size;      // Vocab Size
     size_t context_len;     // Context Length
@@ -22,7 +65,6 @@ typedef struct GPTConfig {
     double drop_rate;       // Dropout rate
     bool qkv_bias;          // Query-Key-Value bias
 } GPTConfig;
-
 
 
 typedef struct GP2Wrokspace{
@@ -50,9 +92,10 @@ typedef struct GPTModel{
 
 void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_len, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias);
 void model_gpt_init();
+void model_gpt_params_init(const char * filename);
 void model_gpt_free();
 void model_gpt_forward(Tensor *input);
-void model_gpt_write(const char *path);
+//void model_gpt_write(const char *path);
 void model_gpt_config_print();
 
 #endif

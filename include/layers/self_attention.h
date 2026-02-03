@@ -39,8 +39,8 @@ void    self_attention_layer_free(SelfAttentionLayer *self_attention_layer);
 Tensor  self_attention_layer_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x);
 void    self_attention_layer_mult_head_forward(SelfAttentionLayer *self_attention_layer, const Tensor *x, bool masked);
 void    self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, const char *heading);
-void    self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, const char *filename);
-void    self_attention_layer_write_fp(const SelfAttentionLayer *self_attention_layer, FILE *fptr);
+// void    self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, const char *filename);
+// void    self_attention_layer_write_fp(const SelfAttentionLayer *self_attention_layer, FILE *fptr);
 
 // Tensor self_attention_simplified(Tensor *input_embeddings); 
 

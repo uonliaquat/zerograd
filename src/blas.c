@@ -28,8 +28,7 @@ Tensor dot_product_tensor(const Tensor *tensor_a, const Tensor *tensor_b)
 {
     assert(tensor_a->shape[1] == tensor_b->shape[0]);
 
-
-    Tensor tensor_c = tensor_init(NULL, (size_t[]){tensor_a->shape[0], tensor_b->shape[1]}, 2, tensor_a->elem_size, false, false);
+    Tensor tensor_c = tensor_init(NULL, (uint32_t[]){tensor_a->shape[0], tensor_b->shape[1]} 2, tensor_a->dtype, NULL)
 
     int m = (int)tensor_a->shape[0]; // No of Rows of A and C
     int n = (int)tensor_b->shape[1]; // No of Cols of B and C

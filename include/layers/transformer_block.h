@@ -17,5 +17,5 @@ TransformerBlock transformer_block_init(size_t context_len, size_t embed_dim, si
 void transformer_block_free(TransformerBlock *transformer_block);
 void transformer_block_forward(TransformerBlock *transformer_block, Tensor *input);
 void transformer_block_print(TransformerBlock *transformer_block, const char *heading);
-void transformer_block_write(TransformerBlock *transformer_block, const char *base_path);
+//void transformer_block_write(TransformerBlock *transformer_block, const char *base_path);
 #endif

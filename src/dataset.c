@@ -21,8 +21,8 @@ Dataset dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, si
         int *y = calloc(ctx_win, sizeof(int));
         memcpy(x, token_ids + i, sizeof(int)*ctx_win);
         memcpy(y, token_ids + i + 1, sizeof(int)*ctx_win);
-        Tensor tensor_x = tensor_init(x, (size_t[]){ctx_win}, 1, DTYPE_INT, false, false);
-        Tensor tensor_y = tensor_init(y, (size_t[]){ctx_win}, 1, DTYPE_INT, false, false);
+        Tensor tensor_x = tensor_init(x, (uint32_t[]){ctx_win}, DTYPE_INT32, false, false);
+        Tensor tensor_y = tensor_init(y, (uint32_t[]){ctx_win}, DTYPE_INT32, false, false);
         dataset_gpt2.x[dataset_gpt2.len] = tensor_x;
         dataset_gpt2.y[dataset_gpt2.len] = tensor_y;
         dataset_gpt2.len++;
@@ -42,19 +42,19 @@ void dataset_print_gpt(Dataset *dataset_gpt2){
     }
 }
 
-void dataset_write_gpt2(Dataset *dataset_gpt2, const char *filename){
-    FILE *fptr = fopen(filename, "w");
-    if(fptr == NULL){
-        printf("Error opening file %s\n", filename);
-        exit(1);
-    }
-    fprintf(fptr, "Inputs:\n");
-    for(size_t i = 0; i < dataset_gpt2->len; i++){
-        tensor_write_fp(&dataset_gpt2->x[i], fptr);
-    }
-    fprintf(fptr, "\n\nTargets:\n");
-    for(size_t i = 0; i < dataset_gpt2->len; i++){
-        tensor_write_fp(&dataset_gpt2->y[i], fptr);
-    }
-    fclose(fptr);
-}
+// void dataset_write_gpt2(Dataset *dataset_gpt2, const char *filename){
+//     FILE *fptr = fopen(filename, "w");
+//     if(fptr == NULL){
+//         printf("Error opening file %s\n", filename);
+//         exit(1);
+//     }
+//     fprintf(fptr, "Inputs:\n");
+//     for(size_t i = 0; i < dataset_gpt2->len; i++){
+//         tensor_write_fp(&dataset_gpt2->x[i], fptr);
+//     }
+//     fprintf(fptr, "\n\nTargets:\n");
+//     for(size_t i = 0; i < dataset_gpt2->len; i++){
+//         tensor_write_fp(&dataset_gpt2->y[i], fptr);
+//     }
+//     fclose(fptr);
+// }

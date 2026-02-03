@@ -6,7 +6,7 @@
 
 EmbeddingLayer embedding_layer_init(const size_t num_embed, const size_t embed_dim, const DataType dtype){
     EmbeddingLayer embedding_layer;
-    embedding_layer.weights     = tensor_init(NULL, (size_t[]){num_embed, embed_dim}, 2, dtype, false, true);
+    embedding_layer.weights     = tensor_init(NULL, (uint32_t[]){num_embed, embed_dim}, 2, dtype, NULL);
     embedding_layer.dtype       = dtype;
     embedding_layer.num_embed   = num_embed;
     embedding_layer.embed_dim   = embed_dim;
@@ -26,17 +26,16 @@ void embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *inpu
         printf("Creating output tensor\n");
         embedding_layer->output = tensor_init(
             NULL, 
-            (size_t[]){input->shape[1], input->shape[2], embedding_layer->embed_dim},
+            (uint32_t[]){input->shape[1], input->shape[2], embedding_layer->embed_dim},
             3,
             embedding_layer->dtype,
-            embedding_layer->weights.requires_grad,
             false
         );
     }
     
     for(size_t i = 0; i < input->shape[1]; i++){
         for(size_t j = 0; j < input->shape[2]; j++){
-            int embed_index = tensor_get_elem(input, (size_t[]){0, i, j});
+            int embed_index = tensor_get_elem(input, (uint32_t[]){0, i, j});
             tensor_copy_row_data(&embedding_layer->output, i, j, &embedding_layer->weights, embed_index, embedding_layer->embed_dim);
         }
     }
@@ -51,24 +50,24 @@ void embedding_layer_print(const EmbeddingLayer *embedding_layer, const char *he
 }
 
 
-void embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *filename){
-    FILE *fptr = fopen(filename, "w");
-    if(fptr == NULL){
-        printf("Error opening file %s\n", filename);
-        exit(1);
-    }
+// void embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *filename){
+//     FILE *fptr = fopen(filename, "w");
+//     if(fptr == NULL){
+//         printf("Error opening file %s\n", filename);
+//         exit(1);
+//     }
     
-    fprintf(fptr, "Weights\n");
-    tensor_write_fp(&embedding_layer->weights, fptr);
-    fprintf(fptr, "Output\n");
-    tensor_write_fp(&embedding_layer->output, fptr);
-    fclose(fptr);
-}
+//     fprintf(fptr, "Weights\n");
+//     tensor_write_fp(&embedding_layer->weights, fptr);
+//     fprintf(fptr, "Output\n");
+//     tensor_write_fp(&embedding_layer->output, fptr);
+//     fclose(fptr);
+// }
 
-void embedding_layer_write_fp(const EmbeddingLayer *embedding_layer, FILE *fptr){
-    fprintf(fptr, "Weights\n");
-    tensor_write_fp(&embedding_layer->weights, fptr);
-    fprintf(fptr, "Output\n");
-    tensor_write_fp(&embedding_layer->output, fptr);
-}
+// void embedding_layer_write_fp(const EmbeddingLayer *embedding_layer, FILE *fptr){
+//     fprintf(fptr, "Weights\n");
+//     tensor_write_fp(&embedding_layer->weights, fptr);
+//     fprintf(fptr, "Output\n");
+//     tensor_write_fp(&embedding_layer->output, fptr);
+// }
 

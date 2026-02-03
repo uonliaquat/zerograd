@@ -42,10 +42,10 @@ SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t 
     self_attention_layer_workspace_init(&self_attention_layer);
 
     size_t head_dim = embed_dim / n_heads;
-    self_attention_layer.W_query    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
-    self_attention_layer.W_key      = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
-    self_attention_layer.W_value    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
-    self_attention_layer.heads_proj = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_DOUBLE);
+    self_attention_layer.W_query    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
+    self_attention_layer.W_key      = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
+    self_attention_layer.W_value    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
+    self_attention_layer.heads_proj = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
     self_attention_layer.seq_len = seq_len;
     self_attention_layer.embed_dim = embed_dim;
     self_attention_layer.n_heads = n_heads;
@@ -155,69 +155,69 @@ void self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, 
 }
 
 
-void self_attention_layer_write_fp(const SelfAttentionLayer *self_attention_layer, FILE *fptr){
-    fprintf(fptr, "self_attention_multi_head\n");
-    fprintf(fptr, "W_query\n");
-    linear_layer_write_fp(&self_attention_layer->W_query, fptr);
-    fprintf(fptr, "W_key\n");
-    linear_layer_write_fp(&self_attention_layer->W_key, fptr);
-    fprintf(fptr, "W_value\n");
-    linear_layer_write_fp(&self_attention_layer->W_value, fptr);
-    fprintf(fptr, "heads_proj\n");
-    linear_layer_write_fp(&self_attention_layer->heads_proj, fptr);
-}
+// void self_attention_layer_write_fp(const SelfAttentionLayer *self_attention_layer, FILE *fptr){
+//     fprintf(fptr, "self_attention_multi_head\n");
+//     fprintf(fptr, "W_query\n");
+//     linear_layer_write_fp(&self_attention_layer->W_query, fptr);
+//     fprintf(fptr, "W_key\n");
+//     linear_layer_write_fp(&self_attention_layer->W_key, fptr);
+//     fprintf(fptr, "W_value\n");
+//     linear_layer_write_fp(&self_attention_layer->W_value, fptr);
+//     fprintf(fptr, "heads_proj\n");
+//     linear_layer_write_fp(&self_attention_layer->heads_proj, fptr);
+// }
 
 
-void self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, const char *base_path){
-    char filename[512] = "\0";
-    snprintf(filename, 512, "%s_w_query.csv", base_path);
-    linear_layer_write(&self_attention_layer->W_query, filename);
+// void self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, const char *base_path){
+//     char filename[512] = "\0";
+//     snprintf(filename, 512, "%s_w_query.csv", base_path);
+//     linear_layer_write(&self_attention_layer->W_query, filename);
 
-    snprintf(filename, 512, "%s_w_key.csv", base_path);
-    linear_layer_write(&self_attention_layer->W_key, filename);
+//     snprintf(filename, 512, "%s_w_key.csv", base_path);
+//     linear_layer_write(&self_attention_layer->W_key, filename);
 
-    snprintf(filename, 512, "%s_w_value.csv", base_path);
-    linear_layer_write(&self_attention_layer->W_value, filename);
+//     snprintf(filename, 512, "%s_w_value.csv", base_path);
+//     linear_layer_write(&self_attention_layer->W_value, filename);
 
-    for(size_t head = 0; head < self_attention_layer->n_heads; head++){
+//     for(size_t head = 0; head < self_attention_layer->n_heads; head++){
 
-        snprintf(filename, 512, "%s_queries_chunks_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.queries_chnuks[head], filename);
+//         snprintf(filename, 512, "%s_queries_chunks_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.queries_chnuks[head], filename);
 
-        snprintf(filename, 512, "%s_keys_chunks_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.keys_chnuks[head], filename);
+//         snprintf(filename, 512, "%s_keys_chunks_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.keys_chnuks[head], filename);
         
-        snprintf(filename, 512, "%s_values_chunks_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.values_chnuks[head], filename);
+//         snprintf(filename, 512, "%s_values_chunks_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.values_chnuks[head], filename);
 
-        snprintf(filename, 512, "%s_keys_transposed_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.keys_transposed[head], filename);
+//         snprintf(filename, 512, "%s_keys_transposed_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.keys_transposed[head], filename);
 
-        snprintf(filename, 512, "%s_attention_scores_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.attention_scores[head], filename);
+//         snprintf(filename, 512, "%s_attention_scores_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.attention_scores[head], filename);
 
-        snprintf(filename, 512, "%s_attention_scores_scaled_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.attention_scores_scaled[head], filename);
+//         snprintf(filename, 512, "%s_attention_scores_scaled_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.attention_scores_scaled[head], filename);
 
-        snprintf(filename, 512, "%s_attention_weights_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.attention_weights[head], filename);
+//         snprintf(filename, 512, "%s_attention_weights_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.attention_weights[head], filename);
 
-        snprintf(filename, 512, "%s_context_vecs_%zu.csv", base_path, head);
-        tensor_write(&self_attention_layer->workspace.context_vecs[head], filename);
+//         snprintf(filename, 512, "%s_context_vecs_%zu.csv", base_path, head);
+//         tensor_write(&self_attention_layer->workspace.context_vecs[head], filename);
 
 
  
-    }
+//     }
 
 
-    snprintf(filename, 512, "%s_concat_heads.csv", base_path);
-    tensor_write(&self_attention_layer->workspace.concat_heads, filename);
+//     snprintf(filename, 512, "%s_concat_heads.csv", base_path);
+//     tensor_write(&self_attention_layer->workspace.concat_heads, filename);
 
 
 
-    snprintf(filename, 512, "%s_heads_proj.csv", base_path);
-    linear_layer_write(&self_attention_layer->heads_proj, filename);
-}
+//     snprintf(filename, 512, "%s_heads_proj.csv", base_path);
+//     linear_layer_write(&self_attention_layer->heads_proj, filename);
+// }
 
 
 // Tensor self_attention_simplified(Tensor *input_embeddings){
