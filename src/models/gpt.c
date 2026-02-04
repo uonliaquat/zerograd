@@ -26,9 +26,9 @@ void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_d
 }
 
 static inline void model_gpt_workspace_init(){
-    gpt_model.workspace.indices             = (Tensor){0};
-    gpt_model.workspace.input_embeddings    = (Tensor){0};
-    gpt_model.workspace.position_indices   = (Tensor){0};
+    tensor_reset(&gpt_model.workspace.indices);
+    tensor_reset(&gpt_model.workspace.input_embeddings);
+    tensor_reset(&gpt_model.workspace.position_indices);
 }
 
 static inline void model_gpt_workspace_free(){
@@ -37,28 +37,36 @@ static inline void model_gpt_workspace_free(){
     tensor_free(&gpt_model.workspace.position_indices);
 }
 
-void model_gpt_init(){
-    model_gpt_workspace_init();
 
-    gpt_model.token_embed_layer = embedding_layer_init(gpt_config.vocab_size,   gpt_config.embed_dim, DTYPE_FP64);
-    gpt_model.pos_embed_layer   = embedding_layer_init(gpt_config.context_len,  gpt_config.embed_dim, DTYPE_FP64);
-    gpt_model.transformer_block = transformer_block_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, gpt_config.n_layers, gpt_config.drop_rate, gpt_config.qkv_bias, true);
-    // gpt_model.drop_embed_layer  = dropout_layer_init(gpt_config.drop_rate, false);
-    // gpt_model.transformer_layers = calloc(gpt_config.n_layers, sizeof(TransformerLayer));
-    // for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
-    //     gpt_model.transformer_layers[layer_no] = transformer_layer_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, false, true);
-    // }
-    // gpt_model.layer_norm        = layer_norm_init(gpt_config.embed_dim);
-    // gpt_model.out_head_layer    = linear_layer_init(gpt_config.embed_dim, gpt_config.vocab_size, false, false, DTYPE_FP64);
+void  model_gpt_safetensors_init(const char *filename){
+    safetensors_load_model(filename, &gpt_parameters);
+    gpt_model.token_embed_layer = embedding_layer_init(&gpt_parameters.wte.weight);
+    gpt_model.pos_embed_layer   = embedding_layer_init(&gpt_parameters.wpe.weight);
+
+    safetensors_save_model("./my_model.safetensors", &gpt_parameters);
 }
 
-void model_gpt_params_init(const char * filename){
-    GPTParameters gpt_params;
-    safetensors_load_model(filename, &gpt_params);
 
-    char *new_filename = "./model_gpt.safetensors";
-    safetensors_save_model(new_filename, &gpt_params);
-}
+
+// void model_gpt_rand_init(){
+//     model_gpt_workspace_init();
+
+//     gpt_model.token_embed_layer = embedding_layer_init(gpt_config.vocab_size,   gpt_config.embed_dim, DTYPE_FP32);
+//     gpt_model.pos_embed_layer   = embedding_layer_init(gpt_config.context_len,  gpt_config.embed_dim, DTYPE_FP32);
+//     gpt_model.transformer_block = transformer_block_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, gpt_config.n_layers, gpt_config.drop_rate, gpt_config.qkv_bias, true);
+//     // gpt_model.drop_embed_layer  = dropout_layer_init(gpt_config.drop_rate, false);
+//     // gpt_model.transformer_layers = calloc(gpt_config.n_layers, sizeof(TransformerLayer));
+//     // for(size_t layer_no = 0; layer_no < gpt_config.n_layers; layer_no++){
+//     //     gpt_model.transformer_layers[layer_no] = transformer_layer_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, false, true);
+//     // }
+//     // gpt_model.layer_norm        = layer_norm_init(gpt_config.embed_dim);
+//     // gpt_model.out_head_layer    = linear_layer_init(gpt_config.embed_dim, gpt_config.vocab_size, false, false, DTYPE_FP64);
+// }
+
+
+// void model_gpt_params_init(const char * filename){
+//     safetensors_load_model(filename, &gpt_parameters);
+// }
 
 void model_gpt_free(){
     model_gpt_workspace_free();
@@ -71,25 +79,26 @@ void model_gpt_free(){
 
 void model_gpt_forward(Tensor *input){
     assert(input->ndim == 3);
-    // embedding_layer_forward(&gpt_model.token_embed_layer, input);  
+    embedding_layer_forward(&gpt_model.token_embed_layer, input);  
     // embedding_layer_print(&gpt_model.token_embed_layer, "Token Embedding Layer");
 
-    // tensor_arange_(0, gpt_config.context_len, 1, &gpt_model.workspace.indices);
-    // tensor_print(&gpt_model.workspace.indices, "indices");
 
-    // tensor_repeat_(&gpt_model.workspace.indices, (uint32_t[]){input->shape[1], 1}, &gpt_model.workspace.position_indices);
-    // tensor_print(&gpt_model.workspace.position_indices, "position_indices");
+    tensor_arange_(0, gpt_config.context_len, 1, &gpt_model.workspace.indices);
+    tensor_print(&gpt_model.workspace.indices, "position_indices (arange)");
 
-    // tensor_unsqueeze_(&gpt_model.workspace.position_indices, 0);
-    // tensor_print(&gpt_model.workspace.position_indices, "position_indices");
+    tensor_repeat_(&gpt_model.workspace.indices, (uint8_t[]){gpt_model.workspace.indices.shape[1], 1}, &gpt_model.workspace.position_indices);
+    tensor_print(&gpt_model.workspace.position_indices, "position_indices (repeat)");
 
-    // embedding_layer_forward(&gpt_model.pos_embed_layer, &gpt_model.workspace.position_indices);
-    // embedding_layer_print(&gpt_model.pos_embed_layer,   "Pos Embedding Layer");
+    tensor_unsqueeze_(&gpt_model.workspace.position_indices, 0);
+    tensor_print(&gpt_model.workspace.position_indices, "position_indices (unsqueeze)");
+
+    embedding_layer_forward(&gpt_model.pos_embed_layer, &gpt_model.workspace.position_indices);
+    //embedding_layer_print(&gpt_model.pos_embed_layer,   "Pos Embedding Layer");
 
 
 
-    // tensor_add_(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output, &gpt_model.workspace.input_embeddings);
-    // tensor_print(&gpt_model.workspace.input_embeddings, "input_embeddings");
+    tensor_add_(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output, &gpt_model.workspace.input_embeddings);
+    tensor_print(&gpt_model.workspace.input_embeddings, "input_embeddings");
 
     // transformer_block_forward(&gpt_model.transformer_block,  &gpt_model.workspace.input_embeddings);
     //transformer_block_print(&gpt_model.transformer_block, "Transformer Block");

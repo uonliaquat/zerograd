@@ -91,7 +91,8 @@ typedef struct GPTModel{
 
 
 void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_len, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias);
-void model_gpt_init();
+void model_gpt_safetensors_init(const char *filename);
+void model_gpt_rand_init();
 void model_gpt_params_init(const char * filename);
 void model_gpt_free();
 void model_gpt_forward(Tensor *input);

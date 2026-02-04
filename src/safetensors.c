@@ -89,11 +89,11 @@ void safetensors_load_model(const char *filename, GPTParameters *gpt_params){
 
     snprintf(name, sizeof(name), "wpe.weight");
     gpt_params->wpe.weight = safetensors_create_tensor(tmp_data,  name);
-    tensor_print(&gpt_params->wpe.weight, name);
+    //tensor_print(&gpt_params->wpe.weight, name);
 
     snprintf(name, sizeof(name), "wte.weight");
     gpt_params->wte.weight = safetensors_create_tensor(tmp_data,  name);
-    tensor_print(&gpt_params->wte.weight, name);
+    //tensor_print(&gpt_params->wte.weight, name);
 
 
     //hidden layers
@@ -102,67 +102,276 @@ void safetensors_load_model(const char *filename, GPTParameters *gpt_params){
         //attn
         snprintf(name, sizeof(name), "h.%zu.attn.bias", i);
         gpt_params->h[i].attn.bias = safetensors_create_tensor(tmp_data,  name);
-        tensor_print(&gpt_params->h[i].attn.bias, name);
+        //tensor_print(&gpt_params->h[i].attn.bias, name);
 
         snprintf(name, sizeof(name), "h.%zu.attn.c_attn.bias", i);
         gpt_params->h[i].attn.c_attn.bias = safetensors_create_tensor(tmp_data,  name);
-        tensor_print(&gpt_params->h[i].attn.c_attn.bias, name);
+        //tensor_print(&gpt_params->h[i].attn.c_attn.bias, name);
 
         snprintf(name, sizeof(name), "h.%zu.attn.c_attn.weight", i);
         gpt_params->h[i].attn.c_attn.weight = safetensors_create_tensor(tmp_data,  name);
-        tensor_print(&gpt_params->h[i].attn.c_attn.weight, name);
+        //tensor_print(&gpt_params->h[i].attn.c_attn.weight, name);
 
         snprintf(name, sizeof(name), "h.%zu.attn.c_proj.bias", i);
         gpt_params->h[i].attn.c_proj.bias = safetensors_create_tensor(tmp_data,  name);
-        tensor_print(&gpt_params->h[i].attn.c_proj.bias, name);
+        //tensor_print(&gpt_params->h[i].attn.c_proj.bias, name);
 
         snprintf(name, sizeof(name), "h.%zu.attn.c_proj.weight", i);
         gpt_params->h[i].attn.c_proj.weight = safetensors_create_tensor(tmp_data,  name);
-        tensor_print(&gpt_params->h[i].attn.c_proj.weight, name);
+        //tensor_print(&gpt_params->h[i].attn.c_proj.weight, name);
 
         //ln
         for(size_t j = 0; j < 2; j++){
             snprintf(name, sizeof(name), "h.%zu.ln_%zu.bias", i, j+1);
             gpt_params->h[i].ln_[j].bias = safetensors_create_tensor(tmp_data,  name);
-            tensor_print(&gpt_params->h[i].ln_[j].bias, name);
+            //tensor_print(&gpt_params->h[i].ln_[j].bias, name);
 
             snprintf(name, sizeof(name), "h.%zu.ln_%zu.weight", i, j+1);
             gpt_params->h[i].ln_[j].weight = safetensors_create_tensor(tmp_data,  name);
-            tensor_print(&gpt_params->h[i].ln_[j].weight , name);
+            //tensor_print(&gpt_params->h[i].ln_[j].weight , name);
         }
 
          //mlp
             //c_fc
             snprintf(name, sizeof(name), "h.%zu.mlp.c_fc.bias", i);
             gpt_params->h[i].mlp.c_fc.bias = safetensors_create_tensor(tmp_data,  name);
-            tensor_print(&gpt_params->h[i].mlp.c_fc.bias, name);
+            //tensor_print(&gpt_params->h[i].mlp.c_fc.bias, name);
             
             snprintf(name, sizeof(name), "h.%zu.mlp.c_fc.weight", i);
             gpt_params->h[i].mlp.c_fc.weight = safetensors_create_tensor(tmp_data,  name);
-            tensor_print(&gpt_params->h[i].mlp.c_fc.weight, name);
+            //tensor_print(&gpt_params->h[i].mlp.c_fc.weight, name);
 
             //c_proj
             snprintf(name, sizeof(name), "h.%zu.mlp.c_proj.bias", i);
             gpt_params->h[i].mlp.c_proj.bias = safetensors_create_tensor(tmp_data,  name);
-            tensor_print(&gpt_params->h[i].mlp.c_proj.bias, name);
+            //tensor_print(&gpt_params->h[i].mlp.c_proj.bias, name);
              
             snprintf(name, sizeof(name), "h.%zu.mlp.c_proj.weight", i);
             gpt_params->h[i].mlp.c_proj.weight = safetensors_create_tensor(tmp_data,  name);
-            tensor_print(&gpt_params->h[i].mlp.c_proj.weight, name);
+            //tensor_print(&gpt_params->h[i].mlp.c_proj.weight, name);
 
     }
 
     //ln_f
     snprintf(name, sizeof(name), "ln_f.bias");
     gpt_params->ln_f.bias = safetensors_create_tensor(tmp_data,  name);
-    tensor_print(&gpt_params->ln_f.bias, name);
+    //tensor_print(&gpt_params->ln_f.bias, name);
     
     snprintf(name, sizeof(name), "ln_f.weight");
     gpt_params->ln_f.weight = safetensors_create_tensor(tmp_data,  name);
-    tensor_print(&gpt_params->ln_f.weight, name);
+    //tensor_print(&gpt_params->ln_f.weight, name);
 
 }
 
-void safetensors_save_model(const char *filename, GPTParameters *gpt_params){
+static inline size_t get_json_len(Tensor *t, char *json, uint32_t offset_start, uint32_t offset_end) {
+    uint64_t json_len;
+    uint32_t t_size = t->size * (t->elem_size / 8); 
 
+    size_t pos = 0;
+    size_t json_size = 20000;
+
+    /* JSON header */
+    pos += snprintf(
+        json + pos, json_size - pos,
+        "{\"%s\":{\"dtype\":\"%s\",\"data_offsets\":[%u,%u],\"shape\":[",
+        t->name,
+        tensor_dtype_name(t->dtype),
+        offset_start,
+        offset_end
+    );
+
+    /* shape array */
+    for (uint8_t i = 0; i < t->ndim; i++) {
+        pos += snprintf(
+            json + pos,
+            json_size - pos,
+            "%s%u",
+            (i == 0) ? "" : ",",
+            t->shape[i]
+        );
+    }
+
+    /* close JSON */
+    pos += snprintf(
+        json + pos, json_size - pos,
+        "]}}"
+    );
+
+    /* --- DEBUG PRINTS --- */
+    printf("Tensor name: %s\n", t->name);
+    printf("Tensor dtype: %s\n", tensor_dtype_name(t->dtype));
+    printf("Data offsets: [%u, %u]\n", offset_start, offset_end);
+    printf("Shape: [");
+    for (uint8_t i = 0; i < t->ndim; i++) {
+        printf("%s%u", (i == 0) ? "" : ",", t->shape[i]);
+    }
+    printf("]\n");
+    printf("Generated JSON: %s\n", json);
+
+    json_len = pos;
+    return json_len;
+}
+
+void safetensors_save_model(const char *filename, GPTParameters *gpt_params){ 
+    FILE *fptr = fopen(filename, "w"); // fresh file
+    fclose(fptr);
+
+    fptr = fopen(filename, "a");
+    if(!fptr){
+        perror("Error opening file");
+        exit(-1);
+    }
+
+    Tensor *tensors[500];
+    size_t idx = 0;
+    tensors[idx++] = &gpt_params->wte.weight;
+    tensors[idx++] = &gpt_params->wpe.weight;
+    for(size_t i = 0; i < 12; i++){
+        tensors[idx++] = &gpt_params->h[i].attn.bias;
+        tensors[idx++] = &gpt_params->h[i].attn.c_attn.bias;
+        tensors[idx++] = &gpt_params->h[i].attn.c_attn.weight;
+        tensors[idx++] = &gpt_params->h[i].attn.c_proj.bias;
+        tensors[idx++] = &gpt_params->h[i].attn.c_proj.weight;
+        tensors[idx++] = &gpt_params->h[i].ln_[0].bias;
+        tensors[idx++] = &gpt_params->h[i].ln_[0].weight;
+        tensors[idx++] = &gpt_params->h[i].ln_[1].bias;
+        tensors[idx++] = &gpt_params->h[i].ln_[1].weight;
+        tensors[idx++] = &gpt_params->h[i].mlp.c_fc.bias;
+        tensors[idx++] = &gpt_params->h[i].mlp.c_fc.weight;
+        tensors[idx++] = &gpt_params->h[i].mlp.c_proj.bias;
+        tensors[idx++] = &gpt_params->h[i].mlp.c_proj.weight;
+    }
+    tensors[idx++] = &gpt_params->ln_f.bias;
+    tensors[idx++] = &gpt_params->ln_f.weight;
+
+    //json_len = get_json_len(&gpt_params->wpe.weight, wpe_json, 0, gpt_params->wpe.weight.size);
+    uint64_t json_len;
+
+
+    size_t pos = 0;
+    uint32_t curr_offset = 0;
+    uint32_t prev_offset = 0;
+    char json[20000] = "\0";
+    size_t json_size = sizeof(json);
+
+    //size_t max_tensors_to_save = 2;
+    for(size_t i = 0; i < idx; i++){
+        Tensor * t = tensors[i];
+        uint32_t t_size = t->size * (t->elem_size / 8);
+        curr_offset += t_size;
+        /* JSON header */
+        if(i == 0){
+            pos += snprintf(
+                json + pos, json_size - pos,
+                "{"
+            );
+        }
+        pos += snprintf(
+            json + pos, json_size - pos,
+            "\"%s\":{\"dtype\":\"%s\",\"data_offsets\":[%u,%u],\"shape\":[",
+            t->name,
+            tensor_dtype_name(t->dtype),
+            prev_offset,
+            curr_offset
+        );
+
+        /* shape array */
+        for (uint8_t i = 0; i < t->ndim; i++) {
+            pos += snprintf(
+                json + pos,
+                json_size - pos,
+                "%s%u",
+                (i == 0) ? "" : ",",
+                t->shape[i]
+            );
+        }
+
+        /* close JSON */
+        pos += snprintf(
+            json + pos, json_size - pos,
+            (i == idx - 1) ? "]}":"]},"
+        );
+
+        prev_offset = curr_offset; // probbaly needs to add 1
+    }
+
+    pos += snprintf(
+        json + pos, json_size - pos,
+        "}"
+    );
+
+    json_len = pos;
+
+    printf("json_len %llu\n", json_len);
+
+    //strcat(wpe_json, wte_json);
+    fwrite(&json_len, 8, 1, fptr);         // header
+    fwrite(json, 1, json_len, fptr);       // json
+    for(size_t i = 0; i < idx; i++){
+        Tensor * t = tensors[i];
+        uint32_t t_size = t->size * (t->elem_size / 8);
+        fwrite(t->data, 1, t_size, fptr);
+    }
+
+
+
+    // fwrite(gpt_params->wte.weight.data, 1, gpt_params->wte.weight.size, fptr);
+
+    // json_len = snprintf(
+    //     json, sizeof(json),
+    //     "{\"%s\":{\"dtype\":\"%s\",\"data_offsets\":[%u,%u],\"shape\":[%u,%u]}}",
+    //     t.name,
+    //     tensor_dtype_name(t.dtype),
+    //     0,
+    //     t_size,
+    //     t.shape[0],
+    //     t.shape[1]
+    // );
+
+    
+    // printf(
+    //     "{\"%s\":{\"dtype\":\"%s\",\"shape\":[%u, %u],\"data_offsets\":[%u,%u]}}",
+    //     t.name,
+    //     tensor_dtype_name(t.dtype),
+    //     t.shape[0],
+    //     t.shape[1],
+    //     0,
+    //     t_size
+    // );
+
+    // Step 4: write file
+    // fwrite(&json_len, 8, 1, fptr);         // header
+    // fwrite(json, 1, json_len, fptr);       // JSON
+    // fwrite(t.data, 1, t_size, fptr);   // tensor data
+
+    fclose(fptr);
+    // rewind(fptr);
+    //fseek(fptr, 0, SEEK_SET);
+
+    // char shape_str[128] = {0};
+    // char tmp[16];
+
+    // for (size_t i = 0; i < t->ndim; i++) {
+    //     snprintf(tmp, sizeof(tmp), "%u", t->shape[i]);
+    //     strcat(shape_str, tmp);
+    //     if (i + 1 < t->ndim) strcat(shape_str, ",");
+    // }
+    // char json[512];
+    // int json_len = snprintf(json, sizeof(json),
+    //     "{\"%s\":{\"shape\":[%s],\"dtype\":\"%s\",\"offset\":%llu,\"length\":%llu}}",
+    //     t->name,
+    //     shape_str,
+    //     t->dtype,
+    //     t->data + sizeof(uint64_t),
+    //     t->ndim
+    // );
+
+    //fprintf(fptr, "uname:{%s},shape:[%u],dtype:%s\n", tensor->size, name, size, dtype_str);
+    // write JSON
+    //fwrite(json, 1, json_len, fptr);
+
+    // // update header length
+    // uint64_t header_len = json_len;
+    // fseek(fptr, 0, SEEK_SET);
+    // fwrite(&header_len, sizeof(header_len), 1, fptr);
 }

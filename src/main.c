@@ -70,32 +70,22 @@ int main(){
     double drop_rate = 0.1;     // Dropout rate
     bool qkv_bias = false;      // Query-Key-Value bias
 
+
     char *filename = "/Users/uonliaquat/Downloads/model.safetensors";
-    model_gpt_params_init(filename);
+    model_gpt_safetensors_init(filename);
+    // model_gpt_config_init(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);
 
-   
-
-    //model_gpt_config_init(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);
-    // model_gpt_config_print();
-
-    // model_gpt_init();
-    //model_gpt_load("/Users/uonliaquat/Downloads/model.safetensors");
-    // model_gpt_write();
-
-
-    // Tensor input_tokens = tensor_init((double[]){
-    //     1, 2, 0, 2, 5, 3,
-    //     0, 0, 4, 3, 2, 1
+    // Tensor input_tokens = tensor_init((float[]){
+    //     1, 2, 0, 2
+    //     // 0, 0, 4, 3, 2, 1
     //     // 0.57, 0.85, 0.64, 0.64,
     //     // 0.22, 0.58, 0.33, 0.33,
     //     // 0.77, 0.25, 0.10, 0.10,
     //     // 0.05, 0.80, 0.55, 0.55,
-    // }, (uint32_t[]){1, 2, 6}, 3, tensor_dtype_size(DTYPE_FP64), false, false);
-    // tensor_print(&input_tokens, "input_tokens.csv");
-    // tensor_write(&input_tokens, "./models/input_tokens.csv");
-    // model_gpt_forward(&input_tokens);
-    // model_gpt_write("/Users/uonliaquat/workspace/zerograd/models/");
-    // model_gpt_free();
+    // }, (uint32_t[]){1, 1, 4}, 3, DTYPE_FP32, "input_tokens");
+    //tensor_print(&input_tokens, "input_tokens");
+    //model_gpt_forward(&input_tokens);
+    //model_gpt_free();
 
 
     // Dataset dataset_gpt2 = dataset_build_gpt2(data, vocab, merge_rules , seq_len, stride);
