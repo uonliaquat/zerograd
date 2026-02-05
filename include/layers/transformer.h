@@ -1,24 +1,54 @@
 #ifndef __TRANSFORMER_H__
 #define __TRANSFORMER_H__
 
+
 #include "./self_attention.h"
 #include "./linear.h"
+#include "./layer_norm.h"
 
 
-typedef struct FeedForwardNetwork{
+
+
+typedef struct MLPParams{
+    LinearLayerParams c_fc;
+    LinearLayerParams c_proj;
+} MLPParams;
+
+typedef struct MLPWorkspace{
+    Tensor output;
+} MLPWorkspace;
+
+typedef struct MLP{
+    MLPParams *params;
     LinearLayer layer1;
     LinearLayer layer2;
-} FeedForwardNetwork;
+    MLPWorkspace workspace;
+} MLP;
+
+typedef struct TransformerLayerParams{
+    SelfAttentionLayerParams attn;
+    LayerNormParams ln_[2];
+    MLPParams mlp;
+} TransformerLayerParams;
+
+typedef struct TransformerLayerWorkspace{
+    Tensor output;
+} TransformerLayerWorkspace;
+
 
 typedef struct TransformerLayer{
-    SelfAttentionLayer self_attention_layer;
-    FeedForwardNetwork feed_forward_network;
+    TransformerLayerParams *params;
+    SelfAttentionLayer attn_layer;
+    LayerNorm ln_layer[2];
+    MLP mlp_layer;
+    TransformerLayerWorkspace workspace;
 } TransformerLayer;
 
 
-TransformerLayer transformer_layer_init(size_t context_len, size_t emebd_dim, size_t n_heads, bool bias, bool requires_grad);
+
+TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const DataType dtype);
 void transformer_layer_free(TransformerLayer *transformer_layer);
-void transformer_layer_forward(TransformerLayer *transformer_write_fp, Tensor *x, bool masked);
+void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x, bool masked);
 void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading);
 //void transformer_layer_write(TransformerLayer *transformer_layer, const char *filename);
 

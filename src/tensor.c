@@ -39,8 +39,8 @@ static inline void name_init(Tensor *tensor, char *name){
 
 static inline void data_init(Tensor *tensor, void *data){
     // Initializing data
-    tensor->data = (void*)calloc(tensor->size,  tensor_dtype_size(tensor->dtype)/8);
-    if(data && tensor->data) memcpy(tensor->data, data, tensor->size *  tensor_dtype_size(tensor->dtype)/8);
+    tensor->data = (void*)calloc(tensor->size,  tensor->elem_size/8);
+    if(data && tensor->data) memcpy(tensor->data, data, tensor->size *  tensor->elem_size/8);
     else memset(tensor->data, 0, tensor->size);
     // printf("Sanity Check\n");
     // for(size_t i = 0; i < 10; i++){
@@ -49,7 +49,7 @@ static inline void data_init(Tensor *tensor, void *data){
 }
 
 static inline void data_rand_init(Tensor *tensor){
-    tensor->data = (void*)calloc(tensor->size,   tensor_dtype_size(tensor->dtype)/8);
+    tensor->data = (void*)calloc(tensor->size,   tensor->elem_size/8);
     for(size_t i = 0; i < tensor->size; i++){
         double rand_number = rand_uniform(-1.0, 1.0);
         ((double*)tensor->data)[i] = rand_number;
@@ -57,7 +57,7 @@ static inline void data_rand_init(Tensor *tensor){
 }
 
 static inline void data_file_init(Tensor *tensor, FILE *fptr, const uint32_t *offset){
-    tensor->data = (void*)calloc(tensor->size,   tensor_dtype_size(tensor->dtype)/8);
+    tensor->data = (void*)calloc(tensor->size,   tensor->elem_size/8);
     for(size_t i = 0; i < tensor->size; i++){
         float elem = 0;
         ((float*)tensor->data)[i] = 0;
@@ -83,7 +83,6 @@ Tensor tensor_init(void *data, const uint32_t * shape, const uint8_t ndim, const
 }
 
 void tensor_init_(Tensor *tensor, void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name){
-
     tensor_reset(tensor);
 
     tensor->dtype = dtype;
@@ -264,23 +263,26 @@ float tensor_get_elem(const Tensor *tensor, uint32_t *coords){
     for(size_t d = 0; d < tensor->ndim; d++){
         index += coords[d] * tensor->stride[d];
     }
-    if(tensor->dtype == DTYPE_FP32)
+    if(tensor->dtype == DTYPE_FP32){
         return ((float*)tensor->data)[index];
+    }
     else if(tensor->dtype == DTYPE_INT32){
         return ((uint32_t*)tensor->data)[index];
     }
     return 0;
 }
 
-void tensor_put_elem(Tensor *tensor, uint32_t *coords, double elem){
+void tensor_put_elem(Tensor *tensor, uint32_t *coords, float elem){
     size_t index = 0;
+    //printf("tensor->ndim: %u\n", tensor->ndim);
     for(size_t d = 0; d < tensor->ndim; d++){
+        //printf("cords: %u, stride: %u\n", coords[d],  tensor->stride[d]);
         index += coords[d] * tensor->stride[d];
     }
-    //printf("\nindex: %zu, tensor->size: %zu\n", index, tensor->size);
+    //printf("\nindex: %zu, tensor->size: %u\n\n\n", index, tensor->size);
     assert(index < tensor->size);
-    if(tensor->dtype == DTYPE_FP64){
-        ((double*)tensor->data)[index] = elem;
+    if(tensor->dtype == DTYPE_FP32){
+        ((float*)tensor->data)[index] = elem;
     }
     else if(tensor->dtype == DTYPE_INT32){
         ((int*)tensor->data)[index] = (int)elem;
@@ -654,25 +656,24 @@ Tensor *tensor_chunk(Tensor *input, size_t chunks, size_t dim){
 }
 
 void tensor_chunk_(Tensor *input, size_t chunks, size_t dim, Tensor *output){
-    printf("\n\n\n\n\n ******************* CHUNK ****************\n");
+    //printf("\n\n\n\n\n ******************* CHUNK ****************\n");
     //tensor_print(input, "input");
     assert(input->ndim <= 3);
     if(dim == 1){
         assert(input->shape[input->ndim - 1] % chunks == 0);
         //split columns
-        size_t cols = input->shape[input->ndim - 1] / chunks;
-
         size_t batch_size = tensor_get_batch_size(input);
         size_t rows = tensor_get_rows(input);
-        //printf("input->shape[input->ndim - 1]: %zu, chunks: %zu\n", input->shape[input->ndim - 1], chunks);
-        //printf("batch_size: %zu, rows: %zu, cols: %zu\n", batch_size, rows, cols);
-        //size_t cols = tensor_get_cols(input);
-        //printf("chunks: %zu\n", chunks);
+        size_t cols = input->shape[input->ndim - 1] / chunks;
+        // printf("input->shape[input->ndim - 1]: %u, chunks: %zu\n", input->shape[input->ndim - 1], chunks);
+        // printf("batch_size: %zu, rows: %zu, cols: %zu\n", batch_size, rows, cols);
+        // //size_t cols = tensor_get_cols(input);
+        // printf("chunks: %zu\n", chunks);
 
         for(size_t chunk = 0; chunk < chunks; chunk++){
-            
             if(output[chunk].size == 0){
-                output[chunk] = tensor_init(
+                tensor_init_(
+                    &output[chunk],
                     NULL, 
                     input->ndim == 3 ? (uint32_t[]){input->shape[0], input->shape[1], cols} : (uint32_t[]){input->shape[0], cols}, 
                     input->ndim,
@@ -680,16 +681,15 @@ void tensor_chunk_(Tensor *input, size_t chunks, size_t dim, Tensor *output){
                     NULL
                 );
             }
-    
             for(size_t b = 0; b < batch_size; b++){
                 for(size_t i = 0; i < rows; i++){
                     for(size_t j = 0; j < cols; j++){
-                        double elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j + (chunk * cols)}: (uint32_t[]){i, j + (chunk * cols)});
+                        float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j + (chunk * cols)}: (uint32_t[]){i, j + (chunk * cols)});
                         tensor_put_elem(&output[chunk], output[chunk].ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){b, i}, elem);
                     }
                 }
             }
-            tensor_print(&output[chunk], " output[chunk]");
+            //tensor_print(&output[chunk], " output[chunk]");
         }
     }
 }
@@ -1106,82 +1106,91 @@ void tensor_print(const Tensor *tensor, const char *heading){
     }
     printf(" )\n");
     printf("elem_size:      %u\n", tensor->elem_size);
+    #define PRINT_TENSOR_DATA
+    #ifdef PRINT_TENSOR_DATA
     printf("data:\n");
 
-    if(tensor->ndim == 4){
-        // uint32_t shape_i = tensor->shape[0];
-        // uint32_t shape_j = tensor->shape[1];
-        // uint32_t shape_k = tensor->shape[2];
-        // uint32_t shape_l = tensor->shape[3];
-
-        uint32_t shape_i = 1;
-        uint32_t shape_j = 1;
-        uint32_t shape_k = 4;
-        uint32_t shape_l = 4;
-        printf("[\n");
-        for(size_t i = 0; i < shape_i; i++){
-            printf("    [\n");
-            for(size_t j = 0; j < shape_j; j++){
-                printf("        [\n");
-                for(size_t k = 0; k < shape_k; k++){
-                    //printf("            [\n");
-                    for(size_t l = 0; l < shape_l; l++){
-                        float elem = tensor_get_elem(tensor, (uint32_t[]){i, j, k, l});
-                        if(tensor->dtype == DTYPE_FP32) printf("            %5.2f ", elem);
-                        else if(tensor->dtype == DTYPE_INT32) printf("      %d ", (int)elem);
-                    }
-                    printf("\n");
-                }
-                printf("        ]\n");
-            }
-            printf("    ]\n");
-        }
-        printf(" ]\n");
-    }
-    
-    if(tensor->ndim == 3){
-        uint32_t shape_i = tensor->shape[0];
-        uint32_t shape_j = tensor->shape[1];
-        uint32_t shape_k = tensor->shape[2];
-        printf("[\n");
-        for(size_t i = 0; i < shape_i; i++){
-            for(size_t j = 0; j < shape_j; j++){
-                printf("    [ ");
-                for(size_t k = 0; k < shape_k; k++){
-                    float elem = tensor_get_elem(tensor, (uint32_t[]){i, j, k});
-                    if(tensor->dtype == DTYPE_FP32) printf("%10.2f ", elem);
-                    else if(tensor->dtype == DTYPE_INT32) printf("%d   ", (int)elem);
-                }
-                printf(" ]\n");
-            }
-            if(i <= shape_i - 2) printf("\n\n");
-        }
-        printf("]\n");
-    }
-    else if(tensor->ndim == 2){
-        uint32_t shape_i = tensor->shape[0];
-        uint32_t shape_j = tensor->shape[1];
-        //printf("shape_i: %u, shape_j: %u ", shape_i, shape_j);
-        for(size_t i = 0; i < shape_i; i++){
-            printf("[ ");
-            for(size_t j = 0; j < shape_j; j++){
-                float elem = tensor_get_elem(tensor, (uint32_t[]){i, j});
-                if(tensor->dtype == DTYPE_FP32) printf("%10.2f ", elem);
-                else if(tensor->dtype == DTYPE_INT32) printf("%d    ", (int)elem);
-            }
-            printf(" ]\n");
-        }
-    }
-    else if(tensor->ndim == 1){
-        printf("[ ");
-        for(size_t i = 0; i < 10; i++){
-            float elem = tensor_get_elem(tensor, (uint32_t[]){i});
-            if(tensor->dtype == DTYPE_FP32) printf("%10.2f ", elem);
-            else if(tensor->dtype == DTYPE_INT32) printf("%d    ", (int)elem);
-        }
-        printf(" ]\n");
+    size_t size = tensor->size > 10 ? 10: tensor->size;
+    for(size_t i = 0; i < size; i++){
+        printf("%.2f    ", ((float*)tensor->data)[i]);
     }
     printf("\n");
+
+    // if(tensor->ndim == 4){
+    //     // uint32_t shape_i = tensor->shape[0];
+    //     // uint32_t shape_j = tensor->shape[1];
+    //     // uint32_t shape_k = tensor->shape[2];
+    //     // uint32_t shape_l = tensor->shape[3];
+
+    //     uint32_t shape_i = 1;
+    //     uint32_t shape_j = 1;
+    //     uint32_t shape_k = 4;
+    //     uint32_t shape_l = 4;
+    //     printf("[\n");
+    //     for(size_t i = 0; i < shape_i; i++){
+    //         printf("    [\n");
+    //         for(size_t j = 0; j < shape_j; j++){
+    //             printf("        [\n");
+    //             for(size_t k = 0; k < shape_k; k++){
+    //                 //printf("            [\n");
+    //                 for(size_t l = 0; l < shape_l; l++){
+    //                     float elem = tensor_get_elem(tensor, (uint32_t[]){i, j, k, l});
+    //                     if(tensor->dtype == DTYPE_FP32) printf("            %5.2f ", elem);
+    //                     else if(tensor->dtype == DTYPE_INT32) printf("      %d ", (int)elem);
+    //                 }
+    //                 printf("\n");
+    //             }
+    //             printf("        ]\n");
+    //         }
+    //         printf("    ]\n");
+    //     }
+    //     printf(" ]\n");
+    // }
+    
+    // if(tensor->ndim == 3){
+    //     uint32_t shape_i = tensor->shape[0];
+    //     uint32_t shape_j = tensor->shape[1];
+    //     uint32_t shape_k = tensor->shape[2];
+    //     printf("[\n");
+    //     for(size_t i = 0; i < shape_i; i++){
+    //         for(size_t j = 0; j < shape_j; j++){
+    //             printf("    [ ");
+    //             for(size_t k = 0; k < shape_k; k++){
+    //                 float elem = tensor_get_elem(tensor, (uint32_t[]){i, j, k});
+    //                 if(tensor->dtype == DTYPE_FP32) printf("%10.2f ", elem);
+    //                 else if(tensor->dtype == DTYPE_INT32) printf("%d   ", (int)elem);
+    //             }
+    //             printf(" ]\n");
+    //         }
+    //         // if(i <= shape_i - 2) printf("\n\n");
+    //     }
+    //     printf("]\n");
+    // }
+    // else if(tensor->ndim == 2){
+    //     uint32_t shape_i = tensor->shape[0];
+    //     uint32_t shape_j = tensor->shape[1];
+    //     //printf("shape_i: %u, shape_j: %u ", shape_i, shape_j);
+    //     for(size_t i = 0; i < shape_i; i++){
+    //         printf("[ ");
+    //         for(size_t j = 0; j < shape_j; j++){
+    //             float elem = tensor_get_elem(tensor, (uint32_t[]){i, j});
+    //             if(tensor->dtype == DTYPE_FP32) printf("%10.2f ", elem);
+    //             else if(tensor->dtype == DTYPE_INT32) printf("%d    ", (int)elem);
+    //         }
+    //         printf(" ]\n");
+    //     }
+    // }
+    // else if(tensor->ndim == 1){
+    //     printf("[ ");
+    //     for(size_t i = 0; i < 10; i++){
+    //         float elem = tensor_get_elem(tensor, (uint32_t[]){i});
+    //         if(tensor->dtype == DTYPE_FP32) printf("%10.2f ", elem);
+    //         else if(tensor->dtype == DTYPE_INT32) printf("%d    ", (int)elem);
+    //     }
+    //     printf(" ]\n");
+    // }
+    // printf("\n");
+    #endif
 }
 
 
@@ -1203,7 +1212,7 @@ void tensor_print(const Tensor *tensor, const char *heading){
 //             for(size_t i = 0; i < tensor->shape[1]; i++){
 //                 for(size_t j = 0; j < tensor->shape[2]; j++){
 //                     double elem = tensor_get_elem(tensor, (uint32_t[]){b, i, j});
-//                     if(tensor->dtype == DTYPE_FP64) fprintf(fptr, ",%.17g", elem);
+//                     if(tensor->dtype == DTYPE_FP32) fprintf(fptr, ",%.17g", elem);
 //                     else if(tensor->dtype == DTYPE_INT32) fprintf(fptr, ",%d", (int)elem);
 //                 }
 //                 fprintf(fptr, "\n");

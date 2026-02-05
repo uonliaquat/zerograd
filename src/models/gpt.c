@@ -10,40 +10,148 @@
 
 
 
-static GPTConfig gpt_config;
-static GPTModel gpt_model;
-static GPTParameters gpt_parameters;
-
-
-void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_dim, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias){
-    gpt_config.vocab_size   = vocab_size;
-    gpt_config.context_len  = context_len;
-    gpt_config.embed_dim    = embed_dim;
-    gpt_config.n_heads      = n_heads;
-    gpt_config.n_layers     = n_layers;
-    gpt_config.drop_rate    = drop_rate;
-    gpt_config.qkv_bias     = qkv_bias;
+static inline void model_gpt_config_init(GPTConfig *config, 
+    const size_t vocab_size, 
+    const size_t context_len, 
+    const size_t embed_dim, 
+    const size_t n_heads, 
+    const size_t n_layers, 
+    const double drop_rate, 
+    const bool qkv_bias, 
+    const DataType dtype
+){
+        config->vocab_size   = vocab_size;
+        config->context_len  = context_len;
+        config->embed_dim    = embed_dim;
+        config->n_heads      = n_heads;
+        config->n_layers     = n_layers;
+        config->drop_rate    = drop_rate;
+        config->qkv_bias     = qkv_bias;
+        config->dtype        = dtype;
 }
 
-static inline void model_gpt_workspace_init(){
-    tensor_reset(&gpt_model.workspace.indices);
-    tensor_reset(&gpt_model.workspace.input_embeddings);
-    tensor_reset(&gpt_model.workspace.position_indices);
+static inline void model_gpt_workspace_init(GPTModel *model){
+    tensor_reset(&model->workspace.indices);
+    tensor_reset(&model->workspace.input_embeddings);
+    tensor_reset(&model->workspace.position_indices);
 }
 
-static inline void model_gpt_workspace_free(){
-    tensor_free(&gpt_model.workspace.indices);
-    tensor_free(&gpt_model.workspace.input_embeddings);
-    tensor_free(&gpt_model.workspace.position_indices);
+static inline void model_gpt_workspace_free(GPTWrokspace *workspace){
+    tensor_free(&workspace->indices);
+    tensor_free(&workspace->position_indices);
+    tensor_free(&workspace->input_embeddings);
 }
 
 
-void  model_gpt_safetensors_init(const char *filename){
-    safetensors_load_model(filename, &gpt_parameters);
-    gpt_model.token_embed_layer = embedding_layer_init(&gpt_parameters.wte.weight);
-    gpt_model.pos_embed_layer   = embedding_layer_init(&gpt_parameters.wpe.weight);
+GPTModel model_gpt_init(GPTParams *params, 
+    const size_t vocab_size,
+    const size_t context_len, 
+    const size_t embed_dim, 
+    const size_t n_heads, 
+    const size_t n_layers, 
+    double drop_rate, 
+    bool qkv_bias, 
+    const DataType dtype
+){
+    GPTModel model;
+    model_gpt_config_init(&model.config, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, dtype);
+    model_gpt_workspace_init(&model);
+    model.params        = params;
+    model.wte_layer     = embedding_layer_init(&model.params->wpe, vocab_size,  embed_dim, DTYPE_FP32);
+    model.wpe_layer     = embedding_layer_init(&model.params->wte, context_len, embed_dim, DTYPE_FP32);
+    for(size_t i = 0; i < n_heads; i++){
+        model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, dtype);
+    }
+    return model;
+}
 
-    safetensors_save_model("./my_model.safetensors", &gpt_parameters);
+
+void model_gpt_free(GPTModel *model){
+    model_gpt_workspace_free(&model->workspace);
+    embedding_layer_free(&model->wte_layer);
+    embedding_layer_free(&model->wpe_layer);
+    //transformer_block_free(&model->transformer_block);
+    // tensor_free(&gpt_model.output);
+}
+
+void model_gpt_forward(GPTModel *model, Tensor *input){
+    assert(input->ndim == 3);
+    embedding_layer_forward(&model->wte_layer, input);
+    //tensor_print(&model->wte_layer.output, "model->wte_layer.output");
+
+
+    tensor_arange_(0, input->shape[input->ndim-1], 1, &model->workspace.indices);
+    //tensor_print(&model->workspace.indices, "position_indices (arange)");
+
+    tensor_repeat_(&model->workspace.indices, (uint8_t[]){input->shape[1], 1}, &model->workspace.position_indices);
+    //tensor_print(&model->workspace.position_indices, "position_indices (repeat)");
+
+    tensor_unsqueeze_(&model->workspace.position_indices, 0);
+    //tensor_print(&model->workspace.position_indices, "position_indices (unsqueeze)");
+
+    embedding_layer_forward(&model->wpe_layer, &model->workspace.position_indices);
+    //tensor_print(&model->wpe_layer.output,   "model->wpe_layer.output");
+
+
+
+    tensor_add_(&model->wte_layer.output, &model->wpe_layer.output, &model->workspace.input_embeddings);
+    //tensor_print(&model->workspace.input_embeddings, "input_embeddings");
+
+
+    for(size_t i = 0; i < 1; i++){
+        transformer_layer_forward(&model->h_layer[i], &model->workspace.input_embeddings, false);
+    }
+
+    // transformer_block_forward(&model.transformer_block,  &model.workspace.input_embeddings);
+    //transformer_block_print(&model.transformer_block, "Transformer Block");
+    // //Tensor embeddings = tensor_copy(&input_embeddings);
+    // Tensor *embeddings = calloc(gpt_config.n_layers+1, sizeof(Tensor));
+    // embeddings[0] =  tensor_copy(&input_embeddings);
+    // tensor_print(&embeddings[0], "embeddings (after copy)");
+    // for(size_t layer_no = 1; layer_no <= gpt_config.n_layers; layer_no++){
+    //     tensor_print(&embeddings[layer_no-1], "embeddings[layer_no-1]");
+    //     embeddings[layer_no] = transformer_layer_forward(&model.transformer_layers[layer_no-1], &embeddings[layer_no-1], false);
+    //     tensor_free(&embeddings[layer_no-1]);
+    // }
+
+
+    // dropout_layer_forward(&model.drop_embed_layer, &embeddings);
+    // tensor_print(&embeddings[0], "embeddings (after dropout)");
+
+
+
+
+    // Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &embeddings[gpt_config.n_layers]);
+    // tensor_print(&output, "model_gpt_forward output");
+
+    // Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
+    // tensor_print(&output_norm, "output_norm");
+}
+
+
+void model_gpt_safetensors_write(const char *filename, GPTParams *params){
+    Tensor *tensors[500];
+    size_t idx = 0;
+    tensors[idx++] = &params->wte.weight;
+    tensors[idx++] = &params->wpe.weight;
+    for(size_t i = 0; i < 12; i++){
+        tensors[idx++] = &params->h[i].attn.bias;
+        tensors[idx++] = &params->h[i].attn.c_attn.bias;
+        tensors[idx++] = &params->h[i].attn.c_attn.weight;
+        tensors[idx++] = &params->h[i].attn.c_proj.bias;
+        tensors[idx++] = &params->h[i].attn.c_proj.weight;
+        tensors[idx++] = &params->h[i].ln_[0].bias;
+        tensors[idx++] = &params->h[i].ln_[0].weight;
+        tensors[idx++] = &params->h[i].ln_[1].bias;
+        tensors[idx++] = &params->h[i].ln_[1].weight;
+        tensors[idx++] = &params->h[i].mlp.c_fc.bias;
+        tensors[idx++] = &params->h[i].mlp.c_fc.weight;
+        tensors[idx++] = &params->h[i].mlp.c_proj.bias;
+        tensors[idx++] = &params->h[i].mlp.c_proj.weight;
+    }
+    tensors[idx++] = &params->ln_f.bias;
+    tensors[idx++] = &params->ln_f.weight;
+    safetensors_save_model(filename, tensors, idx);
 }
 
 
@@ -60,97 +168,7 @@ void  model_gpt_safetensors_init(const char *filename){
 //     //     gpt_model.transformer_layers[layer_no] = transformer_layer_init(gpt_config.context_len, gpt_config.embed_dim, gpt_config.n_heads, false, true);
 //     // }
 //     // gpt_model.layer_norm        = layer_norm_init(gpt_config.embed_dim);
-//     // gpt_model.out_head_layer    = linear_layer_init(gpt_config.embed_dim, gpt_config.vocab_size, false, false, DTYPE_FP64);
+//     // gpt_model.out_head_layer    = linear_layer_init(gpt_config.embed_dim, gpt_config.vocab_size, false, false, DTYPE_FP32);
 // }
 
 
-// void model_gpt_params_init(const char * filename){
-//     safetensors_load_model(filename, &gpt_parameters);
-// }
-
-void model_gpt_free(){
-    model_gpt_workspace_free();
-    embedding_layer_free(&gpt_model.token_embed_layer);
-    embedding_layer_free(&gpt_model.pos_embed_layer);
-    transformer_block_free(&gpt_model.transformer_block);
-    // tensor_free(&gpt_model.output);
-}
-
-
-void model_gpt_forward(Tensor *input){
-    assert(input->ndim == 3);
-    embedding_layer_forward(&gpt_model.token_embed_layer, input);  
-    // embedding_layer_print(&gpt_model.token_embed_layer, "Token Embedding Layer");
-
-
-    tensor_arange_(0, gpt_config.context_len, 1, &gpt_model.workspace.indices);
-    tensor_print(&gpt_model.workspace.indices, "position_indices (arange)");
-
-    tensor_repeat_(&gpt_model.workspace.indices, (uint8_t[]){gpt_model.workspace.indices.shape[1], 1}, &gpt_model.workspace.position_indices);
-    tensor_print(&gpt_model.workspace.position_indices, "position_indices (repeat)");
-
-    tensor_unsqueeze_(&gpt_model.workspace.position_indices, 0);
-    tensor_print(&gpt_model.workspace.position_indices, "position_indices (unsqueeze)");
-
-    embedding_layer_forward(&gpt_model.pos_embed_layer, &gpt_model.workspace.position_indices);
-    //embedding_layer_print(&gpt_model.pos_embed_layer,   "Pos Embedding Layer");
-
-
-
-    tensor_add_(&gpt_model.token_embed_layer.output, &gpt_model.pos_embed_layer.output, &gpt_model.workspace.input_embeddings);
-    tensor_print(&gpt_model.workspace.input_embeddings, "input_embeddings");
-
-    // transformer_block_forward(&gpt_model.transformer_block,  &gpt_model.workspace.input_embeddings);
-    //transformer_block_print(&gpt_model.transformer_block, "Transformer Block");
-    // //Tensor embeddings = tensor_copy(&input_embeddings);
-    // Tensor *embeddings = calloc(gpt_config.n_layers+1, sizeof(Tensor));
-    // embeddings[0] =  tensor_copy(&input_embeddings);
-    // tensor_print(&embeddings[0], "embeddings (after copy)");
-    // for(size_t layer_no = 1; layer_no <= gpt_config.n_layers; layer_no++){
-    //     tensor_print(&embeddings[layer_no-1], "embeddings[layer_no-1]");
-    //     embeddings[layer_no] = transformer_layer_forward(&gpt_model.transformer_layers[layer_no-1], &embeddings[layer_no-1], false);
-    //     tensor_free(&embeddings[layer_no-1]);
-    // }
-
-
-    // dropout_layer_forward(&gpt_model.drop_embed_layer, &embeddings);
-    // tensor_print(&embeddings[0], "embeddings (after dropout)");
-
-
-
-
-    // Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &embeddings[gpt_config.n_layers]);
-    // tensor_print(&output, "model_gpt_forward output");
-
-    // Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
-    // tensor_print(&output_norm, "output_norm");
-}
-
-// void model_gpt_write(const char *base_path){
-//     char filename[512] = "\0";
-//     create_filename(base_path, "gpt_model.token_embed_layer.csv", filename);
-//     embedding_layer_write(&gpt_model.token_embed_layer,  filename);
-
-//     create_filename(base_path, "gpt_model.pos_embed_layer.csv", filename);
-//     embedding_layer_write(&gpt_model.pos_embed_layer,    filename);
-
-//     create_filename(base_path, "gpt_model.workspace.position_indices.csv", filename);
-//     tensor_write(&gpt_model.workspace.position_indices, filename);
-
-//     create_filename(base_path, "gpt_model.workspace.input_embeddings.csv", filename);
-//     tensor_write(&gpt_model.workspace.input_embeddings,  filename);
-
-
-//     transformer_block_write(&gpt_model.transformer_block, base_path);
-// }
-
-void model_gpt_config_print(){
-    printf("*************** GPT Config **************\n");
-    printf("vocab_size:     %zu\n", gpt_config.vocab_size);
-    printf("context_len:    %zu\n", gpt_config.context_len);
-    printf("embed_dim:      %zu\n", gpt_config.embed_dim);
-    printf("n_heads:        %zu\n", gpt_config.n_heads);
-    printf("n_layers:       %zu\n", gpt_config.n_layers);
-    printf("drop_rate:      %.2f\n", gpt_config.drop_rate);
-    printf("qkv_bias:       %s\n", gpt_config.qkv_bias ? "true": "false");
-}

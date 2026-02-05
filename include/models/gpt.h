@@ -9,51 +9,8 @@
 // #include "../layers/linear.h"
 // #include "../layers/layer_norm.h"
 // #include "../layers/transformer.h"
-#include "../layers/transformer_block.h"
+#include "../layers/transformer.h"
 
-
-
-typedef struct GPTParameters{
-    struct{
-        Tensor weight;
-    } wpe;
-    struct {
-        Tensor weight;
-    } wte;
-    struct{
-        struct {
-            Tensor bias;
-            struct {
-                Tensor bias;
-                Tensor weight;
-            } c_attn;
-            struct {
-                Tensor bias;
-                Tensor weight;
-            } c_proj;
-        } attn;
-
-        struct {
-            Tensor bias;
-            Tensor weight;
-        } ln_[2];
-
-        struct {
-            struct {
-                Tensor bias;
-                Tensor weight;
-            } c_fc;
-            struct {
-                Tensor bias;
-                Tensor weight;
-            } c_proj;
-        } mlp;
-    } h[12];
-    struct {
-        Tensor bias;
-        Tensor weight;
-    } ln_f;
-} GPTParameters;
 
 
 typedef struct GPTConfig {
@@ -64,39 +21,54 @@ typedef struct GPTConfig {
     size_t n_layers;        // No of layers
     double drop_rate;       // Dropout rate
     bool qkv_bias;          // Query-Key-Value bias
+    DataType dtype;
 } GPTConfig;
 
 
-typedef struct GP2Wrokspace{
+
+typedef struct GPTParams{
+    EmbeddingLayerParams wpe;
+    EmbeddingLayerParams wte;
+    TransformerLayerParams h[12];
+    LayerNormParams ln_f;
+} GPTParams;
+
+typedef struct GPTWrokspace{
     Tensor indices;
     Tensor position_indices;
     Tensor input_embeddings;
-} GP2Wrokspace;
+} GPTWrokspace;
 
 
 typedef struct GPTModel{
-    EmbeddingLayer token_embed_layer;
-    EmbeddingLayer pos_embed_layer;
-    TransformerBlock transformer_block;
-    // DropoutLayer drop_embed_layer;
-    // // Transformer Blocks
-    // TransformerLayer *transformer_layers;
-    // LayerNorm layer_norm;
-    // LinearLayer out_head_layer;
-
-    GP2Wrokspace workspace;
-    //Tensor output;
+    GPTConfig config;
+    GPTParams *params;
+    EmbeddingLayer wte_layer;
+    EmbeddingLayer wpe_layer;
+    TransformerLayer h_layer[12];
+    LayerNorm ln_f_layer;
+    GPTWrokspace workspace;
 } GPTModel;
 
 
+GPTModel model_gpt_init(GPTParams *params, 
+    const size_t vocab_size, 
+    const size_t context_len, 
+    const size_t embed_dim, 
+    const size_t n_heads, 
+    const size_t n_layers,
+    const double drop_rate, 
+    const bool qkv_bias, 
+    const DataType dtype
+);
 
-void model_gpt_config_init(size_t vocab_size, size_t context_len, size_t embed_len, size_t n_heads, size_t n_layers, double drop_rate, bool qkv_bias);
-void model_gpt_safetensors_init(const char *filename);
-void model_gpt_rand_init();
-void model_gpt_params_init(const char * filename);
-void model_gpt_free();
-void model_gpt_forward(Tensor *input);
+void model_gpt_free(GPTModel *model);
+void model_gpt_forward(GPTModel *model, Tensor *input);
+// void model_gpt_safetensors_write(const char *filename, GPTParameters *params);
+
+
+
 //void model_gpt_write(const char *path);
-void model_gpt_config_print();
+
 
 #endif

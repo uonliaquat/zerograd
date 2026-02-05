@@ -6,12 +6,12 @@
 #include <stdlib.h>
 
 
-EmbeddingLayer embedding_layer_init(Tensor *params){
+EmbeddingLayer embedding_layer_init(EmbeddingLayerParams *params, const size_t num_embed, const size_t embed_dim, const DataType dtype){
     EmbeddingLayer embedding_layer;
-    embedding_layer.weights     = params;
-    embedding_layer.dtype       = params->dtype;
-    embedding_layer.num_embed   = params->shape[0];
-    embedding_layer.embed_dim   = params->shape[1];
+    embedding_layer.params      = params;
+    embedding_layer.dtype       = dtype;
+    embedding_layer.num_embed   = num_embed;
+    embedding_layer.embed_dim   = embed_dim;
     tensor_reset(&embedding_layer.output);
     return embedding_layer;
 }
@@ -27,8 +27,12 @@ EmbeddingLayer embedding_layer_init(Tensor *params){
 // }
 
 void embedding_layer_free(const EmbeddingLayer *embedding_layer){
-    tensor_free(embedding_layer->weights);
+    embedding_layer_params_free(embedding_layer->params);
     tensor_free(&embedding_layer->output);
+}
+
+void embedding_layer_params_free(const EmbeddingLayerParams *params){
+    tensor_free(&params->weight);
 }
 
 void embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *input){
@@ -49,7 +53,7 @@ void embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *inpu
         for(size_t row_id = 0; row_id < input->shape[2]; row_id++){
             int embed_index = tensor_get_elem(input, (uint32_t[]){0, batch_id, row_id});
             //printf("batch_id: %zu,  row_id: %zu, embed_index: %d\n", batch_id, row_id, embed_index);
-            tensor_copy_row_data(&embedding_layer->output, batch_id, row_id, embedding_layer->weights, embed_index, embedding_layer->embed_dim);
+            tensor_copy_row_data(&embedding_layer->output, batch_id, row_id, &embedding_layer->params->weight, embed_index, embedding_layer->embed_dim);
         }
     }
 }

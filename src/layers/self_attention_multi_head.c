@@ -11,7 +11,9 @@
 #include "../../include/utils.h"
 
 
+
 static inline void self_attention_layer_workspace_init(SelfAttentionLayer *self_attention_layer){
+    self_attention_layer->workspace.qkv                 = calloc(3, sizeof(Tensor));
     self_attention_layer->workspace.queries_chnuks      = calloc(self_attention_layer->n_heads, sizeof(Tensor));
     self_attention_layer->workspace.keys_chnuks         = calloc(self_attention_layer->n_heads, sizeof(Tensor));
     self_attention_layer->workspace.values_chnuks       = calloc(self_attention_layer->n_heads, sizeof(Tensor));
@@ -21,44 +23,60 @@ static inline void self_attention_layer_workspace_init(SelfAttentionLayer *self_
     self_attention_layer->workspace.attention_weights   =  calloc(self_attention_layer->n_heads, sizeof(Tensor));
     self_attention_layer->workspace.concat_heads        = (Tensor){0};
     self_attention_layer->workspace.keys_transposed     = calloc(self_attention_layer->n_heads, sizeof(Tensor));
-}
 
-static inline void self_attention_layer_workspace_free(SelfAttentionLayer *self_attention_layer){
-    for(size_t head = 0; head < self_attention_layer->n_heads; head++){
-        tensor_free(&self_attention_layer->workspace.queries_chnuks[head]);
-        tensor_free(&self_attention_layer->workspace.keys_chnuks[head]);
-        tensor_free(&self_attention_layer->workspace.values_chnuks[head]);
-        tensor_free(&self_attention_layer->workspace.context_vecs[head]);
-        tensor_free(&self_attention_layer->workspace.attention_scores[head]);
-        tensor_free(&self_attention_layer->workspace.attention_scores_scaled[head]);
-        tensor_free(&self_attention_layer->workspace.attention_weights[head]);
-        tensor_free(&self_attention_layer->workspace.keys_transposed[head]);
+
+    for(size_t i = 0; i < 3; i++) tensor_reset(&self_attention_layer->workspace.qkv[i]);
+
+    for(size_t i = 0; i < self_attention_layer->n_heads; i++){
+        tensor_reset(&self_attention_layer->workspace.queries_chnuks[i]);
+        tensor_reset(&self_attention_layer->workspace.keys_chnuks[i]);
+        tensor_reset(&self_attention_layer->workspace.values_chnuks[i]);
+        tensor_reset(&self_attention_layer->workspace.context_vecs[i]);
+        tensor_reset(&self_attention_layer->workspace.attention_scores[i]);
+        tensor_reset(&self_attention_layer->workspace.attention_scores_scaled[i]);
+        tensor_reset(&self_attention_layer->workspace.attention_weights[i]);
+        tensor_reset(&self_attention_layer->workspace.keys_transposed[i]);
     }
-    tensor_free(&self_attention_layer->workspace.concat_heads);
 }
 
-SelfAttentionLayer self_attention_layer_init(const size_t seq_len, const size_t embed_dim, const size_t n_heads, const bool bias, const bool requires_grad){
+static inline void self_attention_layer_workspace_free(const SelfAttentionLayerWorkspace *workspace){
+    tensor_free(workspace->queries_chnuks);
+    tensor_free(workspace->keys_chnuks);
+    tensor_free(workspace->values_chnuks);
+    tensor_free(workspace->context_vecs);
+    tensor_free(workspace->attention_scores);
+    tensor_free(workspace->attention_scores_scaled);
+    tensor_free(workspace->attention_weights);
+    tensor_free(workspace->keys_transposed);
+    tensor_free(&workspace->concat_heads);
+}
+
+SelfAttentionLayer self_attention_layer_init(SelfAttentionLayerParams *params, const size_t context_len, const size_t embed_dim, const size_t n_heads, const DataType dtype){
     SelfAttentionLayer self_attention_layer;
-    self_attention_layer_workspace_init(&self_attention_layer);
+    self_attention_layer.params = params;
 
     size_t head_dim = embed_dim / n_heads;
-    self_attention_layer.W_query    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
-    self_attention_layer.W_key      = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
-    self_attention_layer.W_value    = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
-    self_attention_layer.heads_proj = linear_layer_init(embed_dim, embed_dim, bias, requires_grad, DTYPE_FP64);
-    self_attention_layer.seq_len = seq_len;
+    self_attention_layer.context_len = context_len;
     self_attention_layer.embed_dim = embed_dim;
     self_attention_layer.n_heads = n_heads;
     self_attention_layer.head_dim = head_dim;
+
+    self_attention_layer_workspace_init(&self_attention_layer);
+    self_attention_layer.c_attn_layer = linear_layer_init(&params->c_attn, dtype);
+    self_attention_layer.c_proj_layer = linear_layer_init(&params->c_proj, dtype);
     return self_attention_layer;
 }
 
-void self_attention_layer_free(SelfAttentionLayer *self_attention_layer){
-    self_attention_layer_workspace_free(self_attention_layer);
-    linear_layer_free(&self_attention_layer->W_key);
-    linear_layer_free(&self_attention_layer->W_query);
-    linear_layer_free(&self_attention_layer->W_value);
-    linear_layer_free(&self_attention_layer->heads_proj);
+void self_attention_layer_params_free(SelfAttentionLayerParams *params){
+    tensor_free(&params->bias);
+    linear_layer_params_free(&params->c_attn);
+    linear_layer_params_free(&params->c_proj);
+}
+
+
+void self_attention_layer_free(const SelfAttentionLayer *self_attention_layer){
+    self_attention_layer_workspace_free(&self_attention_layer->workspace);
+    self_attention_layer_params_free(self_attention_layer->params);
 }
 
 // Tensor self_attention_layer_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x){
@@ -85,155 +103,81 @@ void self_attention_layer_free(SelfAttentionLayer *self_attention_layer){
 // }
 
 
-void self_attention_layer_mult_head_forward(SelfAttentionLayer *self_attention_layer, const Tensor *x, bool masked){
+void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_layer, Tensor *x, bool masked){
+    // x             ==> (1, 4, 768), 
+    // c_attn_layer  ==> (768, 2304)
+    // output        ==> (1, 4, 2304)
+    //tensor_print(&self_attention_layer->params->c_attn.weight, "self_attention_layer->params->c_attn.weight");
+    linear_layer_forward(&self_attention_layer->c_attn_layer, x);
+    //tensor_print(&self_attention_layer->c_attn_layer.workspace.output, "output");
+    tensor_chunk_(
+        &self_attention_layer->c_attn_layer.workspace.output,   
+        3, 1, self_attention_layer->workspace.qkv
+    );
+    // tensor_print(&self_attention_layer->workspace.qkv[0], "query");
+    // tensor_print(&self_attention_layer->workspace.qkv[1], "key");
+    // tensor_print(&self_attention_layer->workspace.qkv[2], "value");
 
-    linear_layer_forward(&self_attention_layer->W_query, x);
-    linear_layer_forward(&self_attention_layer->W_key,   x);
-    linear_layer_forward(&self_attention_layer->W_value, x);
+    tensor_chunk_(&self_attention_layer->workspace.qkv[0],   self_attention_layer->n_heads, 1, self_attention_layer->workspace.queries_chnuks);
+    tensor_chunk_(&self_attention_layer->workspace.qkv[1],   self_attention_layer->n_heads, 1, self_attention_layer->workspace.keys_chnuks);
+    tensor_chunk_(&self_attention_layer->workspace.qkv[2],   self_attention_layer->n_heads, 1, self_attention_layer->workspace.values_chnuks);
 
-    tensor_chunk_(&self_attention_layer->W_query.output,   self_attention_layer->n_heads, 1, self_attention_layer->workspace.queries_chnuks);
-    tensor_chunk_(&self_attention_layer->W_key.output,     self_attention_layer->n_heads, 1, self_attention_layer->workspace.keys_chnuks);
-    tensor_chunk_(&self_attention_layer->W_value.output,   self_attention_layer->n_heads, 1, self_attention_layer->workspace.values_chnuks);
+    // // tensor_print(&self_attention_layer->W_query.output, "self_attention_layer->W_query.output");
+    // // tensor_print(&self_attention_layer->W_key.output, "self_attention_layer->W_key.output");
+    // // tensor_print(&self_attention_layer->W_value.output, "self_attention_layer->W_value.output");
+    // tensor_print(&self_attention_layer->workspace.queries_chnuks[0],    "queries_chnuks");
+    // tensor_print(&self_attention_layer->workspace.keys_chnuks[0],       "keys_chnuks");
+    // tensor_print(&self_attention_layer->workspace.values_chnuks[0],     "values_chnuks");
 
-    // tensor_print(&self_attention_layer->W_query.output, "self_attention_layer->W_query.output");
-    // tensor_print(&self_attention_layer->W_key.output, "self_attention_layer->W_key.output");
-    // tensor_print(&self_attention_layer->W_value.output, "self_attention_layer->W_value.output");
-    tensor_print(&self_attention_layer->workspace.queries_chnuks[0],    "queries_chnuks");
-    tensor_print(&self_attention_layer->workspace.keys_chnuks[0],       "keys_chnuks");
-    tensor_print(&self_attention_layer->workspace.values_chnuks[0],     "values_chnuks");
+    // for(size_t head = 0; head < self_attention_layer->n_heads; head++){
+    //         char heading[512] = "\0";
+    //         snprintf(heading, 512, "HEAD %zu", head);
+    //         print_centered_heading(heading);
 
-    for(size_t head = 0; head < self_attention_layer->n_heads; head++){
-            char heading[512] = "\0";
-            snprintf(heading, 512, "HEAD %zu", head);
-            print_centered_heading(heading);
+    //         // K^T
+    //         tensor_print(&self_attention_layer->workspace.keys_chnuks[head],"keys");
+    //         tensor_transpose_(&self_attention_layer->workspace.keys_chnuks[head], &self_attention_layer->workspace.keys_transposed[head]);
+    //         tensor_print(&self_attention_layer->workspace.keys_transposed[head], "keys_transposed");
 
-            // K^T
-            tensor_print(&self_attention_layer->workspace.keys_chnuks[head],"keys");
-            tensor_transpose_(&self_attention_layer->workspace.keys_chnuks[head], &self_attention_layer->workspace.keys_transposed[head]);
-            tensor_print(&self_attention_layer->workspace.keys_transposed[head], "keys_transposed");
-
-            // Q.K^T
-            tensor_print(&self_attention_layer->workspace.queries_chnuks[head], "queries");
-            tensor_dot_product_(&self_attention_layer->workspace.queries_chnuks[head], &self_attention_layer->workspace.keys_transposed[head], &self_attention_layer->workspace.attention_scores[head]);
-            tensor_print(&self_attention_layer->workspace.attention_scores[head], "attention_scores");
+    //         // Q.K^T
+    //         tensor_print(&self_attention_layer->workspace.queries_chnuks[head], "queries");
+    //         tensor_dot_product_(&self_attention_layer->workspace.queries_chnuks[head], &self_attention_layer->workspace.keys_transposed[head], &self_attention_layer->workspace.attention_scores[head]);
+    //         tensor_print(&self_attention_layer->workspace.attention_scores[head], "attention_scores");
             
-            // (Q.K^T)/sqrt(d)
-            tensor_elementwise_scale_(&self_attention_layer->workspace.attention_scores[head], 1/sqrt(self_attention_layer->workspace.keys_chnuks[head].shape[1]), &self_attention_layer->workspace.attention_scores_scaled[head]);
-            tensor_print(&self_attention_layer->workspace.attention_scores_scaled[head], "attention_scores_scaled");
+    //         // (Q.K^T)/sqrt(d)
+    //         tensor_elementwise_scale_(&self_attention_layer->workspace.attention_scores[head], 1/sqrt(self_attention_layer->workspace.keys_chnuks[head].shape[1]), &self_attention_layer->workspace.attention_scores_scaled[head]);
+    //         tensor_print(&self_attention_layer->workspace.attention_scores_scaled[head], "attention_scores_scaled");
             
-            // // if(masked == true){
-            // //     tensor_tril_(&self_attention_layer->workspace.attention_scores, -INFINITY, &self_attention_layer->workspace.attention_scores_scaled);
-            // //     tensor_print(&attention_scores_scaled, "attention_scores_scaled");
+    //         // // if(masked == true){
+    //         // //     tensor_tril_(&self_attention_layer->workspace.attention_scores, -INFINITY, &self_attention_layer->workspace.attention_scores_scaled);
+    //         // //     tensor_print(&attention_scores_scaled, "attention_scores_scaled");
                     
-            // // }
-            // softmax((Q.K^T)/sqrt(d))
-            tensor_softmax_(&self_attention_layer->workspace.attention_scores_scaled[head], 1, &self_attention_layer->workspace.attention_weights[head]);
-            tensor_print(&self_attention_layer->workspace.attention_weights[head], "attention_weights");
+    //         // // }
+    //         // softmax((Q.K^T)/sqrt(d))
+    //         tensor_softmax_(&self_attention_layer->workspace.attention_scores_scaled[head], 1, &self_attention_layer->workspace.attention_weights[head]);
+    //         tensor_print(&self_attention_layer->workspace.attention_weights[head], "attention_weights");
             
-            //  softmax((Q.K^T)/sqrt(d)).V
-            tensor_print(&self_attention_layer->workspace.values_chnuks[head], "values");
-            tensor_dot_product_(&self_attention_layer->workspace.attention_weights[head], &self_attention_layer->workspace.values_chnuks[head],  &self_attention_layer->workspace.context_vecs[head]);
-            tensor_print(&self_attention_layer->workspace.context_vecs[head], "context_vecs [head]");
-            // printf("======================================================================================\n");
-    }
+    //         //  softmax((Q.K^T)/sqrt(d)).V
+    //         tensor_print(&self_attention_layer->workspace.values_chnuks[head], "values");
+    //         tensor_dot_product_(&self_attention_layer->workspace.attention_weights[head], &self_attention_layer->workspace.values_chnuks[head],  &self_attention_layer->workspace.context_vecs[head]);
+    //         tensor_print(&self_attention_layer->workspace.context_vecs[head], "context_vecs [head]");
+    //         // printf("======================================================================================\n");
+    // }
 
-    tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->workspace.concat_heads);
-    tensor_print(&self_attention_layer->workspace.concat_heads, "concat_heads");
-    linear_layer_forward(&self_attention_layer->heads_proj, &self_attention_layer->workspace.concat_heads);
-    tensor_print(&self_attention_layer->heads_proj.output, "heads_proj (Output)");
+    // tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->workspace.concat_heads);
+    // tensor_print(&self_attention_layer->workspace.concat_heads, "concat_heads");
+    // linear_layer_forward(&self_attention_layer->heads_proj, &self_attention_layer->workspace.concat_heads);
+    // tensor_print(&self_attention_layer->heads_proj.output, "heads_proj (Output)");
  }
 
 
 
 
-void self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, const char *heading){
-    printf("\033[1;31m============================== %s ==============================\033[0m\n", heading);
-    linear_layer_print(&self_attention_layer->W_query, "W_Query");
-    linear_layer_print(&self_attention_layer->W_key, "W_key");
-    linear_layer_print(&self_attention_layer->W_value, "W_value");
-    linear_layer_print(&self_attention_layer->heads_proj, "heads_proj");
-}
-
-
-// void self_attention_layer_write_fp(const SelfAttentionLayer *self_attention_layer, FILE *fptr){
-//     fprintf(fptr, "self_attention_multi_head\n");
-//     fprintf(fptr, "W_query\n");
-//     linear_layer_write_fp(&self_attention_layer->W_query, fptr);
-//     fprintf(fptr, "W_key\n");
-//     linear_layer_write_fp(&self_attention_layer->W_key, fptr);
-//     fprintf(fptr, "W_value\n");
-//     linear_layer_write_fp(&self_attention_layer->W_value, fptr);
-//     fprintf(fptr, "heads_proj\n");
-//     linear_layer_write_fp(&self_attention_layer->heads_proj, fptr);
+// void self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, const char *heading){
+//     printf("\033[1;31m============================== %s ==============================\033[0m\n", heading);
+//     linear_layer_print(&self_attention_layer->W_query, "W_Query");
+//     linear_layer_print(&self_attention_layer->W_key, "W_key");
+//     linear_layer_print(&self_attention_layer->W_value, "W_value");
+//     linear_layer_print(&self_attention_layer->heads_proj, "heads_proj");
 // }
 
-
-// void self_attention_layer_write(const SelfAttentionLayer *self_attention_layer, const char *base_path){
-//     char filename[512] = "\0";
-//     snprintf(filename, 512, "%s_w_query.csv", base_path);
-//     linear_layer_write(&self_attention_layer->W_query, filename);
-
-//     snprintf(filename, 512, "%s_w_key.csv", base_path);
-//     linear_layer_write(&self_attention_layer->W_key, filename);
-
-//     snprintf(filename, 512, "%s_w_value.csv", base_path);
-//     linear_layer_write(&self_attention_layer->W_value, filename);
-
-//     for(size_t head = 0; head < self_attention_layer->n_heads; head++){
-
-//         snprintf(filename, 512, "%s_queries_chunks_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.queries_chnuks[head], filename);
-
-//         snprintf(filename, 512, "%s_keys_chunks_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.keys_chnuks[head], filename);
-        
-//         snprintf(filename, 512, "%s_values_chunks_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.values_chnuks[head], filename);
-
-//         snprintf(filename, 512, "%s_keys_transposed_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.keys_transposed[head], filename);
-
-//         snprintf(filename, 512, "%s_attention_scores_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.attention_scores[head], filename);
-
-//         snprintf(filename, 512, "%s_attention_scores_scaled_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.attention_scores_scaled[head], filename);
-
-//         snprintf(filename, 512, "%s_attention_weights_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.attention_weights[head], filename);
-
-//         snprintf(filename, 512, "%s_context_vecs_%zu.csv", base_path, head);
-//         tensor_write(&self_attention_layer->workspace.context_vecs[head], filename);
-
-
- 
-//     }
-
-
-//     snprintf(filename, 512, "%s_concat_heads.csv", base_path);
-//     tensor_write(&self_attention_layer->workspace.concat_heads, filename);
-
-
-
-//     snprintf(filename, 512, "%s_heads_proj.csv", base_path);
-//     linear_layer_write(&self_attention_layer->heads_proj, filename);
-// }
-
-
-// Tensor self_attention_simplified(Tensor *input_embeddings){
-
-//     Tensor input_embeddings_transposed = tensor_transpose(input_embeddings);
-//     tensor_print(&input_embeddings_transposed);
-//     tensor_write(&input_embeddings_transposed, "./output/input_embeddings_transposed.csv");
-
-//     Tensor attention_scores = tensor_dot_product(input_embeddings, &input_embeddings_transposed);
-//     tensor_print(&attention_scores);
-
-//     Tensor attention_weights = tensor_softmax(&attention_scores, 1);
-//     tensor_print(&attention_weights);
-
-//     Tensor context_vectors = tensor_dot_product(&attention_weights, input_embeddings);
-//     tensor_print(&context_vectors);
-
-//     return input_embeddings_transposed;
-// }

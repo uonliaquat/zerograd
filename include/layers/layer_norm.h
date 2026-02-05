@@ -2,11 +2,16 @@
 #define __LAYER_NORM_H__
 
 #include "./tensor.h"
+#include "./linear.h"
 #include <stdio.h>
 
+typedef struct LayerNormParams{
+    Tensor bias;
+    Tensor weight;
+} LayerNormParams;
+
 typedef struct LayerNorm{
-    Tensor scale;
-    Tensor shift;
+    LayerNormParams *params;
     double eps;
 } LayerNorm;
 

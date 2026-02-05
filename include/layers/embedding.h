@@ -6,8 +6,14 @@
 
 #define MAX_SEQUENCE_LENGTH 100
 
+
+typedef struct EmbeddingLayerParams{
+    Tensor weight;
+} EmbeddingLayerParams;
+
 typedef struct EmbeddingLayer{
-    Tensor      *weights;
+    EmbeddingLayerParams *params;
+    //Tensor      *weights;
     DataType    dtype;
     size_t      num_embed;
     size_t      embed_dim;
@@ -15,9 +21,12 @@ typedef struct EmbeddingLayer{
 } EmbeddingLayer;
 
 
-EmbeddingLayer  embedding_layer_init(Tensor *params);
-EmbeddingLayer  embedding_layer_rand_init(const size_t num_embed, const size_t embed_dim, const DataType dtype);
+
+
+EmbeddingLayer  embedding_layer_init(EmbeddingLayerParams *params, const size_t num_embed, const size_t embed_dim, const DataType dtype);
+// EmbeddingLayer  embedding_layer_rand_init(const size_t num_embed, const size_t embed_dim, const DataType dtype);
 void            embedding_layer_free(const EmbeddingLayer *embedding_layer);
+void            embedding_layer_params_free(const EmbeddingLayerParams *params);
 void            embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *input);
 void            embedding_layer_print(const EmbeddingLayer *embedding_layer, const char *heading);
 void            embedding_layer_write(const EmbeddingLayer *embedding_layer, const char *filename);

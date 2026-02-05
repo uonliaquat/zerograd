@@ -36,7 +36,7 @@ Tensor  tensor_repeat(Tensor *input, uint8_t * repeate_dims);
 void    tensor_repeat_(Tensor *input, uint8_t * repeate_dims, Tensor *output);
 void    tensor_unsqueeze_(Tensor *input, size_t dim);
 float   tensor_get_elem(const Tensor *tensor, uint32_t *coords);
-void    tensor_put_elem(Tensor *tensor, uint32_t *coords, double elem);  
+void    tensor_put_elem(Tensor *tensor, uint32_t *coords, float elem);  
 Tensor  tensor_transpose(const Tensor *input);
 void    tensor_transpose_(const Tensor *input, Tensor *output);
 Tensor  tensor_softmax(Tensor *input, size_t dim);

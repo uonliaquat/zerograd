@@ -5,19 +5,28 @@
 #include <stdbool.h>
 #include "../tensor.h"
 
-typedef struct LinearLayer{
-    Tensor weights;
-    Tensor bias;
-    bool has_bias;
-    DataType dtype;
+
+typedef struct LinearLayerWorkspace{
+    Tensor a;
     Tensor output;
+} LinearLayerWorkspace;
+
+typedef struct LinearLayerParams{
+    Tensor bias;
+    Tensor weight;
+} LinearLayerParams;
+
+typedef struct LinearLayer{
+    LinearLayerParams *params;
+    DataType dtype;
+    LinearLayerWorkspace workspace;
 }LinearLayer;
 
-LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const bool bias, const bool requires_grad, const DataType dtype);
+// LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const bool bias, const bool requires_grad, const DataType dtype);
+LinearLayer linear_layer_init(LinearLayerParams *params, const DataType dtype);
+void        linear_layer_params_free(const LinearLayerParams *params);
 void        linear_layer_free(const LinearLayer *linear_layer);
-void        linear_layer_forward(LinearLayer *linear_layer, const Tensor *x);
-void        linear_layer_print(const LinearLayer *layer, const char *heading);
-// void        linear_layer_write_fp(const LinearLayer *layer, FILE *fptr);
-// void        linear_layer_write(const LinearLayer *layer, const char *filename);
+void        linear_layer_forward(LinearLayer *linear_layer, Tensor *x);
+//void        linear_layer_print(const LinearLayer *layer, const char *heading);
 
 #endif
