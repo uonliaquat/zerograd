@@ -8,7 +8,6 @@
 
 typedef struct LinearLayerWorkspace{
     Tensor a;
-    Tensor output;
 } LinearLayerWorkspace;
 
 typedef struct LinearLayerParams{
@@ -20,6 +19,7 @@ typedef struct LinearLayer{
     LinearLayerParams *params;
     DataType dtype;
     LinearLayerWorkspace workspace;
+    Tensor output;
 }LinearLayer;
 
 // LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const bool bias, const bool requires_grad, const DataType dtype);

@@ -22,7 +22,6 @@ static inline void self_attention_layer_workspace_init(SelfAttentionLayer *self_
     self_attention_layer->workspace.attention_scores    = calloc(self_attention_layer->n_heads, sizeof(Tensor));
     self_attention_layer->workspace.attention_scores_scaled =  calloc(self_attention_layer->n_heads, sizeof(Tensor));
     self_attention_layer->workspace.attention_weights   =  calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.concat_heads        = (Tensor){0};
     self_attention_layer->workspace.keys_transposed     = calloc(self_attention_layer->n_heads, sizeof(Tensor));
 
 
@@ -42,16 +41,20 @@ static inline void self_attention_layer_workspace_init(SelfAttentionLayer *self_
     }
 }
 
-static inline void self_attention_layer_workspace_free(const SelfAttentionLayerWorkspace *workspace){
-    tensor_free(workspace->queries_chnuks);
-    tensor_free(workspace->keys_chnuks);
-    tensor_free(workspace->values_chnuks);
-    tensor_free(workspace->context_vecs);
-    tensor_free(workspace->attention_scores);
-    tensor_free(workspace->attention_scores_scaled);
-    tensor_free(workspace->attention_weights);
-    tensor_free(workspace->keys_transposed);
-    tensor_free(&workspace->concat_heads);
+static inline void self_attention_layer_workspace_free(const SelfAttentionLayerWorkspace *workspace, const size_t n_heads){
+    for(size_t i = 0; i < 3; i++) {
+        tensor_reset(&workspace->qkv[i]);
+    }
+    for(size_t i = 0; i < n_heads; i++){
+        tensor_free(&workspace->queries_chnuks[i]);
+        tensor_free(&workspace->keys_chnuks[i]);
+        tensor_free(&workspace->values_chnuks[i]);
+        tensor_free(&workspace->context_vecs[i]);
+        tensor_free(&workspace->attention_scores[i]);
+        tensor_free(&workspace->attention_scores_scaled[i]);
+        tensor_free(&workspace->attention_weights[i]);
+        tensor_free(&workspace->keys_transposed[i]);
+    }
 }
 
 SelfAttentionLayer self_attention_layer_init(SelfAttentionLayerParams *params, const size_t context_len, const size_t embed_dim, const size_t n_heads, const DataType dtype){
@@ -64,9 +67,11 @@ SelfAttentionLayer self_attention_layer_init(SelfAttentionLayerParams *params, c
     self_attention_layer.n_heads = n_heads;
     self_attention_layer.head_dim = head_dim;
 
-    self_attention_layer_workspace_init(&self_attention_layer);
     self_attention_layer.c_attn_layer = linear_layer_init(&params->c_attn, dtype);
     self_attention_layer.c_proj_layer = linear_layer_init(&params->c_proj, dtype);
+
+    tensor_reset(&self_attention_layer.output);
+    self_attention_layer_workspace_init(&self_attention_layer);
     return self_attention_layer;
 }
 
@@ -78,7 +83,8 @@ void self_attention_layer_params_free(SelfAttentionLayerParams *params){
 
 
 void self_attention_layer_free(const SelfAttentionLayer *self_attention_layer){
-    self_attention_layer_workspace_free(&self_attention_layer->workspace);
+    self_attention_layer_workspace_free(&self_attention_layer->workspace, self_attention_layer->n_heads);
+    tensor_free(&self_attention_layer->output);
     self_attention_layer_params_free(self_attention_layer->params);
 }
 
@@ -112,9 +118,8 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
     // output        ==> (1, 4, 2304)
     //tensor_print(&self_attention_layer->params->c_attn.weight, "self_attention_layer->params->c_attn.weight");
     linear_layer_forward(&self_attention_layer->c_attn_layer, x);
-    tensor_print(&self_attention_layer->c_attn_layer.workspace.output, "c_attn_layer.workspace.output");
     tensor_chunk_(
-        &self_attention_layer->c_attn_layer.workspace.output,   
+        &self_attention_layer->c_attn_layer.output,   
         3, 1, self_attention_layer->workspace.qkv
     );
     // tensor_print(&self_attention_layer->workspace.qkv[0], "query");
@@ -128,9 +133,9 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
     // // tensor_print(&self_attention_layer->W_query.output, "self_attention_layer->W_query.output");
     // // tensor_print(&self_attention_layer->W_key.output, "self_attention_layer->W_key.output");
     // // tensor_print(&self_attention_layer->W_value.output, "self_attention_layer->W_value.output");
-    tensor_print(&self_attention_layer->workspace.queries_chnuks[0],    "queries_chnuks");
-    tensor_print(&self_attention_layer->workspace.keys_chnuks[0],       "keys_chnuks");
-    tensor_print(&self_attention_layer->workspace.values_chnuks[0],     "values_chnuks");
+    // tensor_print(&self_attention_layer->workspace.queries_chnuks[0],    "queries_chnuks");
+    // tensor_print(&self_attention_layer->workspace.keys_chnuks[0],       "keys_chnuks");
+    // tensor_print(&self_attention_layer->workspace.values_chnuks[0],     "values_chnuks");
 
     for(size_t head = 0; head < self_attention_layer->n_heads; head++){
             char heading[512] = "\0";
@@ -168,13 +173,13 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
 
     }
 
-    tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->workspace.concat_heads);
-    linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->workspace.concat_heads);
-    bool isnan = tensor_isnan(&self_attention_layer->workspace.concat_heads);
-    if(isnan){
-        printf("\n\n\nexiting due to nan values in tensor\n");
-        exit(1);
-    }
+    tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->output);
+    linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->output);
+    // bool isnan = tensor_isnan(&self_attention_layer->output);
+    // if(isnan){
+    //     printf("\n\n\nexiting due to nan values in tensor\n");
+    //     exit(1);
+    // }
  }
 
 

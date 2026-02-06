@@ -11,7 +11,6 @@ typedef struct SelfAttentionLayerWorkspace{
     Tensor *attention_weights;
     Tensor *keys_transposed;
     Tensor *attention_scores_scaled;
-    Tensor concat_heads;
     Tensor *queries_chnuks;
     Tensor *keys_chnuks;
     Tensor *values_chnuks;
@@ -36,8 +35,8 @@ typedef struct SelfAttentionLayer{
     size_t embed_dim;
     size_t n_heads;
     size_t head_dim;
-
     SelfAttentionLayerWorkspace workspace;
+    Tensor output;
 } SelfAttentionLayer;
 
 

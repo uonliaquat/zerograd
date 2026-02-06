@@ -14,20 +14,20 @@
 
 static inline void linear_layer_workspace_init(LinearLayerWorkspace *workspace){
     tensor_reset(&workspace->a);
-    tensor_reset(&workspace->output);
 }
 
 static inline void linear_layer_workspace_free(const LinearLayerWorkspace *workspace){
     tensor_free(&workspace->a);
-    tensor_free(&workspace->output);
 }
 
 
 LinearLayer linear_layer_init(LinearLayerParams *params, const DataType dtype){
     LinearLayer linear_layer;
-    linear_layer_workspace_init(&linear_layer.workspace);
+
     linear_layer.params  = params;
     linear_layer.dtype = dtype;
+    tensor_reset(&linear_layer.output);
+    linear_layer_workspace_init(&linear_layer.workspace);
     return linear_layer;
 }
 
@@ -38,6 +38,7 @@ void linear_layer_params_free(const LinearLayerParams *params){
 
 void linear_layer_free(const LinearLayer *linear_layer){
     linear_layer_workspace_free(&linear_layer->workspace);
+    tensor_free(&linear_layer->output);
     linear_layer_params_free(linear_layer->params);
 }
 
@@ -48,7 +49,7 @@ void linear_layer_forward(LinearLayer *linear_layer, Tensor *x){
     // tensor_print(&linear_layer->params->weight, "linear_layer->params->weight");
     tensor_dot_product_(x, &linear_layer->params->weight, &linear_layer->workspace.a);
     //tensor_print(&linear_layer->workspace.a, "linear_layer->workspace.a");
-    tensor_add_(&linear_layer->workspace.a, &linear_layer->params->bias, &linear_layer->workspace.output);
+    tensor_add_(&linear_layer->workspace.a, &linear_layer->params->bias, &linear_layer->output);
     //tensor_print(&linear_layer->workspace.output, "linear_layer->workspace.output");
 }
 

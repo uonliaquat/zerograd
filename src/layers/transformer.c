@@ -3,68 +3,73 @@
 #include "../../include/utils.h"
 
 
-static inline void mlp_workspace_init(MLPWorkspace *workspace){
-    workspace->output = (Tensor){0};
-}
 
-static inline void mlp_workspace_free(MLPWorkspace *workspace){
-    tensor_free(&workspace->output);
-}
-
-static inline MLP mlp_init( size_t input_dim, size_t hidden_dim, size_t out_dim, bool bias, bool requires_grad){
+static inline MLP mlp_init(MLPParams *params, const DataType dtype){
     MLP mlp;
-    mlp_workspace_init(&mlp.workspace);
-    // mlp.layer1 = linear_layer_init(input_dim, hidden_dim, bias, requires_grad, DTYPE_FP32);
-    // mlp.layer2 = linear_layer_init(hidden_dim, out_dim, bias, requires_grad, DTYPE_FP32);
+    mlp.params = params;
+    mlp.layer1 = linear_layer_init(&params->c_fc, dtype);
+    mlp.layer2 = linear_layer_init(&params->c_proj, dtype);
+    tensor_reset(&mlp.output);
     return mlp;
 }
 
 static inline void mlp_free(MLP *mlp){
-    mlp_workspace_free(&mlp->workspace);
     linear_layer_free(&mlp->layer1);
     linear_layer_free(&mlp->layer2);
+    tensor_free(&mlp->output);
 }
 
 static inline void mlp_forward(MLP *mlp, Tensor *x){
     print_centered_heading("Feed Forward Network");
     linear_layer_forward(&mlp->layer1,     x);    
-    linear_layer_forward(&mlp->layer2,  &mlp->layer1.workspace.output);
+    linear_layer_forward(&mlp->layer2,  &mlp->layer1.output);
 }
 
-static inline void transformer_layer_workspace_init(TransformerLayerWorkspace *workspace, const DataType dtype){
-    // tensor_init_(
-    //     &workspace->output,
-    //     NULL,
-    //     (uint32_t[]){},
-    //     ndim,
-    //     dtype,
-    //     "transformer.layer.workspace.output"
-    // );
 
+static void inline transformer_layer_workspace_init(TransformerLayerWorkspace *workspace){
+    tensor_reset(&workspace->residual_output);
 }
 
-static inline void transformer_layer_workspace_free(TransformerLayerWorkspace *workspace){
-    tensor_free(&workspace->output);
+static void inline transformer_layer_workspace_free(TransformerLayerWorkspace *workspace){
+    tensor_free(&workspace->residual_output);
 }
 
 TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const bool masked, const DataType dtype){
     TransformerLayer transformer_layer;
     transformer_layer.masked = masked;
-    transformer_layer_workspace_init(&transformer_layer.workspace, dtype);
-    transformer_layer.attn_layer = self_attention_layer_init(&params->attn, context_len, emebd_dim, n_heads, dtype);
-    // transformer_layer.mlp = mlp_init( emebd_dim, emebd_dim*4, emebd_dim, bias, requires_grad);
+    transformer_layer.attn_layer    = self_attention_layer_init(&params->attn, context_len, emebd_dim, n_heads, dtype);
+    transformer_layer.mlp_layer     = mlp_init(&params->mlp, dtype);
+    transformer_layer.ln_layer[0]   = layer_norm_init(&params->ln_[0], dtype);
+    transformer_layer.ln_layer[1]   = layer_norm_init(&params->ln_[1], dtype);
+
+    transformer_layer_workspace_init(&transformer_layer.workspace);
     return transformer_layer;
 }
 void transformer_layer_free(TransformerLayer *transformer_layer){
-    mlp_free(&transformer_layer->mlp_layer);
+    transformer_layer_workspace_free(&transformer_layer->workspace);
+    layer_norm_free(&transformer_layer->ln_layer[0]);
+    layer_norm_free(&transformer_layer->ln_layer[1]);
     self_attention_layer_free(&transformer_layer->attn_layer);
+    mlp_free(&transformer_layer->mlp_layer);
+
 }
 
 void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x){
     print_centered_heading("Self Attention Multi HEAD");
-    self_attention_layer_multi_head_forward(&transformer_layer->attn_layer, x, transformer_layer->masked);
-    // tensor_print(&transformer_layer->self_attention_layer.heads_proj.output, "self_attention_layer heads_proj (Output)");
-    // mlp_forward(&transformer_layer->mlp, &transformer_layer->self_attention_layer.heads_proj.output);
+    layer_norm_forward(&transformer_layer->ln_layer[0], x);
+    tensor_print(&transformer_layer->ln_layer[0].output, "layer_norm_0 (output)");
+    
+    self_attention_layer_multi_head_forward(&transformer_layer->attn_layer, &transformer_layer->ln_layer[0].output, transformer_layer->masked);
+    tensor_print(&transformer_layer->attn_layer.output, "Tranformer Layer (Output)");
+
+    //Residual Connection
+    tensor_add_(x, &transformer_layer->attn_layer.output, &transformer_layer->workspace.residual_output);
+    tensor_print(&transformer_layer->workspace.residual_output, "residual (output)");
+
+    layer_norm_forward(&transformer_layer->ln_layer[1], &transformer_layer->attn_layer.output);
+    tensor_print(&transformer_layer->ln_layer[1].output, "layer_norm_1 (output)");
+
+    //mlp_forward(&transformer_layer->mlp_layer, &transformer_layer->attn_layer.output);
     // tensor_print(&transformer_layer->mlp.layer2.output, "Transformer Layer (Output)");
 }
 

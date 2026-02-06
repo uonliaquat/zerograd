@@ -3,28 +3,43 @@
 #include "../../include/layers/layer_norm.h"
 
 
-LayerNorm layer_norm_init(size_t embed_dim){
-    LayerNorm layer_norm;
-    // layer_norm.eps = 1e-5;
-    // float *ones = (float*)calloc(embed_dim, sizeof(float));
-    // for(size_t i = 0; i < embed_dim; i++) ones[i] = 1.0;
-    // layer_norm.scale = tensor_init(ones, (uint32_t[]){embed_dim, 1}, DTYPE_FP32, NULL);
-    // free(ones);
-    
-    // layer_norm.shift = tensor_init(NULL, (uint32_t[]){embed_dim, 1}, DTYPE_FP32, NULL);
 
+static inline void layer_norm_params_free(LayerNormParams *params){
+    tensor_free(&params->bias);
+    tensor_free(&params->weight);
+}
+
+
+static inline void layer_norm_workspace_init(LayerNormWorkSpace *workspace){
+    tensor_reset(&workspace->mean_var);
+    tensor_reset(&workspace->x_norm);
+    tensor_reset(&workspace->x_norm_scaled);
+}
+
+static inline void layer_norm_workspace_free(LayerNormWorkSpace *workspace){
+    tensor_free(&workspace->mean_var);
+    tensor_free(&workspace->x_norm);
+    tensor_free(&workspace->x_norm_scaled);
+}
+
+LayerNorm layer_norm_init(LayerNormParams *params, const DataType dtype){
+    LayerNorm layer_norm;
+    layer_norm.params = params;
+    layer_norm.eps = 1e-5;
+    tensor_reset(&layer_norm.output);
+    layer_norm_workspace_init(&layer_norm.workspace);
     return layer_norm;
 }
 
-Tensor layer_norm_forward(LayerNorm *layer_norm, Tensor *x){
-    Tensor mean_var = tensor_mean_var(x);
-    // tensor_print(&mean_var);
-    // Tensor x_norm = tensor_norm(x, &mean_var,  layer_norm->eps);
-    // tensor_print(&x_norm);
-    // tensor_print(&layer_norm->scale, "layer_norm->scale,");
-    // Tensor x_norm_scaled = tensor_vector_scale(&x_norm, &layer_norm->scale);
-    // tensor_print(&x_norm_scaled);
-    // Tensor x_norm_scaled_shifted = tensor_vector_add(&x_norm_scaled, &layer_norm->shift);
-    // tensor_print(&x_norm_scaled_shifted);
-    return mean_var;
+void layer_norm_free(LayerNorm *layer_norm){
+    layer_norm_workspace_free(&layer_norm->workspace);
+    tensor_free(&layer_norm->output);
+    layer_norm_params_free(layer_norm->params);
+}
+
+void layer_norm_forward(LayerNorm *layer_norm, Tensor *x){
+    tensor_mean_var_(x, &layer_norm->workspace.mean_var);
+    tensor_norm_(x, &layer_norm->workspace.mean_var, layer_norm->eps, &layer_norm->workspace.x_norm);
+    tensor_vector_scale_(&layer_norm->workspace.x_norm, &layer_norm->params->weight, &layer_norm->output);
+    tensor_vector_add_(&layer_norm->output, &layer_norm->params->bias, &layer_norm->output);
 }

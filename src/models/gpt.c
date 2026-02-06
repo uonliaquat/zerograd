@@ -64,6 +64,7 @@ GPTModel model_gpt_init(GPTParams *params,
     for(size_t i = 0; i < n_heads; i++){
         model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, true, dtype);
     }
+    tensor_reset(&model.output);
     model_gpt_workspace_init(&model);
     return model;
 }

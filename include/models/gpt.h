@@ -49,6 +49,7 @@ typedef struct GPTModel{
     TransformerLayer h_layer[12];
     LayerNorm ln_f_layer;
     GPTWrokspace workspace;
+    Tensor output;
 } GPTModel;
 
 

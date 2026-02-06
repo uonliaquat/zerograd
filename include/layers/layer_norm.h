@@ -10,12 +10,21 @@ typedef struct LayerNormParams{
     Tensor weight;
 } LayerNormParams;
 
+typedef struct LayerNormWorkSpace{
+    Tensor mean_var;
+    Tensor x_norm;
+    Tensor x_norm_scaled;
+} LayerNormWorkSpace;
+
 typedef struct LayerNorm{
     LayerNormParams *params;
     float eps;
+    LayerNormWorkSpace workspace;
+    Tensor output;
 } LayerNorm;
 
-LayerNorm layer_norm_init(size_t embed_dim);
-Tensor layer_norm_forward(LayerNorm *layer_norm, Tensor *x);
+LayerNorm   layer_norm_init(LayerNormParams *params, const DataType dtype);
+void        layer_norm_free(LayerNorm *layer_norm);
+void        layer_norm_forward(LayerNorm *layer_norm, Tensor *x);
 
 #endif
