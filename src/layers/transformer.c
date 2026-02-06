@@ -31,8 +31,16 @@ static inline void mlp_forward(MLP *mlp, Tensor *x){
     linear_layer_forward(&mlp->layer2,  &mlp->layer1.workspace.output);
 }
 
-static inline void transformer_layer_workspace_init(TransformerLayerWorkspace *workspace){
-    tensor_reset(&workspace->output);
+static inline void transformer_layer_workspace_init(TransformerLayerWorkspace *workspace, const DataType dtype){
+    // tensor_init_(
+    //     &workspace->output,
+    //     NULL,
+    //     (uint32_t[]){},
+    //     ndim,
+    //     dtype,
+    //     "transformer.layer.workspace.output"
+    // );
+
 }
 
 static inline void transformer_layer_workspace_free(TransformerLayerWorkspace *workspace){
@@ -41,7 +49,7 @@ static inline void transformer_layer_workspace_free(TransformerLayerWorkspace *w
 
 TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const DataType dtype){
     TransformerLayer transformer_layer;
-    transformer_layer_workspace_init(&transformer_layer.workspace);
+    transformer_layer_workspace_init(&transformer_layer.workspace, dtype);
     transformer_layer.attn_layer = self_attention_layer_init(&params->attn, context_len, emebd_dim, n_heads, dtype);
     // transformer_layer.mlp = mlp_init( emebd_dim, emebd_dim*4, emebd_dim, bias, requires_grad);
     return transformer_layer;

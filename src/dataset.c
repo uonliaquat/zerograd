@@ -15,20 +15,20 @@ Dataset dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, si
     //     printf("%d ", token_ids[i]);
     // }
     Dataset dataset_gpt2;
-    dataset_gpt2.len = 0;
-    for(size_t i = 0; i < token_ids_len - 1; i = i + stride){
-        int *x = calloc(ctx_win, sizeof(int));
-        int *y = calloc(ctx_win, sizeof(int));
-        memcpy(x, token_ids + i, sizeof(int)*ctx_win);
-        memcpy(y, token_ids + i + 1, sizeof(int)*ctx_win);
-        Tensor tensor_x = tensor_init(x, (uint32_t[]){ctx_win}, DTYPE_INT32, false, false);
-        Tensor tensor_y = tensor_init(y, (uint32_t[]){ctx_win}, DTYPE_INT32, false, false);
-        dataset_gpt2.x[dataset_gpt2.len] = tensor_x;
-        dataset_gpt2.y[dataset_gpt2.len] = tensor_y;
-        dataset_gpt2.len++;
-        free(x);
-        free(y);
-    }
+    // dataset_gpt2.len = 0;
+    // for(size_t i = 0; i < token_ids_len - 1; i = i + stride){
+    //     int *x = calloc(ctx_win, sizeof(int));
+    //     int *y = calloc(ctx_win, sizeof(int));
+    //     memcpy(x, token_ids + i, sizeof(int)*ctx_win);
+    //     memcpy(y, token_ids + i + 1, sizeof(int)*ctx_win);
+    //     Tensor tensor_x = tensor_init(x, (uint32_t[]){ctx_win}, DTYPE_INT32, false, false);
+    //     Tensor tensor_y = tensor_init(y, (uint32_t[]){ctx_win}, DTYPE_INT32, false, false);
+    //     dataset_gpt2.x[dataset_gpt2.len] = tensor_x;
+    //     dataset_gpt2.y[dataset_gpt2.len] = tensor_y;
+    //     dataset_gpt2.len++;
+    //     free(x);
+    //     free(y);
+    // }
 
     return dataset_gpt2;
 }
@@ -36,8 +36,8 @@ Dataset dataset_build_gpt2(char *data, Vocab *vocab, MergeRules *merge_rules, si
 void dataset_print_gpt(Dataset *dataset_gpt2){
     for(size_t i = 0; i < dataset_gpt2->len; i++){
         printf("\n========================================DATASET==============================================\n");
-        tensor_print(&dataset_gpt2->x[i], "X");
-        tensor_print(&dataset_gpt2->y[i], "Y");
+        tensor_print(&dataset_gpt2->x[i]);
+        tensor_print(&dataset_gpt2->y[i]);
         printf("\n===============================================================================================\n\n");
     }
 }

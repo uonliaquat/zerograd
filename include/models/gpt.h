@@ -19,8 +19,9 @@ typedef struct GPTConfig {
     size_t embed_dim;       // Embedding Dimensions
     size_t n_heads;         // No of Attention heads
     size_t n_layers;        // No of layers
-    double drop_rate;       // Dropout rate
+    float drop_rate;       // Dropout rate
     bool qkv_bias;          // Query-Key-Value bias
+    size_t batch_size;
     DataType dtype;
 } GPTConfig;
 
@@ -57,8 +58,9 @@ GPTModel model_gpt_init(GPTParams *params,
     const size_t embed_dim, 
     const size_t n_heads, 
     const size_t n_layers,
-    const double drop_rate, 
+    const float drop_rate, 
     const bool qkv_bias, 
+    const size_t batch_size,
     const DataType dtype
 );
 

@@ -45,7 +45,7 @@ void embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *inpu
             (uint32_t[]){input->shape[1], input->shape[2], embedding_layer->embed_dim},
             3,
             embedding_layer->dtype,
-            "output"
+            "embedding.layer.output"
         );
         //tensor_print(embedding_layer->output , "embedding_layer->output ");
     }

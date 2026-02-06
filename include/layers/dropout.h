@@ -7,12 +7,12 @@
 
 
 typedef struct DropoutLayer{
-    double dropout;
+    float dropout;
     bool eval;
 } DropoutLayer;
 
 
-DropoutLayer dropout_layer_init(const double dropout, const bool eval);
+DropoutLayer dropout_layer_init(const float dropout, const bool eval);
 void dropout_layer_forward(const DropoutLayer *dropout_layer, Tensor *tensor);
 
 #endif

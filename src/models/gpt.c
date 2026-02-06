@@ -16,18 +16,20 @@ static inline void model_gpt_config_init(GPTConfig *config,
     const size_t embed_dim, 
     const size_t n_heads, 
     const size_t n_layers, 
-    const double drop_rate, 
+    const float drop_rate, 
     const bool qkv_bias, 
+    const size_t batch_size,
     const DataType dtype
 ){
-        config->vocab_size   = vocab_size;
-        config->context_len  = context_len;
-        config->embed_dim    = embed_dim;
-        config->n_heads      = n_heads;
-        config->n_layers     = n_layers;
-        config->drop_rate    = drop_rate;
-        config->qkv_bias     = qkv_bias;
-        config->dtype        = dtype;
+        config->vocab_size  = vocab_size;
+        config->context_len = context_len;
+        config->embed_dim   = embed_dim;
+        config->n_heads     = n_heads;
+        config->n_layers    = n_layers;
+        config->drop_rate   = drop_rate;
+        config->qkv_bias    = qkv_bias;
+        config->batch_size  = batch_size;
+        config->dtype       = dtype;
 }
 
 static inline void model_gpt_workspace_init(GPTModel *model){
@@ -49,19 +51,20 @@ GPTModel model_gpt_init(GPTParams *params,
     const size_t embed_dim, 
     const size_t n_heads, 
     const size_t n_layers, 
-    double drop_rate, 
-    bool qkv_bias, 
+    const float drop_rate, 
+    const bool qkv_bias, 
+    const size_t batch_size,
     const DataType dtype
 ){
     GPTModel model;
-    model_gpt_config_init(&model.config, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, dtype);
-    model_gpt_workspace_init(&model);
+    model_gpt_config_init(&model.config, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, dtype);
     model.params        = params;
     model.wte_layer     = embedding_layer_init(&model.params->wpe, vocab_size,  embed_dim, DTYPE_FP32);
     model.wpe_layer     = embedding_layer_init(&model.params->wte, context_len, embed_dim, DTYPE_FP32);
     for(size_t i = 0; i < n_heads; i++){
         model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, dtype);
     }
+    model_gpt_workspace_init(&model);
     return model;
 }
 
@@ -77,25 +80,24 @@ void model_gpt_free(GPTModel *model){
 void model_gpt_forward(GPTModel *model, Tensor *input){
     assert(input->ndim == 3);
     embedding_layer_forward(&model->wte_layer, input);
-    //tensor_print(&model->wte_layer.output, "model->wte_layer.output");
+    tensor_print(&model->wte_layer.output, "wte_layer.output");
 
 
-    tensor_arange_(0, input->shape[input->ndim-1], 1, &model->workspace.indices);
-    //tensor_print(&model->workspace.indices, "position_indices (arange)");
+    tensor_arange_(0, input->shape[input->ndim-1], 1, &model->workspace.position_indices);
+    tensor_print(&model->workspace.position_indices, "position_indices (arrange)");
 
-    tensor_repeat_(&model->workspace.indices, (uint8_t[]){input->shape[1], 1}, &model->workspace.position_indices);
-    //tensor_print(&model->workspace.position_indices, "position_indices (repeat)");
+    // tensor_repeat_(&model->workspace.indices, (uint8_t[]){input->shape[1], 1}, &model->workspace.position_indices);
+    // tensor_print(&model->workspace.position_indices);
 
     tensor_unsqueeze_(&model->workspace.position_indices, 0);
-    //tensor_print(&model->workspace.position_indices, "position_indices (unsqueeze)");
+    tensor_print(&model->workspace.position_indices, "position_indices (unsqueezed)");
 
     embedding_layer_forward(&model->wpe_layer, &model->workspace.position_indices);
-    //tensor_print(&model->wpe_layer.output,   "model->wpe_layer.output");
-
+    tensor_print(&model->wpe_layer.output, "wpe_layer.output");
 
 
     tensor_add_(&model->wte_layer.output, &model->wpe_layer.output, &model->workspace.input_embeddings);
-    //tensor_print(&model->workspace.input_embeddings, "input_embeddings");
+    tensor_print(&model->workspace.input_embeddings, "input_embeddings");
 
 
     for(size_t i = 0; i < 1; i++){

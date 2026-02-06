@@ -12,7 +12,7 @@ typedef struct LayerNormParams{
 
 typedef struct LayerNorm{
     LayerNormParams *params;
-    double eps;
+    float eps;
 } LayerNorm;
 
 LayerNorm layer_norm_init(size_t embed_dim);

@@ -5,8 +5,8 @@
 #include "../include/utils.h"
 
 
-static inline double rand_uniform(const double min, const double max){
-    return min + (max - min) * ((double)rand() / RAND_MAX);
+static inline float rand_uniform(const float min, const float max){
+    return min + (max - min) * ((float)rand() / RAND_MAX);
 }
 
 

@@ -67,23 +67,17 @@ int main(){
     size_t embed_dim   = 768;     // Embedding dimension (n_embd)
     size_t n_heads     = 12;      // Attention heads (n_head)
     size_t n_layers    = 12;      // Transformer blocks (n_layer)
-    double drop_rate   = 0.1;     // Dropout
+    float drop_rate    = 0.1;     // Dropout
     bool qkv_bias      = true;    // GPT-2 uses bias in QKV
+    size_t batch_size  = 1;       // Batch Size 
 
 
     char *filename = "/Users/uonliaquat/Downloads/model.safetensors";
     GPTParams params;
     safetensors_load_model(filename, &params);
-    GPTModel model = model_gpt_init(&params, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, DTYPE_FP32);
+    GPTModel model = model_gpt_init(&params, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, DTYPE_FP32);
     
-    Tensor input_tokens = tensor_init((float[]){
-        1, 2, 0, 2
-        // 0, 0, 4, 3, 2, 1
-        // 0.57, 0.85, 0.64, 0.64,
-        // 0.22, 0.58, 0.33, 0.33,
-        // 0.77, 0.25, 0.10, 0.10,
-        // 0.05, 0.80, 0.55, 0.55,
-    }, (uint32_t[]){1, 1, 4}, 3, DTYPE_FP32, "input_tokens");
+    Tensor input_tokens = tensor_init((float[]){1, 2, 0, 2}, (uint32_t[]){1, 1, 4}, 3, DTYPE_FP32, "input_tokens");
     tensor_print(&input_tokens, "input_tokens");
     model_gpt_forward(&model, &input_tokens);
     //model_gpt_safetensors_init(filename);
@@ -98,7 +92,7 @@ int main(){
     //     // 0.77, 0.25, 0.10, 0.10,
     //     // 0.05, 0.80, 0.55, 0.55,
     // }, (uint32_t[]){1, 1, 4}, 3, DTYPE_FP32, "input_tokens");
-    //tensor_print(&input_tokens, "input_tokens");
+    //tensor_print(&input_tokens);
     //model_gpt_forward(&input_tokens);
     //model_gpt_free();
 
@@ -111,24 +105,24 @@ int main(){
     // dataloader_print_sample(&data_sample);
 
 
-    // Tensor token_embeddings = tensor_init((double[]){
+    // Tensor token_embeddings = tensor_init((float[]){
     //     1, 2, 0, 2,
     //     0, 1, 2, 3,
     // }, (uint32_t[]){1, 2, 4}, 3, tensor_dtype_size(DTYPE_FP32), false, false);
 
-    // tensor_print(&token_embeddings, "input");
+    // tensor_print(&token_embeddings, );
 
     // EmbeddingLayer token_embed_layer = embedding_layer_init(vocab_size, emb_dim, DTYPE_FP32);
     // embedding_layer_forward(&token_embed_layer, &token_embeddings);
     // embedding_layer_print(&token_embed_layer);
     // embedding_layer_free(&token_embed_layer);
     // embedding_layer_write(&token_embed_layer, "./output/token_embedding_layer.csv");
-    // tensor_print(&token_embeddings, "token_embeddings");
+    // tensor_print(&token_embeddings, );
 
     // EmbeddingLayer pos_embed_layer = embedding_layer_init(context_len, emb_dim, DTYPE_FP32);
     // embedding_layer_forward(&token_embed_layer, &token_embeddings);
     // embedding_layer_write(&token_embed_layer, "./output/token_embedding_layer.csv");
-    // tensor_print(&token_embeddings, "token_embeddings");
+    // tensor_print(&token_embeddings, );
     
     // EmbeddingLayer pos_embedding_layer = embedding_layer_init(seq_len, embed_dim, seq_len, DTYPE_FP32);
     // Tensor embedding_layer_positional_output =embedding_layer_positional_forward(&pos_embedding_layer);
@@ -136,10 +130,10 @@ int main(){
     // // // tensor_print(&embedding_layer_positional_output);
 
     // Tensor input_embeddings = tensor_add(&embedding_layer_token_output, &embedding_layer_positional_output);
-    // tensor_print(&input_embeddings, "Input Emeddings");
+    // tensor_print(&input_embeddings, );
     // // // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
-    // Tensor input_embeddings = tensor_init((double[]){
+    // Tensor input_embeddings = tensor_init((float[]){
     //     0.43, 0.15, 0.89, 0.89,
     //     0.55, 0.87, 0.66, 0.66,
     //     0.57, 0.85, 0.64, 0.64,
@@ -152,13 +146,13 @@ int main(){
     // // const size_t shape1[] = {seq_len, embed_dim};
     // // const size_t ndim1 = sizeof(shape1) / sizeof(size_t);
     // // Tensor tensor1 = tensor_init(NULL, shape1, ndim1, DTYPE_FP32, false, true);
-    // // tensor_print(&tensor1, "Tensor 1");
+    // // tensor_print(&tensor1, );
     // // tensor_write(&tensor1, "./output/tensor1.csv");
 
     // // const size_t shape_input_embeddings[] = {seq_len, embed_dim};
     // // const size_t ndim_input_embeddings = sizeof(shape_input_embeddings) / sizeof(size_t);
     // // Tensor input_embeddings = tensor_init(NULL, shape_input_embeddings, ndim_input_embeddings, DTYPE_FP32, false, true);
-    // // tensor_print(&input_embeddings, "Input Embeddings");
+    // // tensor_print(&input_embeddings, );
     // // tensor_write(&input_embeddings, "./output/input_embeddings.csv");
 
 
