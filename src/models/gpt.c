@@ -32,16 +32,20 @@ static inline void model_gpt_config_init(GPTConfig *config,
         config->dtype       = dtype;
 }
 
-static inline void model_gpt_workspace_init(GPTModel *model){
+static inline void model_gpt_workspace_init(GPTModel *model, const size_t n_layers){
     tensor_reset(&model->workspace.indices);
-    tensor_reset(&model->workspace.input_embeddings);
+    for(size_t i = 0; i < n_layers+1; i++){
+        tensor_reset(&model->workspace.embeddings[i]);
+    }
     tensor_reset(&model->workspace.position_indices);
 }
 
-static inline void model_gpt_workspace_free(GPTWrokspace *workspace){
+static inline void model_gpt_workspace_free(GPTWrokspace *workspace, const size_t n_layers){
     tensor_free(&workspace->indices);
     tensor_free(&workspace->position_indices);
-    tensor_free(&workspace->input_embeddings);
+    for(size_t i = 0; i < n_layers+1; i++){
+        tensor_free(&workspace->embeddings[i]);
+    }
 }
 
 
@@ -65,17 +69,19 @@ GPTModel model_gpt_init(GPTParams *params,
         model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, true, dtype);
     }
     tensor_reset(&model.output);
-    model_gpt_workspace_init(&model);
+    model_gpt_workspace_init(&model, n_layers);
     return model;
 }
 
 
 void model_gpt_free(GPTModel *model){
-    model_gpt_workspace_free(&model->workspace);
+    model_gpt_workspace_free(&model->workspace, model->config.n_layers);
     embedding_layer_free(&model->wte_layer);
     embedding_layer_free(&model->wpe_layer);
-    //transformer_block_free(&model->transformer_block);
-    // tensor_free(&gpt_model.output);
+    for(size_t i = 0; i < model->config.n_layers; i++){
+        transformer_layer_free(&model->h_layer[i]);
+    }
+    tensor_free(&model->output);
 }
 
 void model_gpt_forward(GPTModel *model, Tensor *input){
@@ -97,38 +103,18 @@ void model_gpt_forward(GPTModel *model, Tensor *input){
     tensor_print(&model->wpe_layer.output, "wpe_layer.output");
 
 
-    tensor_add_(&model->wte_layer.output, &model->wpe_layer.output, &model->workspace.input_embeddings);
-    tensor_print(&model->workspace.input_embeddings, "input_embeddings");
+    tensor_add_(&model->wte_layer.output, &model->wpe_layer.output, &model->workspace.embeddings[0]);
+    tensor_print(&model->workspace.embeddings[0], "input_embeddings");
 
 
-    for(size_t i = 0; i < 1; i++){
-        transformer_layer_forward(&model->h_layer[i], &model->workspace.input_embeddings);
+    for(size_t i = 0; i < model->config.n_layers; i++){
+        printf("************************** Layer %zu **************************", i+1);
+        transformer_layer_forward(&model->h_layer[i], &model->workspace.embeddings[i]);
+        model->workspace.embeddings[i+1] = model->h_layer[i].output;
     }
 
-    // transformer_block_forward(&model.transformer_block,  &model.workspace.input_embeddings);
-    //transformer_block_print(&model.transformer_block, "Transformer Block");
-    // //Tensor embeddings = tensor_copy(&input_embeddings);
-    // Tensor *embeddings = calloc(gpt_config.n_layers+1, sizeof(Tensor));
-    // embeddings[0] =  tensor_copy(&input_embeddings);
-    // tensor_print(&embeddings[0], "embeddings (after copy)");
-    // for(size_t layer_no = 1; layer_no <= gpt_config.n_layers; layer_no++){
-    //     tensor_print(&embeddings[layer_no-1], "embeddings[layer_no-1]");
-    //     embeddings[layer_no] = transformer_layer_forward(&model.transformer_layers[layer_no-1], &embeddings[layer_no-1], false);
-    //     tensor_free(&embeddings[layer_no-1]);
-    // }
-
-
-    // dropout_layer_forward(&model.drop_embed_layer, &embeddings);
-    // tensor_print(&embeddings[0], "embeddings (after dropout)");
-
-
-
-
-    // Tensor output = linear_layer_forward(&gpt_model.out_head_layer, &embeddings[gpt_config.n_layers]);
-    // tensor_print(&output, "model_gpt_forward output");
-
-    // Tensor output_norm =  layer_norm_forward(&gpt_model.layer_norm, &output);
-    // tensor_print(&output_norm, "output_norm");
+    // Residual connection
+    // tensor_add_(&model->workspace.embeddings[ model->config.n_layers], );
 }
 
 

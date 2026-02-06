@@ -37,7 +37,7 @@ typedef struct GPTParams{
 typedef struct GPTWrokspace{
     Tensor indices;
     Tensor position_indices;
-    Tensor input_embeddings;
+    Tensor embeddings[12];
 } GPTWrokspace;
 
 

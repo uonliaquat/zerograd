@@ -23,6 +23,7 @@ static inline void mlp_forward(MLP *mlp, Tensor *x){
     print_centered_heading("Feed Forward Network");
     linear_layer_forward(&mlp->layer1,     x);    
     linear_layer_forward(&mlp->layer2,  &mlp->layer1.output);
+    mlp->output = mlp->layer2.output;
 }
 
 
@@ -60,7 +61,7 @@ void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x){
     tensor_print(&transformer_layer->ln_layer[0].output, "layer_norm_0 (output)");
     
     self_attention_layer_multi_head_forward(&transformer_layer->attn_layer, &transformer_layer->ln_layer[0].output, transformer_layer->masked);
-    tensor_print(&transformer_layer->attn_layer.output, "Tranformer Layer (Output)");
+    tensor_print(&transformer_layer->attn_layer.output, "Self Attention Layer (Output)");
 
     //Residual Connection
     tensor_add_(x, &transformer_layer->attn_layer.output, &transformer_layer->workspace.residual_output);
@@ -69,8 +70,9 @@ void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x){
     layer_norm_forward(&transformer_layer->ln_layer[1], &transformer_layer->attn_layer.output);
     tensor_print(&transformer_layer->ln_layer[1].output, "layer_norm_1 (output)");
 
-    //mlp_forward(&transformer_layer->mlp_layer, &transformer_layer->attn_layer.output);
-    // tensor_print(&transformer_layer->mlp.layer2.output, "Transformer Layer (Output)");
+    mlp_forward(&transformer_layer->mlp_layer, &transformer_layer->attn_layer.output);
+    tensor_print(&transformer_layer->mlp_layer.output, "Transformer Layer (Output)");
+    transformer_layer->output = transformer_layer->mlp_layer.output;
 }
 
 void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading){
