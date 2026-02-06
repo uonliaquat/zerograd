@@ -4,6 +4,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 
 #include "../../include/layers/self_attention.h"
@@ -153,33 +154,27 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
                 &self_attention_layer->workspace.attention_scores_scaled[head]
             );
 
-            // // // // if(masked == true){
-            // // // //     tensor_tril_(&self_attention_layer->workspace.attention_scores, -INFINITY, &self_attention_layer->workspace.attention_scores_scaled);
-            // // // //     tensor_print(&attention_scores_scaled, "attention_scores_scaled");
+            if(masked == true){
+                tensor_tril_(&self_attention_layer->workspace.attention_scores_scaled[head], -FLT_MAX);
+                //tensor_print(&self_attention_layer->workspace.attention_scores_scaled[head], "attention_scores_scaled");
                     
-            // // // // }
+            }
             // // softmax((Q.K^T)/sqrt(d))
             tensor_softmax_(&self_attention_layer->workspace.attention_scores_scaled[head], 1, &self_attention_layer->workspace.attention_weights[head]);
-            bool isnan = tensor_isnan(&self_attention_layer->workspace.attention_weights[head]);
-            if(isnan){
-                printf("\n\n\nexiting due to nan values in tensor\n");
-                exit(1);
-            }
-
             
             // // //  softmax((Q.K^T)/sqrt(d)).V
             tensor_dot_product_(&self_attention_layer->workspace.attention_weights[head], &self_attention_layer->workspace.values_chnuks[head],  &self_attention_layer->workspace.context_vecs[head]);
-            // tensor_print(&self_attention_layer->workspace.context_vecs[head], "context_vecs [head]");
             // // printf("======================================================================================\n");
 
     }
 
     tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->workspace.concat_heads);
-    // tensor_print(&self_attention_layer->workspace.concat_heads, "concat_heads");
-    // //tensor_print(&self_attention_layer->params->c_proj.weight, "c_proj");
-
-    // linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->workspace.concat_heads);
-    // tensor_print(&self_attention_layer->c_proj_layer.workspace.output, "c_proj (Output)");
+    linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->workspace.concat_heads);
+    bool isnan = tensor_isnan(&self_attention_layer->workspace.concat_heads);
+    if(isnan){
+        printf("\n\n\nexiting due to nan values in tensor\n");
+        exit(1);
+    }
  }
 
 

@@ -41,14 +41,15 @@ typedef struct TransformerLayer{
     SelfAttentionLayer attn_layer;
     LayerNorm ln_layer[2];
     MLP mlp_layer;
+    bool masked;
     TransformerLayerWorkspace workspace;
 } TransformerLayer;
 
 
 
-TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const DataType dtype);
+TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const bool masked, const DataType dtype);
 void transformer_layer_free(TransformerLayer *transformer_layer);
-void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x, bool masked);
+void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x);
 void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading);
 //void transformer_layer_write(TransformerLayer *transformer_layer, const char *filename);
 

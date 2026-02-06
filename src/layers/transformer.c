@@ -47,8 +47,9 @@ static inline void transformer_layer_workspace_free(TransformerLayerWorkspace *w
     tensor_free(&workspace->output);
 }
 
-TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const DataType dtype){
+TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const bool masked, const DataType dtype){
     TransformerLayer transformer_layer;
+    transformer_layer.masked = masked;
     transformer_layer_workspace_init(&transformer_layer.workspace, dtype);
     transformer_layer.attn_layer = self_attention_layer_init(&params->attn, context_len, emebd_dim, n_heads, dtype);
     // transformer_layer.mlp = mlp_init( emebd_dim, emebd_dim*4, emebd_dim, bias, requires_grad);
@@ -59,9 +60,9 @@ void transformer_layer_free(TransformerLayer *transformer_layer){
     self_attention_layer_free(&transformer_layer->attn_layer);
 }
 
-void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x, bool masked){
+void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x){
     print_centered_heading("Self Attention Multi HEAD");
-    self_attention_layer_multi_head_forward(&transformer_layer->attn_layer, x, masked);
+    self_attention_layer_multi_head_forward(&transformer_layer->attn_layer, x, transformer_layer->masked);
     // tensor_print(&transformer_layer->self_attention_layer.heads_proj.output, "self_attention_layer heads_proj (Output)");
     // mlp_forward(&transformer_layer->mlp, &transformer_layer->self_attention_layer.heads_proj.output);
     // tensor_print(&transformer_layer->mlp.layer2.output, "Transformer Layer (Output)");

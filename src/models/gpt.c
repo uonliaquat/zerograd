@@ -62,7 +62,7 @@ GPTModel model_gpt_init(GPTParams *params,
     model.wte_layer     = embedding_layer_init(&model.params->wpe, vocab_size,  embed_dim, DTYPE_FP32);
     model.wpe_layer     = embedding_layer_init(&model.params->wte, context_len, embed_dim, DTYPE_FP32);
     for(size_t i = 0; i < n_heads; i++){
-        model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, dtype);
+        model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, true, dtype);
     }
     model_gpt_workspace_init(&model);
     return model;
@@ -101,7 +101,7 @@ void model_gpt_forward(GPTModel *model, Tensor *input){
 
 
     for(size_t i = 0; i < 1; i++){
-        transformer_layer_forward(&model->h_layer[i], &model->workspace.input_embeddings, false);
+        transformer_layer_forward(&model->h_layer[i], &model->workspace.input_embeddings);
     }
 
     // transformer_block_forward(&model.transformer_block,  &model.workspace.input_embeddings);

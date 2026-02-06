@@ -60,7 +60,7 @@ void    tensor_add_(Tensor *input1, Tensor *input2, Tensor *output);
 Tensor  tensor_elementwise_add(Tensor *inpput, float val);
 Tensor  tensor_vector_add(Tensor *inpput, Tensor *vector);
 Tensor  tensor_tril(Tensor *input, float elem);
-void    tensor_tril_(Tensor *input, float elem, Tensor *output);
+void    tensor_tril_(Tensor *input, float elem);
 void    tensor_masked_fill(Tensor *tensor, float mask, float fill);
 void    tensor_copy_row_data(Tensor *dest_tensor, size_t batch_id, size_t row_id, Tensor *src_tensor, size_t src_row, size_t no_of_items);
 Tensor  tensor_mean_var(Tensor *x);
