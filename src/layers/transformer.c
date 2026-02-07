@@ -72,26 +72,63 @@ void transformer_layer_free(TransformerLayer *transformer_layer){
 void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x){
     //print_centered_heading("Self Attention Multi HEAD");
     layer_norm_forward(&transformer_layer->ln_layer[0], x);
-    //tensor_print(&transformer_layer->ln_layer[0].output, "layer_norm_0 (output)");
+    tensor_print(&transformer_layer->ln_layer[0].output, "layer_norm_0 (output)");
+
+    if(tensor_isnan(&transformer_layer->ln_layer[0].output)){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->ln_layer[0].output\n");
+        exit(1);
+    }
+
     
     self_attention_layer_multi_head_forward(&transformer_layer->attn_layer, &transformer_layer->ln_layer[0].output, transformer_layer->masked);
-    //tensor_print(&transformer_layer->attn_layer.output, "Self Attention Layer (Output)");
+    tensor_print(&transformer_layer->attn_layer.output, "Self Attention Layer (Output)");
+
+    if(tensor_isnan(&transformer_layer->attn_layer.output)){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->attn_layer.output\n");
+        exit(1);
+    }
 
     //Residual Connection
     tensor_add_(x, &transformer_layer->attn_layer.output, &transformer_layer->workspace.residual_output[0]);
-    //tensor_print(&transformer_layer->workspace.residual_output[0], "residual_connection_0 (output)");
+    tensor_print(&transformer_layer->workspace.residual_output[0], "residual_connection_0 (output)");
 
-    layer_norm_forward(&transformer_layer->ln_layer[1], &transformer_layer->attn_layer.output);
-    //tensor_print(&transformer_layer->ln_layer[1].output, "layer_norm_1 (output)");
+    if(tensor_isnan(&transformer_layer->workspace.residual_output[0])){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->workspace.residual_output[0]\n");
+        exit(1);
+    }
 
-    mlp_forward(&transformer_layer->mlp_layer, &transformer_layer->attn_layer.output);
-    //tensor_print(&transformer_layer->mlp_layer.output, "MLP Layer (Output)");
-    //transformer_layer->output = transformer_layer->mlp_layer.output;
+    layer_norm_forward(&transformer_layer->ln_layer[1], &transformer_layer->workspace.residual_output[0]);
+    tensor_print(&transformer_layer->ln_layer[1].output, "layer_norm_1 (output)");
 
-    tensor_add_(&transformer_layer->workspace.residual_output[0], &transformer_layer->mlp_layer.output, &transformer_layer->workspace.residual_output[1]);
+    if(tensor_isnan(&transformer_layer->ln_layer[1].output)){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->ln_layer[1].output\n");
+        exit(1);
+    }
+
+    mlp_forward(&transformer_layer->mlp_layer, &transformer_layer->ln_layer[1].output);
+    tensor_print(&transformer_layer->mlp_layer.output, "MLP Layer (Output)");
+
+    if(tensor_isnan(&transformer_layer->mlp_layer.output)){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->mlp_layer.output\n");
+        exit(1);
+    }
+
+
+    tensor_add_(&transformer_layer->attn_layer.output, &transformer_layer->mlp_layer.output, &transformer_layer->workspace.residual_output[1]);
+
+    if(tensor_isnan(&transformer_layer->workspace.residual_output[1])){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->workspace.residual_output[1]\n");
+        exit(1);
+    }
+
     tensor_copy_(&transformer_layer->workspace.residual_output[1], &transformer_layer->output);
+    if(tensor_isnan(&transformer_layer->output)){
+        printf("\n\n\nexiting due to nan values in , &transformer_layer->output\n");
+        exit(1);
+    }
 
-    //tensor_print(&transformer_layer->output, "residual_connection_1 (output)");
+
+    tensor_print(&transformer_layer->output, "residual_connection_1 (output)");
 }
 
 void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading){

@@ -25,7 +25,7 @@ static inline void layer_norm_workspace_free(LayerNormWorkSpace *workspace){
 LayerNorm layer_norm_init(LayerNormParams *params, const DataType dtype){
     LayerNorm layer_norm;
     layer_norm.params = params;
-    layer_norm.eps = 1e-5;
+    layer_norm.eps = 1e-9;
     tensor_reset(&layer_norm.output);
     layer_norm_workspace_init(&layer_norm.workspace);
     return layer_norm;

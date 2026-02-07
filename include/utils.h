@@ -15,7 +15,7 @@ static inline float rand_uniform(const float min, const float max){
 
 
 static inline void print_centered_heading(const char *heading) {
-    #define DEBUG
+    //#define DEBUG
     #ifdef DEBUG
     const int width = 68;  // inner width between the bars
     int len = strlen(heading);

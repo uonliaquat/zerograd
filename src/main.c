@@ -78,14 +78,14 @@ int main(){
     GPTModel model = model_gpt_init(&params, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, DTYPE_FP32);
     
     Tensor input_tokens = tensor_init(
-        (float[]){1, 2, 0, 2, 0, 0, 0, 0}, 
-        (uint32_t[]){1, 1, 8}, 
+        (float[]){7454, 2402, 257, 640}, 
+        (uint32_t[]){1, 1, 4}, 
         3, 
-        DTYPE_FP32, 
+        DTYPE_INT32, 
         "input_tokens"
     );
-    tensor_print(&input_tokens, "input_tokens");
-    model_gpt_forward(&model, &input_tokens);
+    // tensor_print(&input_tokens, "input_tokens");
+    // model_gpt_forward(&model, &input_tokens);
     //model_gpt_safetensors_init(filename);
 
     // model_gpt_config_init(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);

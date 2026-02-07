@@ -213,8 +213,8 @@ Tensor tensor_repeat(Tensor *input, uint8_t * repeate_dims){
      Tensor output_tensor = tensor_init(
         NULL, 
         (uint32_t[]){repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0], repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1] },
-        input->dtype,
         2,
+        input->dtype,
         NULL
     );
     // Initializing stride
@@ -230,7 +230,7 @@ Tensor tensor_repeat(Tensor *input, uint8_t * repeate_dims){
     if(repeate_dims[0] != 0){
         for(size_t i = 0; i < output_tensor.shape[0]; i++){
             //printf("%zu, %zu\n", i, input->size);
-            tensor_copy_row_data(&output_tensor, i, 0, input, 0, output_tensor.size*tensor_dtype_size(output_tensor.dtype));
+            tensor_copy_row_data(&output_tensor, i, 0, input, 0, output_tensor.size);
         }
     }
     return output_tensor;
@@ -242,8 +242,8 @@ void tensor_repeat_(Tensor *input, uint8_t * repeate_dims, Tensor *output){
             output,
             NULL, 
             (uint32_t[]){repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0], repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1], repeate_dims[2] == 1 ? input->shape[2] : repeate_dims[2]  },
-            input->dtype,
             3,
+            input->dtype,
             "tensor_repeat_.output"
         );
     }
@@ -259,7 +259,7 @@ void tensor_repeat_(Tensor *input, uint8_t * repeate_dims, Tensor *output){
     if(repeate_dims[0] != 0){
         for(size_t i = 0; i < output->shape[0]; i++){
             printf("input->size: %u, input->elem_size: %u\n", input->size, input->elem_size);
-            tensor_copy_row_data(output, i, 0, input, 0, input->size * input->elem_size);
+            tensor_copy_row_data(output, i, 0, input, 0, input->size);
         }
     }
  }
@@ -414,28 +414,35 @@ void tensor_softmax_(Tensor *input, size_t dim, Tensor *output){
     size_t batch_size   = tensor_get_batch_size(input);
     size_t rows         = tensor_get_rows(input);
     size_t cols         = tensor_get_cols(input);
-
-    if(dim == 1){
-        for(size_t b = 0; b < batch_size; b++){
-            for(size_t i = 0; i < rows; i++){
-                float exp_sum = 0;
-                
-                float max_elem = -FLT_MAX;
-                for(size_t j = 0; j < cols; j++){
-                    float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
-                    if(elem > max_elem) max_elem = elem;
-                }
-
-                for(size_t j = 0; j < cols; j++){
-                    float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
-                    exp_sum = exp_sum + expf(elem - max_elem);
-                }
-                for(size_t j = 0; j < cols; j++){
-                    float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
-
-                    float new_elem = expf(elem - max_elem) / exp_sum;
-                    tensor_put_elem(output, output->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j}, new_elem);
-                }
+    const float EPS = 1e-12f;
+    for (size_t b = 0; b < batch_size; b++) {
+        for (size_t i = 0; i < rows; i++) {
+            float max_elem = -FLT_MAX;
+            
+            // Find max
+            for (size_t j = 0; j < cols; j++) {
+                float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b,i,j} : (uint32_t[]){i,j});
+                if (elem > max_elem) max_elem = elem;
+            }
+            
+            // Compute exp_sum
+            float exp_sum = 0.0f;
+            for (size_t j = 0; j < cols; j++) {
+                float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b,i,j} : (uint32_t[]){i,j});
+                float e = expf(elem - max_elem);
+                if (!isfinite(e)) e = 0.0f;
+                exp_sum += e;
+            }
+            
+            exp_sum = fmaxf(exp_sum, EPS);  // Prevent division by zero
+            
+            // Normalize
+            for (size_t j = 0; j < cols; j++) {
+                float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b,i,j} : (uint32_t[]){i,j});
+                float e = expf(elem - max_elem);
+                if (!isfinite(e)) e = 0.0f;  // Apply guard here too
+                float new_elem = e / exp_sum;
+                tensor_put_elem(output, output->ndim == 3 ? (uint32_t[]){b,i,j} : (uint32_t[]){i,j}, new_elem);
             }
         }
     }
@@ -514,12 +521,13 @@ void tensor_gelu_(Tensor *input, Tensor *output){
 
 void tensor_elementwise_scale_(Tensor *input, float elem, Tensor *output){
     if(output->size == 0){
-        *output = tensor_init(
+        tensor_init_(
+            output,
             NULL, 
             input->shape,
             input->ndim,
             input->dtype,
-            NULL
+            "tensor_elementwise_scale_"
         );
     }
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
@@ -541,8 +549,8 @@ Tensor tensor_vector_scale(Tensor *input, Tensor *vector){
     Tensor output_tensor = tensor_init(
         NULL, 
         input->shape, 
-        input->dtype, 
         input->ndim,
+        input->dtype, 
         false
     );
 
@@ -844,15 +852,37 @@ void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output
 
     for(size_t i = 0; i < out_rows; i++){
         for(size_t j = 0; j < out_cols; j++){
-            float result = 0;
+            double result = 0;
             for(size_t k = 0; k < t1_cols; k++){
                 float elem1 = tensor_get_elem(tensor1, tensor1->ndim == 3 ?(uint32_t[]){batch_dim, i, k}: (uint32_t[]){i, k});
                 float elem2 = tensor_get_elem(tensor2, tensor2->ndim == 3 ?(uint32_t[]){batch_dim, k, j}: (uint32_t[]){k, j});
-                // if(isnan(elem1) || isnan(elem2)){
-                //     printf("i: %zu, j: %zu, k: %zu \n", i, j, k);
-                //     exit(1);
-                // }
+                 // Handle NaN / Inf
+                if (!isfinite(elem1)) {
+                    printf("Warning: elem1 at i=%zu, j=%zu, k=%zu is not finite (%f). Clamping to 0.\n", i, j, k, elem1);
+                    elem1 = 0.0f;
+                }
+                if (!isfinite(elem2)) {
+                    printf("Warning: elem2 at i=%zu, j=%zu, k=%zu is not finite (%f). Clamping to 0.\n", i, j, k, elem2);
+                    elem2 = 0.0f;
+                }
+
+                if (isnan(elem1)) {
+                    printf("Warning: elem1 at i=%zu, j=%zu, k=%zu is nana (%f). Clamping to 0.\n", i, j, k, elem1);
+                    elem1 = 0.0f;
+                }
+                if (isnan(elem2)) {
+                    printf("Warning: elem2 at i=%zu, j=%zu, k=%zu is nan (%f). Clamping to 0.\n", i, j, k, elem2);
+                    elem2 = 0.0f;
+                }
+
                 result += (elem1 * elem2);
+
+                // Optional: clamp intermediate product to avoid Inf
+                if (!isfinite(result)) {
+                    printf("Warning: product at i=%zu, j=%zu, k=%zu is not finite. Clamping to 0.\n", i, j, k);
+                    result = 0.0;
+                }
+
             }
             if(output_tensor->ndim == 3) tensor_put_elem(output_tensor, (uint32_t[]){batch_dim, i, j}, result);
             else if(output_tensor->ndim == 2)  tensor_put_elem(output_tensor, tensor2->ndim == 3 ? (uint32_t[]){batch_dim, i, j}: (uint32_t[]){i, j}, result);
@@ -916,7 +946,7 @@ void tensor_dot_product_(const Tensor *input1, const Tensor *input2, Tensor *out
             (uint32_t[]){t1_batch_size, t1_rows, t2_cols}, 
             3,
             input1->dtype,
-            NULL
+            "tensor_dot_product.output"
         );
     }
     for(size_t b = 0; b < t1_batch_size; b++){
@@ -986,7 +1016,10 @@ void tensor_add_(Tensor *input1, Tensor *input2, Tensor *output){
     }
     memcpy(output->data, input1->data, input1->size * tensor_dtype_size(input1->dtype));
     for(size_t i = 0; i < output->size; i++){
-        ((float*)output->data)[i] = ((float*)output->data)[i] + ((float*)input2->data)[i];
+        double elem = ((float*)output->data)[i] + ((float*)input2->data)[i];
+        if(elem >= FLT_MAX)
+
+        ((float*)output->data)[i] = elem;
     }
 }
 
@@ -1197,20 +1230,29 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
     size_t rows = input->ndim == 3 ? input->shape[1]: input->shape[0];
     size_t cols = input->ndim == 3 ? input->shape[2]: input->shape[1];
+    assert(cols > 0);
     //printf("batch_size: %zu, rows: %zu, cols: %zu, x->ndim: %zu\n", batch_size, rows, cols, x->ndim);
     for(size_t i = 0; i < batch_size; i++){
         for(size_t j = 0; j < rows; j++){
-            float mean = 0;
+            double mean = 0;
             for(size_t k = 0; k < cols; k++){
                 float elem = tensor_get_elem(input, input->ndim ==3 ? (uint32_t[]){i, j, k}:  (uint32_t[]){j, k});
+                if (isnan(elem)) {
+                    printf("elem is nan\n");
+                    exit(1);
+                }
+                if (isinf(elem)) {
+                    printf("elem is inf\n");
+                    exit(1);
+                }
                 mean += elem;
             }
             mean = mean / cols;
 
-            float variance = 0;
+            double variance = 0;
             for(size_t k = 0; k < cols; k++){
                 float elem = tensor_get_elem(input, input->ndim ==3 ? (uint32_t[]){i, j, k}:  (uint32_t[]){j, k});
-                float squared_deviation = pow(elem - mean, 2);
+                double squared_deviation = pow(elem - mean, 2);
                 //float sqrt_squared_deviation = sqrt(squared_deviation);
                 variance += squared_deviation;
                 //printf("elem: %.3f, mean: %.3f, elem-mean: %.3f, squared_deviation: %.3f, sqrt_squared_deviation: %.3f\n", elem, mean, elem - mean, squared_deviation, sqrt_squared_deviation);
@@ -1218,6 +1260,23 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
             variance = variance / cols; 
             tensor_put_elem(output, input->ndim ==3 ? (uint32_t[]){i, j, 0}:  (uint32_t[]){j, 0}, mean);
             tensor_put_elem(output, input->ndim ==3 ? (uint32_t[]){i, j, 1}:  (uint32_t[]){j, 1}, variance);
+            if (isnan(mean)) {
+                printf("mean is nan\n");
+                exit(1);
+            }
+            if (isinf(mean)) {
+                printf("mean is inf\n");
+                exit(1);
+            }
+
+            if (isnan(variance)) {
+                printf("variance is nan\n");
+                exit(1);
+            }
+            if (isinf(variance)) {
+                printf("variance is inf\n");
+                exit(1);
+            }
         }
     }
 }
@@ -1295,15 +1354,17 @@ bool tensor_isnan(Tensor *x){
     for(size_t i = 0; i < x->size; i++){
         if(x->dtype == DTYPE_FP32){
             if(isnan(((float*)x->data)[i])) return true;
+            if(isinf(((float*)x->data)[i])) return true;
         }
         else if(x->dtype == DTYPE_INT32){
             if(isnan(((int*)x->data)[i])) return true;
+            if(isinf(((int*)x->data)[i])) return true;
         }
     }
     return false;
 }
 void tensor_print(const Tensor *tensor, const char *heading){
-    #define DEBUG
+    //#define DEBUG
     #ifdef DEBUG    
     printf("\n============== %s ==================\n", heading);
     printf("size:           %u\n", tensor->size);

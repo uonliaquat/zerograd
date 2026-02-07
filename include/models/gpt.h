@@ -39,6 +39,7 @@ typedef struct GPTWrokspace{
     Tensor indices;
     Tensor position_indices;
     Tensor embeddings[13];
+    Tensor next_token_prob_dist;
 } GPTWrokspace;
 
 

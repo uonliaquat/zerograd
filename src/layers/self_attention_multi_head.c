@@ -120,10 +120,33 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
     // output        ==> (1, 4, 2304)
     //tensor_print(&self_attention_layer->params->c_attn.weight, "self_attention_layer->params->c_attn.weight");
     linear_layer_forward(&self_attention_layer->c_attn_layer, x);
+
+    if(tensor_isnan(&self_attention_layer->c_attn_layer.output)){
+        printf("\n\n\nexiting due to nan values in , &self_attention_layer->c_attn_layer.output\n");
+        exit(1);
+    }
+
     tensor_chunk_(
         &self_attention_layer->c_attn_layer.output,   
         3, 1, self_attention_layer->workspace.qkv
     );
+
+
+    if(tensor_isnan(&self_attention_layer->workspace.qkv[0])){
+        printf("\n\n\nexiting due to nan values in , &self_attention_layer->workspace.qkv[0]\n");
+        exit(1);
+    }
+
+
+    if(tensor_isnan(&self_attention_layer->workspace.qkv[1])){
+        printf("\n\n\nexiting due to nan values in , &self_attention_layer->workspace.qkv[1]\n");
+        exit(1);
+    }
+
+    if(tensor_isnan(&self_attention_layer->workspace.qkv[1])){
+        printf("\n\n\nexiting due to nan values in , &self_attention_layer->workspace.qkv[1]\n");
+        exit(1);
+    }
     // tensor_print(&self_attention_layer->workspace.qkv[0], "query");
     // tensor_print(&self_attention_layer->workspace.qkv[1], "key");
     // tensor_print(&self_attention_layer->workspace.qkv[2], "value");
@@ -132,13 +155,27 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
     tensor_chunk_(&self_attention_layer->workspace.qkv[1],   self_attention_layer->n_heads, 1, self_attention_layer->workspace.keys_chnuks);
     tensor_chunk_(&self_attention_layer->workspace.qkv[2],   self_attention_layer->n_heads, 1, self_attention_layer->workspace.values_chnuks);
 
+    if(tensor_isnan(self_attention_layer->workspace.queries_chnuks)){
+        printf("\n\n\nexiting due to nan values in , self_attention_layer->workspace.queries_chnuks)\n");
+        exit(1);
+    }
+
+    if(tensor_isnan(self_attention_layer->workspace.keys_chnuks)){
+        printf("\n\n\nexiting due to nan values in , self_attention_layer->workspace.keys_chnuks)\n");
+        exit(1);
+    }
+
+    if(tensor_isnan(self_attention_layer->workspace.values_chnuks)){
+        printf("\n\n\nexiting due to nan values in , self_attention_layer->workspace.values_chnuks)\n");
+        exit(1);
+    }
+
     // // tensor_print(&self_attention_layer->W_query.output, "self_attention_layer->W_query.output");
     // // tensor_print(&self_attention_layer->W_key.output, "self_attention_layer->W_key.output");
     // // tensor_print(&self_attention_layer->W_value.output, "self_attention_layer->W_value.output");
     // tensor_print(&self_attention_layer->workspace.queries_chnuks[0],    "queries_chnuks");
     // tensor_print(&self_attention_layer->workspace.keys_chnuks[0],       "keys_chnuks");
     // tensor_print(&self_attention_layer->workspace.values_chnuks[0],     "values_chnuks");
-
     for(size_t head = 0; head < self_attention_layer->n_heads; head++){
             // char heading[512] = "\0";
             // snprintf(heading, 512, "HEAD %zu", head);
@@ -146,6 +183,18 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
 
             // // K^T
             tensor_transpose_(&self_attention_layer->workspace.keys_chnuks[head], &self_attention_layer->workspace.keys_transposed[head]);
+            tensor_print(&self_attention_layer->workspace.keys_transposed[head], "keys_transposed");
+
+            if(tensor_isnan(&self_attention_layer->workspace.keys_transposed[head])){
+                printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.keys_transposed[head])\n");
+                exit(1);
+            }
+
+            if(tensor_isnan(&self_attention_layer->workspace.queries_chnuks[head])){
+                printf("\n\n\nexiting due to nan values in , &self_attention_layer->workspace.queries_chnuks[head]\n");
+                exit(1);
+            }
+
 
             // // Q.K^T
             tensor_dot_product_(
@@ -153,6 +202,11 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
                 &self_attention_layer->workspace.keys_transposed[head], 
                 &self_attention_layer->workspace.attention_scores[head]
             );
+            tensor_print(&self_attention_layer->workspace.attention_scores[head], "attention_scores (Q.K^T)");
+            if(tensor_isnan(&self_attention_layer->workspace.attention_scores[head])){
+                printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.attention_scores[head])\n");
+                exit(1);
+            }
 
             // // (Q.K^T)/sqrt(d)
             tensor_elementwise_scale_(
@@ -160,31 +214,64 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
                 1/sqrt(self_attention_layer->workspace.keys_chnuks[head].shape[self_attention_layer->workspace.keys_chnuks[head].ndim-1]), 
                 &self_attention_layer->workspace.attention_scores_scaled[head]
             );
+            if(tensor_isnan(&self_attention_layer->workspace.attention_scores_scaled[head])){
+                printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.attention_scores_scaled[head])\n");
+                exit(1);
+            }
+
+            tensor_print(&self_attention_layer->workspace.attention_scores_scaled[head], "attention_scores_scaled (Q.K^T)");
+       
 
             if(masked == true){
                 tensor_tril_(&self_attention_layer->workspace.attention_scores_scaled[head], -FLT_MAX);
-                //tensor_print(&self_attention_layer->workspace.attention_scores_scaled[head], "attention_scores_scaled");
-                    
+                tensor_print(&self_attention_layer->workspace.attention_scores_scaled[head], "attention_scores_scaled (masked)");   
+            }
+            if(tensor_isnan(&self_attention_layer->workspace.attention_scores_scaled[head])){
+                printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.attention_scores_scaled[head])\n");
+                exit(1);
             }
             // // softmax((Q.K^T)/sqrt(d))
             tensor_softmax_(&self_attention_layer->workspace.attention_scores_scaled[head], 1, &self_attention_layer->workspace.attention_weights[head]);
+            tensor_print(&self_attention_layer->workspace.attention_weights[head], "attention_weights(Q.K^T)/sqrt(d)");
             
+            if(tensor_isnan(&self_attention_layer->workspace.attention_weights[head])){
+                printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.attention_weights[head])\n");
+                exit(1);
+            }
+
             // // //  softmax((Q.K^T)/sqrt(d)).V
             tensor_dot_product_(&self_attention_layer->workspace.attention_weights[head], &self_attention_layer->workspace.values_chnuks[head],  &self_attention_layer->workspace.context_vecs[head]);
+            tensor_print(&self_attention_layer->workspace.context_vecs[head], "context_vecs  softmax((Q.K^T)/sqrt(d)).V");
+            if(tensor_isnan(&self_attention_layer->workspace.context_vecs[head])){
+                printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.context_vecs[head])\n");
+                exit(1);
+            }
             // // printf("======================================================================================\n");
 
     }
 
     tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->workspace.context_vec[0]);
+    tensor_print(&self_attention_layer->workspace.context_vec[0], "context_vec 0");
+
+    if(tensor_isnan(&self_attention_layer->workspace.context_vec[0])){
+        printf("\n\n\nexiting due to nan values in self_attention_layer->workspace.context_vec[0]\n");
+        exit(1);
+    }
+    
     linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->workspace.context_vec[0]);
+    tensor_print(&self_attention_layer->c_proj_layer.output, "c_proj_layer.output");
+
+    if(tensor_isnan(&self_attention_layer->c_proj_layer.output)){
+        printf("\n\n\nexiting due to nan values in self_attention_layer->c_proj_layer.output\n");
+        exit(1);
+    }
 
     tensor_copy_(&self_attention_layer->c_proj_layer.output, &self_attention_layer->output);
 
-    // bool isnan = tensor_isnan(&self_attention_layer->output);
-    // if(isnan){
-    //     printf("\n\n\nexiting due to nan values in tensor\n");
-    //     exit(1);
-    // }
+    if(tensor_isnan(&self_attention_layer->output)){
+        printf("\n\n\nexiting due to nan values in self_attention_layer->output)\n");
+        exit(1);
+    }
  }
 
 
