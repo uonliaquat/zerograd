@@ -15,6 +15,7 @@ typedef struct SelfAttentionLayerWorkspace{
     Tensor *keys_chnuks;
     Tensor *values_chnuks;
     Tensor *context_vecs;
+    Tensor *context_vec;
     Tensor *qkv;
     // Tensor queries;
     // Tensor keys;

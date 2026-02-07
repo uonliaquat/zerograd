@@ -14,10 +14,15 @@ typedef struct MLPParams{
     LinearLayerParams c_proj;
 } MLPParams;
 
+typedef struct MLPWorkspace{
+    Tensor gelu;
+} MLPWorkspace;
+
 typedef struct MLP{
     MLPParams *params;
     LinearLayer layer1;
     LinearLayer layer2;
+    MLPWorkspace workspace;
     Tensor output;
 } MLP;
 
@@ -28,7 +33,7 @@ typedef struct TransformerLayerParams{
 } TransformerLayerParams;
 
 typedef struct TransformerLayerWorkspace{
-    Tensor residual_output;
+    Tensor residual_output[2];
 } TransformerLayerWorkspace;
 
 typedef struct TransformerLayer{

@@ -255,6 +255,37 @@ static inline void tokenizer_write_vocab(char *filename){
     printf("*********************************** Done Writing Vocab ************************************\n");
 }
 
+
+Vocab tokenizer_read_vocab(const char *filename){
+    printf("\n************************************** Reading Vocab **************************************\n");
+    FILE *fptr = fopen(filename, "r");  // fresh file
+    if(fptr == NULL){
+        printf("Error opening file: %s\n", filename);
+        exit(1);
+    }
+    Vocab vocab;
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    while ((read = getline(&line, &len, fptr)) != -1) {
+        // remove trailing newline  
+        //printf("%s\n", line);
+        // memset(line, 0, MAX_TOKEN_LEN);
+        if (read > 0 && line[read - 1] == '\n') {
+            line[read - 1] = '\0';
+        }
+        memset(vocab.tokens[vocab.len].token, 0, MAX_TOKEN_LEN);
+        strcpy(vocab.tokens[vocab.len++].token, line);
+        // Token new_token;
+        // memset(new_token.token, 0, MAX_TOKEN_LEN);
+        // stpcpy(new_token.token, line);
+        // vocab.tokens[vocab.len++] = new_token;
+    }
+    fclose(fptr);
+    printf("*********************************** Done Reading Vocab ************************************\n");
+    return vocab;
+}
+
 void tokenizer_write_merge_rules(char *filename){
     printf("\n************************************ Wriring Merge Rules **********************************\n");
     FILE *fptr = fopen(filename, "w");  // fresh file
@@ -294,9 +325,9 @@ void tokenizer_train(char *filename){
 
 }
 
-int main(){
-    // /Users/uonliaquat/workspace/zerograd/the-verdict.txt
-    tokenizer_train("/Users/uonliaquat/workspace/zerograd/dataset/shakespeare.txt");
+// int main(){
+//     // /Users/uonliaquat/workspace/zerograd/the-verdict.txt
+//     tokenizer_train("/Users/uonliaquat/workspace/zerograd/dataset/shakespeare.txt");
 
 
-}
+// }

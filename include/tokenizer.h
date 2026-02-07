@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define MAX_TOKEN_LEN 50
-#define MAX_VOCAB_SIZE 10000
+#define MAX_VOCAB_SIZE 60000
 
 #define MAX_WORD_LEN 50
 #define MAX_UNIQUE_WRODS 200000
@@ -45,5 +45,8 @@ typedef struct Vocab{
     Token tokens[MAX_VOCAB_SIZE];
     int32_t len;
 } Vocab;
+
+Vocab tokenizer_read_vocab(const char *filename);
+
 
 #endif

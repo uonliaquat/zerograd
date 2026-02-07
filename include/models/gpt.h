@@ -32,12 +32,13 @@ typedef struct GPTParams{
     EmbeddingLayerParams wte;
     TransformerLayerParams h[12];
     LayerNormParams ln_f;
+    LinearLayerParams out_proj;
 } GPTParams;
 
 typedef struct GPTWrokspace{
     Tensor indices;
     Tensor position_indices;
-    Tensor embeddings[12];
+    Tensor embeddings[13];
 } GPTWrokspace;
 
 
@@ -48,6 +49,7 @@ typedef struct GPTModel{
     EmbeddingLayer wpe_layer;
     TransformerLayer h_layer[12];
     LayerNorm ln_f_layer;
+    LinearLayer out_proj_layer;
     GPTWrokspace workspace;
     Tensor output;
 } GPTModel;

@@ -15,6 +15,8 @@ static inline float rand_uniform(const float min, const float max){
 
 
 static inline void print_centered_heading(const char *heading) {
+    #define DEBUG
+    #ifdef DEBUG
     const int width = 68;  // inner width between the bars
     int len = strlen(heading);
 
@@ -25,6 +27,7 @@ static inline void print_centered_heading(const char *heading) {
     printf("+====================================================================+\n");
     printf("|%*s%s%*s|\n", left_pad, "", heading, right_pad, "");
     printf("+====================================================================+\n");
+    #endif
 }
 
 static inline void create_filename(const char *base_path, const char *name, char *filename){

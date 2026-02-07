@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 // #include "../include/utils.h"
-// #include "../include/tokenizer.h"
+//#include "../include/tokenizer.h"
 // #include "../include/models/gpt.h"
 
 #include "../include/safetensors.h"
@@ -77,7 +77,13 @@ int main(){
     safetensors_load_model(filename, &params);
     GPTModel model = model_gpt_init(&params, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, DTYPE_FP32);
     
-    Tensor input_tokens = tensor_init((float[]){1, 2, 0, 2}, (uint32_t[]){1, 1, 4}, 3, DTYPE_FP32, "input_tokens");
+    Tensor input_tokens = tensor_init(
+        (float[]){1, 2, 0, 2, 0, 0, 0, 0}, 
+        (uint32_t[]){1, 1, 8}, 
+        3, 
+        DTYPE_FP32, 
+        "input_tokens"
+    );
     tensor_print(&input_tokens, "input_tokens");
     model_gpt_forward(&model, &input_tokens);
     //model_gpt_safetensors_init(filename);

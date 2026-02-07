@@ -32,6 +32,7 @@ Tensor  tensor_rand_init(const uint32_t * shape, const uint8_t ndim, const DataT
 Tensor  tensor_file_init(FILE *fptr, uint32_t *offset, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 void    tensor_free(const Tensor *tensor);
 Tensor  tensor_copy(Tensor *input);
+void    tensor_copy_(Tensor *input, Tensor *output);
 Tensor  tensor_repeat(Tensor *input, uint8_t * repeate_dims);
 void    tensor_repeat_(Tensor *input, uint8_t * repeate_dims, Tensor *output);
 void    tensor_unsqueeze_(Tensor *input, size_t dim);
@@ -41,6 +42,7 @@ Tensor  tensor_transpose(const Tensor *input);
 void    tensor_transpose_(const Tensor *input, Tensor *output);
 Tensor  tensor_softmax(Tensor *input, size_t dim);
 void    tensor_softmax_(Tensor *input, size_t dim, Tensor *output);
+void    tensor_gelu_(Tensor *input, Tensor *output);
 Tensor  tensor_scale(Tensor *inpput, Tensor *scale);
 Tensor  tensor_elementwise_scale(Tensor *inpput, float elem);
 void    tensor_elementwise_scale_(Tensor *inpput, float elem, Tensor *output);

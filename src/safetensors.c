@@ -158,6 +158,9 @@ void safetensors_load_model(const char *filename, GPTParams *params){
     params->ln_f.weight = safetensors_create_tensor(tmp_data,  name);
     //tensor_print(&params->ln_f.weight, name);
 
+    params->out_proj.weight = tensor_transpose(&params->wte.weight);
+    params->out_proj.bias   = tensor_init(NULL, (uint32_t[]){params->wte.weight.shape[0]}, 1, DTYPE_FP32, "out_proj.bias");
+
 }
 
 static inline size_t get_json_len(Tensor *t, char *json, uint32_t offset_start, uint32_t offset_end) {

@@ -50,7 +50,7 @@ void linear_layer_forward(LinearLayer *linear_layer, Tensor *x){
     tensor_dot_product_(x, &linear_layer->params->weight, &linear_layer->workspace.a);
     //tensor_print(&linear_layer->workspace.a, "linear_layer->workspace.a");
     tensor_add_(&linear_layer->workspace.a, &linear_layer->params->bias, &linear_layer->output);
-    //tensor_print(&linear_layer->workspace.output, "linear_layer->workspace.output");
+    //tensor_print(&linear_layer->output, "linear_layer->output");
 }
 
 // void linear_layer_print(const LinearLayer *layer, const char *heading){

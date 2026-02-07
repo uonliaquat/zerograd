@@ -14,15 +14,16 @@
 
 
 static inline void self_attention_layer_workspace_init(SelfAttentionLayer *self_attention_layer){
-    self_attention_layer->workspace.qkv                 = calloc(3, sizeof(Tensor));
-    self_attention_layer->workspace.queries_chnuks      = calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.keys_chnuks         = calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.values_chnuks       = calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.context_vecs        = calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.attention_scores    = calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.attention_scores_scaled =  calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.attention_weights   =  calloc(self_attention_layer->n_heads, sizeof(Tensor));
-    self_attention_layer->workspace.keys_transposed     = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.qkv                     = calloc(3, sizeof(Tensor));
+    self_attention_layer->workspace.queries_chnuks          = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.keys_chnuks             = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.values_chnuks           = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.context_vecs            = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.attention_scores        = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.attention_scores_scaled = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.attention_weights       = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.keys_transposed         = calloc(self_attention_layer->n_heads, sizeof(Tensor));
+    self_attention_layer->workspace.context_vec             = calloc(1, sizeof(Tensor));
 
 
     for(size_t i = 0; i < 3; i++) {
@@ -55,6 +56,7 @@ static inline void self_attention_layer_workspace_free(const SelfAttentionLayerW
         tensor_free(&workspace->attention_weights[i]);
         tensor_free(&workspace->keys_transposed[i]);
     }
+    tensor_free(&workspace->context_vec[0]);
 }
 
 SelfAttentionLayer self_attention_layer_init(SelfAttentionLayerParams *params, const size_t context_len, const size_t embed_dim, const size_t n_heads, const DataType dtype){
@@ -138,9 +140,9 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
     // tensor_print(&self_attention_layer->workspace.values_chnuks[0],     "values_chnuks");
 
     for(size_t head = 0; head < self_attention_layer->n_heads; head++){
-            char heading[512] = "\0";
-            snprintf(heading, 512, "HEAD %zu", head);
-            print_centered_heading(heading);
+            // char heading[512] = "\0";
+            // snprintf(heading, 512, "HEAD %zu", head);
+            // print_centered_heading(heading);
 
             // // K^T
             tensor_transpose_(&self_attention_layer->workspace.keys_chnuks[head], &self_attention_layer->workspace.keys_transposed[head]);
@@ -173,8 +175,11 @@ void self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_
 
     }
 
-    tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->output);
-    linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->output);
+    tensor_concat_(self_attention_layer->workspace.context_vecs, self_attention_layer->n_heads, 1, &self_attention_layer->workspace.context_vec[0]);
+    linear_layer_forward(&self_attention_layer->c_proj_layer, &self_attention_layer->workspace.context_vec[0]);
+
+    tensor_copy_(&self_attention_layer->c_proj_layer.output, &self_attention_layer->output);
+
     // bool isnan = tensor_isnan(&self_attention_layer->output);
     // if(isnan){
     //     printf("\n\n\nexiting due to nan values in tensor\n");
