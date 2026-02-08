@@ -27,7 +27,7 @@ typedef struct Tensor {
 
 Tensor  tensor_init(void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 void    tensor_init_(Tensor *tensor, void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
-void    tensor_reset(Tensor *tensor);
+void    tensor_reset(Tensor *tensor, const char *name);
 Tensor  tensor_rand_init(const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 Tensor  tensor_file_init(FILE *fptr, uint32_t *offset, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 void    tensor_free(const Tensor *tensor);
@@ -77,9 +77,9 @@ void    tensor_print(const Tensor *tensor, const char *heading);
 //void    tensor_write(const Tensor *tensor, char *filename);
 static inline uint8_t tensor_dtype_size(const DataType dtype){
     switch (dtype){
-        case DTYPE_FP64:    return 8;
-        case DTYPE_FP32:    return 4;
-        case DTYPE_INT32:   return 4;
+        case DTYPE_FP64:    return sizeof(double);
+        case DTYPE_FP32:    return sizeof(float);
+        case DTYPE_INT32:   return sizeof(int);
     }
 }
 

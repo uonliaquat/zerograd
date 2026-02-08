@@ -31,7 +31,7 @@ static inline void stride_init(Tensor *tensor){
     }
 }
 
-static inline void name_init(Tensor *tensor, char *name){
+static inline void name_init(Tensor *tensor, const char *name){
     if(name != NULL){
         memset(tensor->name, 0, TENSOR_MAX_LEN_NAME);
         memcpy(tensor->name, name, strlen(name));
@@ -68,7 +68,7 @@ static inline void data_file_init(Tensor *tensor, FILE *fptr, const uint32_t *of
 Tensor tensor_init(void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name){
 
     Tensor tensor;
-    tensor_reset(&tensor);
+    tensor_reset(&tensor, name);
 
     tensor.ndim = ndim;
     tensor.dtype = dtype;
@@ -77,13 +77,13 @@ Tensor tensor_init(void *data, const uint32_t * shape, const uint8_t ndim, const
     shape_init(&tensor, shape);
     size_init(&tensor);
     stride_init(&tensor);
-    name_init(&tensor, name);
+    //name_init(&tensor, name);
     data_init(&tensor, data);
     return tensor;
 }
 
 void tensor_init_(Tensor *tensor, void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name){
-    tensor_reset(tensor);
+    tensor_reset(tensor, name);
 
     tensor->ndim = ndim;
     tensor->dtype = dtype;
@@ -92,18 +92,18 @@ void tensor_init_(Tensor *tensor, void *data, const uint32_t * shape, const uint
     shape_init(tensor, shape);
     size_init(tensor);
     stride_init(tensor);
-    name_init(tensor, name);
+    //name_init(tensor, name);
     data_init(tensor, data);
 }
 
-void tensor_reset(Tensor *tensor){
+void tensor_reset(Tensor *tensor, const char *name){
     if(tensor != NULL){
         tensor->dtype = 0;
         tensor->ndim = 0;
         tensor->elem_size = 0;
         tensor->size = 0;
         tensor->data = NULL;
-        memset(tensor->name, 0, sizeof(tensor->name));
+        name_init(tensor, name);
         memset(tensor->shape, 0, sizeof(tensor->shape));
         memset(tensor->stride, 0, sizeof(tensor->stride));
     }
@@ -112,7 +112,7 @@ void tensor_reset(Tensor *tensor){
 Tensor tensor_rand_init(const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name){
 
     Tensor tensor;
-    tensor_reset(&tensor);
+    tensor_reset(&tensor, name);
 
     tensor.ndim = ndim;
     tensor.dtype = dtype;
@@ -121,7 +121,7 @@ Tensor tensor_rand_init(const uint32_t * shape, const uint8_t ndim, const DataTy
     shape_init(&tensor, shape);
     size_init(&tensor);
     stride_init(&tensor);
-    name_init(&tensor, name);
+    //name_init(&tensor, name);
     data_rand_init(&tensor);
     return tensor;
     
@@ -192,7 +192,7 @@ void tensor_copy_(Tensor *input, Tensor *output)
             input->shape,
             input->ndim,
             input->dtype,
-            "tensor_copy_.output"
+            NULL
         );
     }
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
@@ -244,7 +244,7 @@ void tensor_repeat_(Tensor *input, uint8_t * repeate_dims, Tensor *output){
             (uint32_t[]){repeate_dims[0] == 1 ? input->shape[0] : repeate_dims[0], repeate_dims[1] == 1 ? input->shape[1] : repeate_dims[1], repeate_dims[2] == 1 ? input->shape[2] : repeate_dims[2]  },
             3,
             input->dtype,
-            "tensor_repeat_.output"
+            NULL
         );
     }
     // Initializing stride
@@ -323,19 +323,25 @@ Tensor tensor_transpose(const Tensor *input){
         input->ndim == 3 ? (uint32_t[]){input->shape[0], input->shape[2], input->shape[1]}: (uint32_t[]){input->shape[1], input->shape[0]}, 
         input->ndim,
         input->dtype,
-        NULL
+        "tensor_transpose.ouput"
     );
 
 
-    size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
-    size_t rows = input->ndim == 3 ? input->shape[1]: input->shape[0];
-    size_t cols = input->ndim == 3 ? input->shape[2]: input->shape[1];
+    size_t batch_size = tensor_get_batch_size(input);
+    size_t rows = tensor_get_rows(input);
+    size_t cols = tensor_get_cols(input);
+
+    // printf("batch_size: %zu\n", batch_size);
+    // printf("rows: %zu\n", rows);
+    // printf("cols: %zu\n", cols);
 
     for(size_t b = 0; b < batch_size; b++){
         for(size_t i = 0; i < rows; i++){
             for(size_t j = 0; j < cols; j++){
-                float elem = tensor_get_elem(input, input->ndim ? (uint32_t[]){b, i, j} : (uint32_t[]){i, j});
-                tensor_put_elem(&output, input->ndim ? (uint32_t[]){b, j, i}: (uint32_t[]){j, i}, elem);
+                //printf("i: %zu, j: %zu\n", i, j);
+                float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j} : (uint32_t[]){i, j});
+                tensor_put_elem(&output, output.ndim == 3 ? (uint32_t[]){b, j, i}: (uint32_t[]){j, i}, elem);
+                //tensor_print(&output, "inside");
             }
         }
     }
@@ -344,7 +350,8 @@ Tensor tensor_transpose(const Tensor *input){
 
 void tensor_transpose_(const Tensor *input, Tensor *output){
     if(output->size == 0){
-        *output = tensor_init(
+        tensor_init_(
+            output,
             NULL, 
             input->ndim == 3 ? (uint32_t[]){input->shape[0], input->shape[2], input->shape[1]}: (uint32_t[]){input->shape[1], input->shape[0]}, 
             input->ndim,
@@ -360,8 +367,8 @@ void tensor_transpose_(const Tensor *input, Tensor *output){
     for(size_t b = 0; b < batch_size; b++){
         for(size_t i = 0; i < rows; i++){
             for(size_t j = 0; j < cols; j++){
-                float elem = tensor_get_elem(input, input->ndim ? (uint32_t[]){b, i, j} : (uint32_t[]){i, j});
-                tensor_put_elem(output, input->ndim ? (uint32_t[]){b, j, i}: (uint32_t[]){j, i}, elem);
+                float elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j} : (uint32_t[]){i, j});
+                tensor_put_elem(output, input->ndim == 3 ? (uint32_t[]){b, j, i}: (uint32_t[]){j, i}, elem);
             }
         }
     }
@@ -408,7 +415,7 @@ void tensor_softmax_(Tensor *input, size_t dim, Tensor *output){
             input->shape, 
             input->ndim,
             input->dtype,
-            "tensor_softmax_.output"
+            NULL
         );
     }
     size_t batch_size   = tensor_get_batch_size(input);
@@ -456,14 +463,14 @@ void tensor_gelu_(Tensor *input, Tensor *output){
             input->shape,
             input->ndim,
             input->dtype,
-            "gelu_forward.output"
+            NULL
         );
     }
 
     for(size_t i = 0; i < input->size; i++){
         float x = ((float*)input->data)[i];
         float gelu = x * 0.5 * (1.0 + erf(x / sqrt(2.0)));
-        ((float*)input->data)[i] = gelu;
+        ((float*)output->data)[i] = gelu;
     }
 }
 
@@ -527,7 +534,7 @@ void tensor_elementwise_scale_(Tensor *input, float elem, Tensor *output){
             input->shape,
             input->ndim,
             input->dtype,
-            "tensor_elementwise_scale_"
+            NULL
         );
     }
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
@@ -580,7 +587,7 @@ void tensor_vector_scale_(Tensor *input, Tensor *vector, Tensor *output){
             input->shape, 
             input->ndim,
             input->dtype, 
-            "tensor_vector_scale.output"
+            NULL
         );
     }
 
@@ -588,11 +595,12 @@ void tensor_vector_scale_(Tensor *input, Tensor *vector, Tensor *output){
     size_t rows = input->ndim == 3 ? input->shape[1]: input->shape[0];
     size_t cols = input->ndim == 3 ? input->shape[2]: input->shape[1];
 
-
     for(size_t b = 0; b < batch_size; b++){
         for(size_t i = 0; i < rows; i++){
-            float scale_factor =  tensor_get_elem(vector, (uint32_t[]){i, b});
+            //printf("scale: factor: %.f\n", scale_factor);
+            //float scale_factor =  tensor_get_elem(vector, vector->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
             for(size_t j = 0; j < cols; j++){
+                float scale_factor =  tensor_get_elem(vector, (uint32_t[]){j});
                 float old_elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
                 float new_elem = old_elem * scale_factor;
                 tensor_put_elem(output, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j}, new_elem);
@@ -684,7 +692,8 @@ void tensor_concat_(Tensor *input, size_t no_of_tensors, size_t dim, Tensor *out
         //     new_cols += input[i]->shape[1];
         // }
         if(output->size == 0){
-            *output = tensor_init(
+            tensor_init_(
+                output,
                 NULL, 
                 (uint32_t[]){batch_size, rows, new_cols}, 
                 input[0].ndim,
@@ -753,9 +762,8 @@ void tensor_chunk_(Tensor *input, size_t chunks, size_t dim, Tensor *output){
         size_t cols         = input->shape[input->ndim - 1] / chunks;
         // printf("input->shape[input->ndim - 1]: %u, chunks: %zu\n", input->shape[input->ndim - 1], chunks);
         // printf("batch_size: %zu, rows: %zu, cols: %zu\n", batch_size, rows, cols);
-        // //size_t cols = tensor_get_cols(input);
+        //size_t cols = tensor_get_cols(input);
         // printf("chunks: %zu\n", chunks);
-
         for(size_t chunk = 0; chunk < chunks; chunk++){
             if(output[chunk].size == 0){
                 tensor_init_(
@@ -827,7 +835,7 @@ void tensor_arange_(const int start, const int end, const int steps, Tensor *out
             (uint32_t[]){1, (int)((end - start)/steps)}, 
             2,
             DTYPE_INT32,
-            "tensor_arrange_.output"
+            NULL
         );
     }
     for(size_t i = start; i < end; i += steps){
@@ -946,7 +954,7 @@ void tensor_dot_product_(const Tensor *input1, const Tensor *input2, Tensor *out
             (uint32_t[]){t1_batch_size, t1_rows, t2_cols}, 
             3,
             input1->dtype,
-            "tensor_dot_product.output"
+            NULL
         );
     }
     for(size_t b = 0; b < t1_batch_size; b++){
@@ -1007,18 +1015,16 @@ void tensor_add_(Tensor *input1, Tensor *input2, Tensor *output){
     if(output->size == 0){
         tensor_init_(
             output,
-            input1->data, 
+            NULL, 
             input1->shape, 
             input1->ndim,
             input1->dtype,
-            "tensor_add_.output"
+            NULL
         );
     }
-    memcpy(output->data, input1->data, input1->size * tensor_dtype_size(input1->dtype));
+    tensor_copy_(input1, output);
     for(size_t i = 0; i < output->size; i++){
         double elem = ((float*)output->data)[i] + ((float*)input2->data)[i];
-        if(elem >= FLT_MAX)
-
         ((float*)output->data)[i] = elem;
     }
 }
@@ -1086,22 +1092,20 @@ void tensor_vector_add_(Tensor *input, Tensor *vector, Tensor *output){
             input->shape, 
             input->ndim,
             input->dtype,
-            "tensor_vector_add_.output"
+            NULL
         );
     }
-
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
     size_t rows = input->ndim == 3 ? input->shape[1]: input->shape[0];
     size_t cols = input->ndim == 3 ? input->shape[2]: input->shape[1];
-
-
-    for(size_t i = 0; i < batch_size; i++){
-        for(size_t j = 0; j < rows; j++){
-            float scale_factor =  tensor_get_elem(vector, (uint32_t[]){j, i});
-            for(size_t k = 0; k < cols; k++){
-                float old_elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){i, j, k}: (uint32_t[]){j, k});
-                float new_elem = old_elem + scale_factor;
-                tensor_put_elem(output, input->ndim == 3 ? (uint32_t[]){i, j, k}: (uint32_t[]){j, k}, new_elem);
+    for(size_t b = 0; b < batch_size; b++){
+        for(size_t i = 0; i < rows; i++){
+            // float shift_factor =  tensor_get_elem(vector, (uint32_t[]){i});
+            for(size_t j = 0; j < cols; j++){
+                float shift_factor =  tensor_get_elem(vector, (uint32_t[]){j});
+                float old_elem = tensor_get_elem(input, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
+                float new_elem = old_elem + shift_factor;
+                tensor_put_elem(output, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j}, new_elem);
             }
         }
     }
@@ -1224,7 +1228,7 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
             input->ndim ==3 ? (uint32_t[]){input->shape[0], input->shape[1], 2}:  (uint32_t[]){input->shape[0], 2}, 
             input->ndim,
             input->dtype,  
-            "tensor_mean_var.output"
+            NULL
         );
     }
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
@@ -1234,7 +1238,7 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
     //printf("batch_size: %zu, rows: %zu, cols: %zu, x->ndim: %zu\n", batch_size, rows, cols, x->ndim);
     for(size_t i = 0; i < batch_size; i++){
         for(size_t j = 0; j < rows; j++){
-            double mean = 0;
+            float mean = 0;
             for(size_t k = 0; k < cols; k++){
                 float elem = tensor_get_elem(input, input->ndim ==3 ? (uint32_t[]){i, j, k}:  (uint32_t[]){j, k});
                 if (isnan(elem)) {
@@ -1249,10 +1253,10 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
             }
             mean = mean / cols;
 
-            double variance = 0;
+            float variance = 0;
             for(size_t k = 0; k < cols; k++){
                 float elem = tensor_get_elem(input, input->ndim ==3 ? (uint32_t[]){i, j, k}:  (uint32_t[]){j, k});
-                double squared_deviation = pow(elem - mean, 2);
+                float squared_deviation = pow(elem - mean, 2);
                 //float sqrt_squared_deviation = sqrt(squared_deviation);
                 variance += squared_deviation;
                 //printf("elem: %.3f, mean: %.3f, elem-mean: %.3f, squared_deviation: %.3f, sqrt_squared_deviation: %.3f\n", elem, mean, elem - mean, squared_deviation, sqrt_squared_deviation);
@@ -1328,22 +1332,22 @@ void tensor_norm_(Tensor *input, Tensor *mean_var_tensor, float eps, Tensor *out
             input->shape,
             input->ndim,
             input->dtype, 
-            "tensor_norm_.output"
+            NULL
         );
     }
 
     size_t batch_size = input->ndim == 3 ? input->shape[0]: 1;
     size_t rows = input->ndim == 3 ? input->shape[1]: input->shape[0];
     size_t cols = input->ndim == 3 ? input->shape[2]: input->shape[1];
-    for(size_t i = 0; i < batch_size; i++){
-        for(size_t j = 0; j < rows; j++){
-            float mean = tensor_get_elem(mean_var_tensor, input->ndim == 3 ? (uint32_t[]){i, j, 0}: (uint32_t[]){j, 0});
-            float var = tensor_get_elem(mean_var_tensor, input->ndim == 3 ? (uint32_t[]){i, j, 1}: (uint32_t[]){j, 1});
+    for(size_t b = 0; b < batch_size; b++){
+        for(size_t i = 0; i < rows; i++){
+            float mean = tensor_get_elem(mean_var_tensor, input->ndim == 3 ? (uint32_t[]){b, i, 0}: (uint32_t[]){i, 0});
+            float var = tensor_get_elem(mean_var_tensor, input->ndim == 3 ? (uint32_t[]){b, i, 1}: (uint32_t[]){i, 1});
             //printf("mean: %.2f, var: %.2f\n", mean, var);
-            for(size_t k = 0; k < cols; k++){
-                float elem = tensor_get_elem(input, input->ndim == 3? (uint32_t[]){i, j, k}: (uint32_t[]){j, k});
+            for(size_t j = 0; j < cols; j++){
+                float elem = tensor_get_elem(input, input->ndim == 3? (uint32_t[]){b, i, j}: (uint32_t[]){i, j});
                 float norm_elem = (elem - mean) / sqrt(var + eps);
-                tensor_put_elem(output, input->ndim == 3 ? (uint32_t[]){i, j, k}: (uint32_t[]){j, k}, norm_elem);
+                tensor_put_elem(output, input->ndim == 3 ? (uint32_t[]){b, i, j}: (uint32_t[]){i, j}, norm_elem);
             }
         }
     }
@@ -1364,7 +1368,7 @@ bool tensor_isnan(Tensor *x){
     return false;
 }
 void tensor_print(const Tensor *tensor, const char *heading){
-    //#define DEBUG
+    #define DEBUG
     #ifdef DEBUG    
     printf("\n============== %s ==================\n", heading);
     printf("size:           %u\n", tensor->size);
@@ -1381,6 +1385,7 @@ void tensor_print(const Tensor *tensor, const char *heading){
     }
     printf(" )\n");
     printf("elem_size:      %u\n", tensor->elem_size);
+    printf("name:           %s\n", tensor->name);
 
     printf("data:\n");
 
@@ -1397,6 +1402,19 @@ void tensor_print(const Tensor *tensor, const char *heading){
         }
         else if(tensor->dtype == DTYPE_INT32) printf("%d    ", ((int*)tensor->data)[i]);
     }
+    // printf("\n");
+    // for(size_t i = tensor->size-1; i >= tensor->size-size; i--){
+    //     if(tensor->dtype == DTYPE_FP32){
+    //         float elem = ((float*)tensor->data)[i];
+    //         if(elem == -FLT_MAX){
+    //             printf("%s    ", "-INF");
+    //         }
+    //         else{
+    //             printf("%.2f    ", elem);
+    //         }
+    //     }
+    //     else if(tensor->dtype == DTYPE_INT32) printf("%d    ", ((int*)tensor->data)[i]);
+    // }
     printf("\n");
     // if(tensor->ndim == 4){
     //     // uint32_t shape_i = tensor->shape[0];

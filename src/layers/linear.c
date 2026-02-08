@@ -1,6 +1,7 @@
 #include "../../include/layers/linear.h"
-
+#include "../../include/safetensors.h"
 #include <stdlib.h>
+#include <string.h>
 // LinearLayer linear_layer_init(const size_t inputs, const size_t outputs, const bool bias, const bool requires_grad, const DataType dtype){
 //     LinearLayer linear_layer;
 //     linear_layer.weights  = tensor_init(NULL, (uint32_t[]){inputs, outputs}, dtype, NULL);
@@ -12,8 +13,11 @@
 //     return linear_layer;
 // }
 
-static inline void linear_layer_workspace_init(LinearLayerWorkspace *workspace){
-    tensor_reset(&workspace->a);
+static inline void linear_layer_workspace_init(LinearLayerWorkspace *workspace, char *name){
+
+    char l_name[256] = "\0";
+    snprintf(l_name, sizeof(l_name), "%s.a", name);
+    tensor_reset(&workspace->a, l_name);
 }
 
 static inline void linear_layer_workspace_free(const LinearLayerWorkspace *workspace){
@@ -21,13 +25,18 @@ static inline void linear_layer_workspace_free(const LinearLayerWorkspace *works
 }
 
 
-LinearLayer linear_layer_init(LinearLayerParams *params, const DataType dtype){
+LinearLayer linear_layer_init(LinearLayerParams *params, const DataType dtype, char *name){
     LinearLayer linear_layer;
 
     linear_layer.params  = params;
     linear_layer.dtype = dtype;
-    tensor_reset(&linear_layer.output);
-    linear_layer_workspace_init(&linear_layer.workspace);
+    memset(linear_layer.name, 0, sizeof(linear_layer.name));
+    strcpy(linear_layer.name, name);
+    char l_name[256] = "\0";
+    snprintf(l_name, sizeof(l_name), "%s.output", name);
+    tensor_reset(&linear_layer.output, l_name);
+
+    linear_layer_workspace_init(&linear_layer.workspace, name);
     return linear_layer;
 }
 
@@ -45,16 +54,14 @@ void linear_layer_free(const LinearLayer *linear_layer){
 
 void linear_layer_forward(LinearLayer *linear_layer, Tensor *x){
     // Y = X.W
-    // tensor_print(x, "x");
-    // tensor_print(&linear_layer->params->weight, "linear_layer->params->weight");
     tensor_dot_product_(x, &linear_layer->params->weight, &linear_layer->workspace.a);
     //tensor_print(&linear_layer->workspace.a, "linear_layer->workspace.a");
-    tensor_add_(&linear_layer->workspace.a, &linear_layer->params->bias, &linear_layer->output);
+    tensor_vector_add_(&linear_layer->workspace.a, &linear_layer->params->bias, &linear_layer->output);
     //tensor_print(&linear_layer->output, "linear_layer->output");
 }
 
-// void linear_layer_print(const LinearLayer *layer, const char *heading){
-//     printf("\033[33m============================== LINEAR LAYER %s ==============================\033[0m", heading);
-//     tensor_print(&layer->weights);
-//     tensor_print(&layer->output);
-// }
+
+void linear_layer_write(LinearLayer *linear_layer, Tensor **tensors, size_t *tensors_len){
+    tensors[(*tensors_len)++] = &linear_layer->workspace.a;
+    tensors[(*tensors_len)++] = &linear_layer->output;
+}

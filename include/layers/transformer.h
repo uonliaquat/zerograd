@@ -20,37 +20,54 @@ typedef struct MLPWorkspace{
 
 typedef struct MLP{
     MLPParams *params;
-    LinearLayer layer1;
-    LinearLayer layer2;
+    LinearLayer c_fc;
+    LinearLayer c_proj;
     MLPWorkspace workspace;
     Tensor output;
 } MLP;
 
 typedef struct TransformerLayerParams{
-    SelfAttentionLayerParams attn;
-    LayerNormParams ln_[2];
-    MLPParams mlp;
+    LayerNormParams     ln_1;
+    LinearLayerParams   c_attn;
+    LinearLayerParams   c_proj;
+    LayerNormParams     ln_2;
+    MLPParams           mlp;
 } TransformerLayerParams;
 
 typedef struct TransformerLayerWorkspace{
     Tensor residual_output[2];
+    Tensor *qkv;
+    Tensor *queries_heads;
+    Tensor *keys_heads;
+    Tensor *values_heads;
+    Tensor context_vecs;
+    Tensor *attn_layer_outputs;
 } TransformerLayerWorkspace;
 
 typedef struct TransformerLayer{
     TransformerLayerParams *params;
-    SelfAttentionLayer attn_layer;
-    LayerNorm ln_layer[2];
-    MLP mlp_layer;
-    bool masked;
+
+    LayerNorm           ln_1_layer;
+    LinearLayer         c_attn_layer;
+
+    SelfAttentionLayer  attn_layer[12];
+    LinearLayer         c_proj_layer;
+    LayerNorm           ln_2_layer;
+    MLP                 mlp_layer;
+
     TransformerLayerWorkspace workspace;
     Tensor output;
+
+    bool masked;
+    size_t n_heads;
 } TransformerLayer;
 
 
 
-TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const bool masked, const DataType dtype);
+TransformerLayer transformer_layer_init(TransformerLayerParams *params, const size_t context_len, const size_t emebd_dim, const size_t n_heads, const bool masked, const DataType dtype, char *name);
 void transformer_layer_free(TransformerLayer *transformer_layer);
 void transformer_layer_forward(TransformerLayer *transformer_layer, Tensor *x);
+void transformer_layer_write(TransformerLayer *transforemr_layer, Tensor **tensors, size_t *tensors_len);
 void transformer_layer_print(TransformerLayer *transformer_layer, const char *heading);
 //void transformer_layer_write(TransformerLayer *transformer_layer, const char *filename);
 

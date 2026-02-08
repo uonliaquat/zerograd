@@ -14,17 +14,20 @@ typedef struct LayerNormWorkSpace{
     Tensor mean_var;
     Tensor x_norm;
     Tensor x_norm_scaled;
+    Tensor x_norm_shifted;
 } LayerNormWorkSpace;
 
 typedef struct LayerNorm{
     LayerNormParams *params;
     float eps;
+    char name[128];
     LayerNormWorkSpace workspace;
     Tensor output;
 } LayerNorm;
 
-LayerNorm   layer_norm_init(LayerNormParams *params, const DataType dtype);
+LayerNorm   layer_norm_init(LayerNormParams *params, const DataType dtype, char *name);
 void        layer_norm_free(LayerNorm *layer_norm);
 void        layer_norm_forward(LayerNorm *layer_norm, Tensor *x);
+void        layer_norm_write(LayerNorm *layer_norm, Tensor **tensors, size_t *tensors_len);
 
 #endif

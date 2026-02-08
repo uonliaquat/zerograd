@@ -23,6 +23,7 @@ typedef struct GPTConfig {
     bool qkv_bias;          // Query-Key-Value bias
     size_t batch_size;
     DataType dtype;
+    char name[256];
 } GPTConfig;
 
 
@@ -32,7 +33,7 @@ typedef struct GPTParams{
     EmbeddingLayerParams wte;
     TransformerLayerParams h[12];
     LayerNormParams ln_f;
-    LinearLayerParams out_proj;
+    LinearLayerParams head;
 } GPTParams;
 
 typedef struct GPTWrokspace{
@@ -50,7 +51,7 @@ typedef struct GPTModel{
     EmbeddingLayer wpe_layer;
     TransformerLayer h_layer[12];
     LayerNorm ln_f_layer;
-    LinearLayer out_proj_layer;
+    LinearLayer head_layer;
     GPTWrokspace workspace;
     Tensor output;
 } GPTModel;
@@ -65,11 +66,13 @@ GPTModel model_gpt_init(GPTParams *params,
     const float drop_rate, 
     const bool qkv_bias, 
     const size_t batch_size,
-    const DataType dtype
+    const DataType dtype,
+    char *name
 );
 
 void model_gpt_free(GPTModel *model);
 void model_gpt_forward(GPTModel *model, Tensor *input);
+void model_gpt_write(GPTModel *model, const char *filename);
 // void model_gpt_safetensors_write(const char *filename, GPTParameters *params);
 
 

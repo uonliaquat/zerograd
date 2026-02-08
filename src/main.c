@@ -75,17 +75,27 @@ int main(){
     char *filename = "/Users/uonliaquat/Downloads/model.safetensors";
     GPTParams params;
     safetensors_load_model(filename, &params);
-    GPTModel model = model_gpt_init(&params, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, DTYPE_FP32);
+    char model_name[256] = "\0";
+    strcpy(model_name, "gpt");
+    GPTModel model = model_gpt_init(&params, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, DTYPE_FP32, model_name);
     
     Tensor input_tokens = tensor_init(
-        (float[]){7454, 2402, 257, 640}, 
-        (uint32_t[]){1, 1, 4}, 
+        (int[]){
+            818,    2274,   812,    11,     11666,  4430,   468,    1716,   281,    1593, 
+            2891,   287,    867,    11798,  11,     5742,   4837,   16602,  1366,   11, 
+            43511,  8861,   11,     290,    2987,    2551,  1642,   13,     10850,  4673, 
+            4981,   389,    8776,   319,    1588,   40522,  290,    460,    7716,   2420,
+            11,     7564,   7572,   11,     290,    4331,   10906,  1912,   319,    2180,
+            6096,   13
+        }, 
+        (uint32_t[]){1, 1, 52}, 
         3, 
         DTYPE_INT32, 
         "input_tokens"
     );
-    // tensor_print(&input_tokens, "input_tokens");
-    // model_gpt_forward(&model, &input_tokens);
+    //tensor_print(&input_tokens, "input_tokens");
+    model_gpt_forward(&model, &input_tokens);
+    model_gpt_write(&model, "c_model.safetensors");
     //model_gpt_safetensors_init(filename);
 
     // model_gpt_config_init(vocab_size, context_len, emb_dim, n_heads, n_layers, drop_rate, qkv_bias);

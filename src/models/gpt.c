@@ -21,7 +21,8 @@ static inline void model_gpt_config_init(GPTConfig *config,
     const float drop_rate, 
     const bool qkv_bias, 
     const size_t batch_size,
-    const DataType dtype
+    const DataType dtype,
+    char *name
 ){
         config->vocab_size  = vocab_size;
         config->context_len = context_len;
@@ -32,21 +33,33 @@ static inline void model_gpt_config_init(GPTConfig *config,
         config->qkv_bias    = qkv_bias;
         config->batch_size  = batch_size;
         config->dtype       = dtype;
+        memset(config->name, 0, sizeof(config->name));
+        strcpy(config->name, name);
 }
 
-static inline void model_gpt_workspace_init(GPTModel *model, const size_t n_layers){
-    tensor_reset(&model->workspace.indices);
+static inline void model_gpt_workspace_init(GPTModel *model, const size_t n_layers, char *name){
+
+    char l_name[256] = "\0";  
+
+    snprintf(l_name, sizeof(l_name), "%s.indices", name);
+    tensor_reset(&model->workspace.indices, l_name);
+
     for(size_t i = 0; i < n_layers+1; i++){
-        tensor_reset(&model->workspace.embeddings[i]);
+        snprintf(l_name, sizeof(l_name), "%s.embeddings.%zu", name, i);
+        tensor_reset(&model->workspace.embeddings[i], l_name);
     }
-    tensor_reset(&model->workspace.position_indices);
+    
+    snprintf(l_name, sizeof(l_name), "%s.position.indices", name);
+    tensor_reset(&model->workspace.position_indices, l_name);
+
+    snprintf(l_name, sizeof(l_name), "%s.next_token_prob_dist", name);
     tensor_init_(
         &model->workspace.next_token_prob_dist,
         NULL, 
         (uint32_t[]){1, 1, model->config.vocab_size},
         3, 
         model->config.dtype,
-        "next_token_prob_dist"
+        l_name
     );
 }
 
@@ -69,20 +82,34 @@ GPTModel model_gpt_init(GPTParams *params,
     const float drop_rate, 
     const bool qkv_bias, 
     const size_t batch_size,
-    const DataType dtype
+    const DataType dtype,
+    char *name
 ){
     GPTModel model;
-    model_gpt_config_init(&model.config, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, dtype);
+    model_gpt_config_init(&model.config, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, dtype, name);
     model.params            = params;
-    model.wte_layer         = embedding_layer_init(&model.params->wpe, vocab_size,  embed_dim, DTYPE_FP32);
-    model.wpe_layer         = embedding_layer_init(&model.params->wte, context_len, embed_dim, DTYPE_FP32);
+
+    char l_name[256] = "\0";
+    snprintf(l_name, sizeof(l_name), "%s.wte", name);
+    model.wte_layer         = embedding_layer_init(&model.params->wte, vocab_size,  embed_dim, DTYPE_FP32, l_name);
+
+    snprintf(l_name, sizeof(l_name), "%s.wpe", name);
+    model.wpe_layer         = embedding_layer_init(&model.params->wpe, context_len, embed_dim, DTYPE_FP32, l_name);
     for(size_t i = 0; i < n_heads; i++){
-        model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, true, dtype);
+        char l_name[128] = "\0";
+        snprintf(l_name, sizeof(l_name), "%s.h.%zu", name, i);
+        model.h_layer[i] = transformer_layer_init(&model.params->h[i], context_len, embed_dim, n_heads, true, dtype, l_name);
     }
-    model.ln_f_layer        = layer_norm_init(&params->ln_f, dtype);
-    model.out_proj_layer    = linear_layer_init(&params->out_proj, dtype);
-    tensor_reset(&model.output);
-    model_gpt_workspace_init(&model, n_layers);
+    snprintf(l_name, sizeof(l_name), "%s.ln_f", name);
+    model.ln_f_layer        = layer_norm_init(&params->ln_f, dtype, l_name);
+    
+    snprintf(l_name, sizeof(l_name), "%s.head", name);
+    model.head_layer    = linear_layer_init(&params->head, dtype, l_name);
+
+    snprintf(l_name, sizeof(l_name), "%s.output", name);
+    tensor_reset(&model.output, l_name);
+
+    model_gpt_workspace_init(&model, n_layers, name);
     return model;
 }
 
@@ -119,83 +146,53 @@ void model_gpt_forward(GPTModel *model, Tensor *input){
     //     printf("%s\n", vocab.tokens[i].token);
     // }
 
-    size_t next_token_index = 5;
-    size_t max_itrs = input->shape[input->ndim - 1];
+    // size_t next_token_index = 5;
+    size_t max_itrs = 10;
     printf("max_itrs: %zu\n", max_itrs);
     for(size_t itr = 0; itr < max_itrs; itr++){
         printf("itr: %zu\n", itr);
         tensor_print(input, "input embeddings");
-        // uint32_t shape_i = input->shape[0];
-        // uint32_t shape_j = input->shape[1];
-        // uint32_t shape_k = input->shape[2];
-        // printf("[\n");
-        // for(size_t i = 0; i < shape_i; i++){
-        //     for(size_t j = 0; j < shape_j; j++){
-        //         printf("    [ ");
-        //         for(size_t k = 0; k < shape_k; k++){
-        //             float elem = tensor_get_elem(input, (uint32_t[]){i, j, k});
-        //             if(input->dtype == DTYPE_FP32){ 
-        //                 if(elem == -FLT_MAX){
-        //                     printf("%s ", "-INF");
-        //                 }
-        //                 else{
-        //                     printf("%2.2f ", elem);
-        //                 }
-        //             }
-        //             else if(input->dtype == DTYPE_INT32) printf("%d   ", (int)elem);
-        //         }
-        //         printf(" ]\n");
-        //     }
-        //     // if(i <= shape_i - 2) printf("\n\n");
-        // }
-        // printf("]\n");
 
         embedding_layer_forward(&model->wte_layer, input);
-        tensor_print(&model->wte_layer.output, "wte_layer.output");
-
 
         if(itr == 0){
             tensor_arange_(0, input->shape[input->ndim-1], 1, &model->workspace.position_indices);
-            tensor_print(&model->workspace.position_indices, "position_indices (arrange)");
 
             tensor_unsqueeze_(&model->workspace.position_indices, 0);
-            tensor_print(&model->workspace.position_indices, "position_indices (unsqueezed)");
         }
 
         embedding_layer_forward(&model->wpe_layer, &model->workspace.position_indices);
-        tensor_print(&model->wpe_layer.output, "wpe_layer.output");
 
 
         tensor_add_(&model->wte_layer.output, &model->wpe_layer.output, &model->workspace.embeddings[0]);
-        tensor_print(&model->workspace.embeddings[0], "input_embeddings");
 
         for(size_t i = 0; i < model->config.n_layers; i++){
-            if(tensor_isnan(&model->workspace.embeddings[i])){
-                printf("\n\n\nexiting due to nan values in , &model->workspace.embeddings[i]\n");
-                exit(1);
-            }
             transformer_layer_forward(&model->h_layer[i], &model->workspace.embeddings[i]);
             tensor_copy_(&model->h_layer[i].output, &model->workspace.embeddings[i+1]);
-
         }
+
         layer_norm_forward(&model->ln_f_layer, &model->workspace.embeddings[model->config.n_layers]);
-        tensor_print(&model->ln_f_layer.output, "gpt layer_norm (output)");
+        linear_layer_forward(&model->head_layer, &model->ln_f_layer.output);
+        tensor_softmax_(&model->head_layer.output, 1,  &model->output);
 
-        linear_layer_forward(&model->out_proj_layer, &model->ln_f_layer.output);
-        tensor_print(&model->out_proj_layer.output, "out_proj_layer (output)");
-
-        tensor_softmax_(&model->out_proj_layer.output, 1,  &model->output);
-
-        tensor_print(&model->output, "model->output (softmax)");
-        printf("row to copy %u  \n", model->output.shape[model->output.ndim-2]-1);
         tensor_copy_row_data(&model->workspace.next_token_prob_dist, 0, 0, &model->output, model->output.shape[model->output.ndim-2]-1, model->config.vocab_size);
-        tensor_print(&model->workspace.next_token_prob_dist, "next_token_prob_dist");
-        // //tensor_print(&output_token_tensor, "GPT Model Output");
 
         size_t next_token_id = get_next_token_id(&model->workspace.next_token_prob_dist);
         printf("\n Token | next_token_id: %zu, token: %s\n", next_token_id, vocab.tokens[next_token_id].token);
 
-        ((float*)(input->data))[next_token_index++] = next_token_id;
+        // Tensor new_input = tensor_init(
+        //     NULL,
+        //     input->shape,
+        //     input->ndim,
+        //     input->dtype,
+        //     input->name
+        // );
+        // memcpy(new_input.data, &(input->data[1]), input->elem_size * input->size-1);
+        // ((int*)new_input.data)[51] = next_token_id;
+
+        // tensor_free(input);
+        // input = &new_input;
+        // ((float*)(input->data))[next_token_index++] = next_token_id;
         
         // tensor_copy_row_data(input, 0, next_token_index, &model->wte_layer.params->weight, next_token_id, model->config.embed_dim);
 
@@ -203,30 +200,53 @@ void model_gpt_forward(GPTModel *model, Tensor *input){
 }
 
 
-void model_gpt_safetensors_write(const char *filename, GPTParams *params){
-    Tensor *tensors[500];
-    size_t idx = 0;
-    tensors[idx++] = &params->wte.weight;
-    tensors[idx++] = &params->wpe.weight;
-    for(size_t i = 0; i < 12; i++){
-        tensors[idx++] = &params->h[i].attn.bias;
-        tensors[idx++] = &params->h[i].attn.c_attn.bias;
-        tensors[idx++] = &params->h[i].attn.c_attn.weight;
-        tensors[idx++] = &params->h[i].attn.c_proj.bias;
-        tensors[idx++] = &params->h[i].attn.c_proj.weight;
-        tensors[idx++] = &params->h[i].ln_[0].bias;
-        tensors[idx++] = &params->h[i].ln_[0].weight;
-        tensors[idx++] = &params->h[i].ln_[1].bias;
-        tensors[idx++] = &params->h[i].ln_[1].weight;
-        tensors[idx++] = &params->h[i].mlp.c_fc.bias;
-        tensors[idx++] = &params->h[i].mlp.c_fc.weight;
-        tensors[idx++] = &params->h[i].mlp.c_proj.bias;
-        tensors[idx++] = &params->h[i].mlp.c_proj.weight;
+void model_gpt_write(GPTModel *model, const char *filename){
+    Tensor *tensors[200];
+    size_t tensors_len = 0;
+    embedding_layer_write(&model->wte_layer, tensors, &tensors_len);
+    embedding_layer_write(&model->wpe_layer, tensors, &tensors_len);
+
+    for(size_t i = 0; i < model->config.n_layers; i++){
+        tensors[tensors_len++] = &model->workspace.embeddings[i];
+        transformer_layer_write(&model->h_layer[i], tensors, &tensors_len);
     }
-    tensors[idx++] = &params->ln_f.bias;
-    tensors[idx++] = &params->ln_f.weight;
-    safetensors_save_model(filename, tensors, idx);
+
+    layer_norm_write(&model->ln_f_layer, tensors, &tensors_len);
+    linear_layer_write(&model->head_layer, tensors, &tensors_len);
+    
+    tensors[tensors_len++] = &model->output;
+    tensors[tensors_len++] = &model->workspace.next_token_prob_dist;
+    
+    strcpy(model->params->head.weight.name, "head.weight");
+    tensors[tensors_len++] = &model->head_layer.params->weight;
+
+    printf("\n\ntensors_len: %zu\n", tensors_len);
+    safetensors_save_model(filename, tensors, tensors_len);
 }
+// void model_gpt_safetensors_write(const char *filename, GPTParams *params){
+//     Tensor *tensors[500];
+//     size_t idx = 0;
+//     tensors[idx++] = &params->wte.weight;
+//     tensors[idx++] = &params->wpe.weight;
+//     for(size_t i = 0; i < 12; i++){
+//         tensors[idx++] = &params->h[i].attn.bias;
+//         tensors[idx++] = &params->h[i].c_attn.bias;
+//         tensors[idx++] = &params->h[i].c_attn.weight;
+//         tensors[idx++] = &params->h[i].attn.c_proj.bias;
+//         tensors[idx++] = &params->h[i].attn.c_proj.weight;
+//         tensors[idx++] = &params->h[i].ln_[0].bias;
+//         tensors[idx++] = &params->h[i].ln_[0].weight;
+//         tensors[idx++] = &params->h[i].ln_[1].bias;
+//         tensors[idx++] = &params->h[i].ln_[1].weight;
+//         tensors[idx++] = &params->h[i].mlp.c_fc.bias;
+//         tensors[idx++] = &params->h[i].mlp.c_fc.weight;
+//         tensors[idx++] = &params->h[i].mlp.c_proj.bias;
+//         tensors[idx++] = &params->h[i].mlp.c_proj.weight;
+//     }
+//     tensors[idx++] = &params->ln_f.bias;
+//     tensors[idx++] = &params->ln_f.weight;
+//     safetensors_save_model(filename, tensors, idx);
+// }
 
 
 

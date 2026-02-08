@@ -7,19 +7,11 @@
 
 
 typedef struct SelfAttentionLayerWorkspace{
-    Tensor *attention_scores;
-    Tensor *attention_weights;
-    Tensor *keys_transposed;
-    Tensor *attention_scores_scaled;
-    Tensor *queries_chnuks;
-    Tensor *keys_chnuks;
-    Tensor *values_chnuks;
-    Tensor *context_vecs;
-    Tensor *context_vec;
-    Tensor *qkv;
-    // Tensor queries;
-    // Tensor keys;
-    // Tensor values;
+    Tensor attention_scores;
+    Tensor attention_weights;
+    Tensor keys_transposed;
+    Tensor attention_scores_scaled;
+    Tensor context_vecs;
 } SelfAttentionLayerWorkspace;
 
 typedef struct SelfAttentionLayerParams{
@@ -29,24 +21,20 @@ typedef struct SelfAttentionLayerParams{
 } SelfAttentionLayerParams;
 
 typedef struct SelfAttentionLayer{
-    SelfAttentionLayerParams *params;
-    LinearLayer c_attn_layer;
-    LinearLayer c_proj_layer;
-    size_t context_len;
-    size_t embed_dim;
-    size_t n_heads;
-    size_t head_dim;
+    // SelfAttentionLayerParams *params;
+    DataType dtype;
+    char name[128];
     SelfAttentionLayerWorkspace workspace;
     Tensor output;
 } SelfAttentionLayer;
 
 
-SelfAttentionLayer  self_attention_layer_init(SelfAttentionLayerParams *params, const size_t context_len, const size_t embed_dim, const size_t n_heads, const DataType dtype);
-void                self_attention_layer_params_free(SelfAttentionLayerParams *params);
+SelfAttentionLayer  self_attention_layer_init(const DataType dtype, char *name);
+// void                self_attention_layer_params_free(SelfAttentionLayerParams *params);
 void                self_attention_layer_free(const SelfAttentionLayer *self_attention_layer);
 Tensor              self_attention_layer_forward(const SelfAttentionLayer *self_attention_layer, const Tensor *x);
-void                self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_layer, Tensor *x, bool masked);
-//void                self_attention_layer_print(const SelfAttentionLayer *self_attention_layer, const char *heading);
+void                self_attention_layer_multi_head_forward(SelfAttentionLayer *self_attention_layer, Tensor *queries, Tensor *keys, Tensor *values, bool masked);
+void                self_attention_layer_write(SelfAttentionLayer *self_attention_layer, Tensor **tensors, size_t *tensors_len);
 
 // Tensor self_attention_simplified(Tensor *input_embeddings); 
 

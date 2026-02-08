@@ -6,13 +6,18 @@
 #include <stdlib.h>
 
 
-EmbeddingLayer embedding_layer_init(EmbeddingLayerParams *params, const size_t num_embed, const size_t embed_dim, const DataType dtype){
+EmbeddingLayer embedding_layer_init(EmbeddingLayerParams *params, const size_t num_embed, const size_t embed_dim, const DataType dtype, char *name){
     EmbeddingLayer embedding_layer;
     embedding_layer.params      = params;
     embedding_layer.dtype       = dtype;
     embedding_layer.num_embed   = num_embed;
     embedding_layer.embed_dim   = embed_dim;
-    tensor_reset(&embedding_layer.output);
+    memset(embedding_layer.name, 0, sizeof(embedding_layer.name));
+    strcpy(embedding_layer.name, name);
+
+    char l_name[256] = "\0";
+    snprintf(l_name, sizeof(l_name), "%s.output", name);
+    tensor_reset(&embedding_layer.output, l_name);
     return embedding_layer;
 }
 
@@ -38,14 +43,14 @@ void embedding_layer_params_free(const EmbeddingLayerParams *params){
 void embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *input){
     //This function can be optimized by directly keeping the pointers to rows from weights
     assert(input->ndim == 3);
-    if(embedding_layer->output.data == NULL){
+    if(embedding_layer->output.size == 0){
         tensor_init_(
             &embedding_layer->output,
             NULL,
             (uint32_t[]){input->shape[1], input->shape[2], embedding_layer->embed_dim},
             3,
             embedding_layer->dtype,
-            "embedding.layer.output"
+            NULL
         );
         //tensor_print(embedding_layer->output , "embedding_layer->output ");
     }
@@ -56,6 +61,10 @@ void embedding_layer_forward(EmbeddingLayer *embedding_layer, const Tensor *inpu
             tensor_copy_row_data(&embedding_layer->output, batch_id, row_id, &embedding_layer->params->weight, embed_index, embedding_layer->embed_dim);
         }
     }
+}
+
+void embedding_layer_write(EmbeddingLayer *embedding_layer, Tensor **tensors, size_t *tensors_len){
+    tensors[(*tensors_len)++] = &embedding_layer->output;
 }
 
 // void embedding_layer_print(const EmbeddingLayer *embedding_layer, const char *heading){
