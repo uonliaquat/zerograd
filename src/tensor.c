@@ -1238,7 +1238,7 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
     //printf("batch_size: %zu, rows: %zu, cols: %zu, x->ndim: %zu\n", batch_size, rows, cols, x->ndim);
     for(size_t i = 0; i < batch_size; i++){
         for(size_t j = 0; j < rows; j++){
-            float mean = 0;
+            double mean = 0;
             for(size_t k = 0; k < cols; k++){
                 float elem = tensor_get_elem(input, input->ndim ==3 ? (uint32_t[]){i, j, k}:  (uint32_t[]){j, k});
                 if (isnan(elem)) {
@@ -1253,10 +1253,10 @@ void tensor_mean_var_(Tensor *input, Tensor *output){
             }
             mean = mean / cols;
 
-            float variance = 0;
+            double variance = 0;
             for(size_t k = 0; k < cols; k++){
                 float elem = tensor_get_elem(input, input->ndim ==3 ? (uint32_t[]){i, j, k}:  (uint32_t[]){j, k});
-                float squared_deviation = pow(elem - mean, 2);
+                double squared_deviation = pow(elem - mean, 2);
                 //float sqrt_squared_deviation = sqrt(squared_deviation);
                 variance += squared_deviation;
                 //printf("elem: %.3f, mean: %.3f, elem-mean: %.3f, squared_deviation: %.3f, sqrt_squared_deviation: %.3f\n", elem, mean, elem - mean, squared_deviation, sqrt_squared_deviation);
@@ -1397,7 +1397,7 @@ void tensor_print(const Tensor *tensor, const char *heading){
                 printf("%s    ", "-INF");
             }
             else{
-                printf("%.2f    ", elem);
+                printf("%.4f    ", elem);
             }
         }
         else if(tensor->dtype == DTYPE_INT32) printf("%d    ", ((int*)tensor->data)[i]);

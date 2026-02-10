@@ -264,22 +264,14 @@ Vocab tokenizer_read_vocab(const char *filename){
         exit(1);
     }
     Vocab vocab;
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t read;
-    while ((read = getline(&line, &len, fptr)) != -1) {
-        // remove trailing newline  
-        //printf("%s\n", line);
-        // memset(line, 0, MAX_TOKEN_LEN);
-        if (read > 0 && line[read - 1] == '\n') {
-            line[read - 1] = '\0';
-        }
-        memset(vocab.tokens[vocab.len].token, 0, MAX_TOKEN_LEN);
-        strcpy(vocab.tokens[vocab.len++].token, line);
-        // Token new_token;
-        // memset(new_token.token, 0, MAX_TOKEN_LEN);
-        // stpcpy(new_token.token, line);
-        // vocab.tokens[vocab.len++] = new_token;
+    size_t token_index = 0;
+    int c;  // must be int to handle EOF
+    while ((c = fgetc(fptr)) != EOF) {
+        vocab.tokens[vocab.len].token[token_index++] = c;
+        if(token_index == 64){
+            vocab.len++;
+            token_index = 0;
+        } 
     }
     fclose(fptr);
     printf("*********************************** Done Reading Vocab ************************************\n");

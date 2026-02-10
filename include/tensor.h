@@ -27,6 +27,7 @@ typedef struct Tensor {
 
 Tensor  tensor_init(void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 void    tensor_init_(Tensor *tensor, void *data, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
+void    tensor_name_init(Tensor *tensor, const char *name);
 void    tensor_reset(Tensor *tensor, const char *name);
 Tensor  tensor_rand_init(const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);
 Tensor  tensor_file_init(FILE *fptr, uint32_t *offset, const uint32_t * shape, const uint8_t ndim, const DataType dtype, char *name);

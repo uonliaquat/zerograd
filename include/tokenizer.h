@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define MAX_TOKEN_LEN 50
+#define MAX_TOKEN_LEN 64
 #define MAX_VOCAB_SIZE 60000
 
 #define MAX_WORD_LEN 50

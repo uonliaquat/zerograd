@@ -25,7 +25,7 @@ static inline void extract_vals(char *start, uint32_t *vals, uint8_t *len){
     }
 }
 
-static inline Tensor safetensors_create_tensor(char *data, char *t_name){
+Tensor safetensors_create_tensor(char *data, char *t_name){
     uint64_t json_size = 0;
     memcpy(&json_size, data, 8);
     // printf("json_size: %llu\n", json_size);
@@ -81,92 +81,91 @@ static inline Tensor safetensors_create_tensor(char *data, char *t_name){
 
 }
 
-void safetensors_load_model(const char *filename, GPTParams *params){
-    char *data = read_file(filename);
-    char *tmp_data = data;
+// void safetensors_load_model(const char *filename, GPTParams *params){
+//     char *data = read_file(filename);
+//     char *tmp_data = data;
 
-    char name[64] = "\0";
+//     char name[64] = "\0";
 
-    snprintf(name, sizeof(name), "wpe.weight");
-    params->wpe.weight = safetensors_create_tensor(tmp_data,  name);
-    //tensor_print(&params->wpe.weight);
+//     snprintf(name, sizeof(name), "wpe.weight");
+//     params->wpe.weight = safetensors_create_tensor(tmp_data,  name);
+//     //tensor_print(&params->wpe.weight);
 
-    snprintf(name, sizeof(name), "wte.weight");
-    params->wte.weight = safetensors_create_tensor(tmp_data,  name);
-    //tensor_print(&params->wte.weight);
-    //hidden layers
-    for(size_t i = 0; i < 12; i++){
-        //attn
-        // snprintf(name, sizeof(name), "h.%zu.attn.bias", i);
-        // params->h[i].attn->bias = safetensors_create_tensor(tmp_data,  name);
-        //tensor_print(&params->h[i].attn.bias);
+//     snprintf(name, sizeof(name), "wte.weight");
+//     params->wte.weight = safetensors_create_tensor(tmp_data,  name);
+//     //tensor_print(&params->wte.weight);
+//     //hidden layers
+//     for(size_t i = 0; i < 12; i++){
+//         //attn
+//         snprintf(name, sizeof(name), "h.%zu.attn.bias", i);
+//         params->h[i].attn.bias = safetensors_create_tensor(tmp_data,  name);
 
-        snprintf(name, sizeof(name), "h.%zu.attn.c_attn.bias", i);
-        params->h[i].c_attn.bias = safetensors_create_tensor(tmp_data,  name);
-        //tensor_print(&params->h[i].attn.c_attn.bias);
+//         snprintf(name, sizeof(name), "h.%zu.attn.c_attn.bias", i);
+//         params->h[i].attn.c_attn.bias = safetensors_create_tensor(tmp_data,  name);
+//         //tensor_print(&params->h[i].attn.c_attn.bias);
 
-        snprintf(name, sizeof(name), "h.%zu.attn.c_attn.weight", i);
-        params->h[i].c_attn.weight = safetensors_create_tensor(tmp_data,  name);
-        //tensor_print(&params->h[i].attn.c_attn.weight);
+//         snprintf(name, sizeof(name), "h.%zu.attn.c_attn.weight", i);
+//         params->h[i].attn.c_attn.weight = safetensors_create_tensor(tmp_data,  name);
+//         //tensor_print(&params->h[i].attn.c_attn.weight);
 
-        snprintf(name, sizeof(name), "h.%zu.attn.c_proj.bias", i);
-        params->h[i].c_proj.bias = safetensors_create_tensor(tmp_data,  name);
-        //tensor_print(&params->h[i].attn.c_proj.bias);
+//         snprintf(name, sizeof(name), "h.%zu.attn.c_proj.bias", i);
+//         params->h[i].attn.c_proj.bias = safetensors_create_tensor(tmp_data,  name);
+//         //tensor_print(&params->h[i].attn.c_proj.bias);
 
-        snprintf(name, sizeof(name), "h.%zu.attn.c_proj.weight", i);
-        params->h[i].c_proj.weight = safetensors_create_tensor(tmp_data,  name);
-        //tensor_print(&params->h[i].attn.c_proj.weight);
+//         snprintf(name, sizeof(name), "h.%zu.attn.c_proj.weight", i);
+//         params->h[i].attn.c_proj.weight = safetensors_create_tensor(tmp_data,  name);
+//         //tensor_print(&params->h[i].attn.c_proj.weight);
 
-        //ln
-            snprintf(name, sizeof(name), "h.%zu.ln_%d.bias", i, 1);
-            params->h[i].ln_1.bias = safetensors_create_tensor(tmp_data,  name);
-            //tensor_print(&params->h[i].ln_[j].bias);
+//         //ln
+//             snprintf(name, sizeof(name), "h.%zu.ln_%d.bias", i, 1);
+//             params->h[i].ln_1.bias = safetensors_create_tensor(tmp_data,  name);
+//             //tensor_print(&params->h[i].ln_[j].bias);
 
-            snprintf(name, sizeof(name), "h.%zu.ln_%d.weight", i, 1);
-            params->h[i].ln_1.weight = safetensors_create_tensor(tmp_data,  name);
+//             snprintf(name, sizeof(name), "h.%zu.ln_%d.weight", i, 1);
+//             params->h[i].ln_1.weight = safetensors_create_tensor(tmp_data,  name);
 
-            snprintf(name, sizeof(name), "h.%zu.ln_%d.bias", i, 2);
-            params->h[i].ln_2.bias = safetensors_create_tensor(tmp_data,  name);
-            //tensor_print(&params->h[i].ln_[j].bias);
+//             snprintf(name, sizeof(name), "h.%zu.ln_%d.bias", i, 2);
+//             params->h[i].ln_2.bias = safetensors_create_tensor(tmp_data,  name);
+//             //tensor_print(&params->h[i].ln_[j].bias);
 
-            snprintf(name, sizeof(name), "h.%zu.ln_%d.weight", i, 2);
-            params->h[i].ln_2.weight = safetensors_create_tensor(tmp_data,  name);
+//             snprintf(name, sizeof(name), "h.%zu.ln_%d.weight", i, 2);
+//             params->h[i].ln_2.weight = safetensors_create_tensor(tmp_data,  name);
             
-         //mlp
-            //c_fc
-            snprintf(name, sizeof(name), "h.%zu.mlp.c_fc.bias", i);
-            params->h[i].mlp.c_fc.bias = safetensors_create_tensor(tmp_data,  name);
-            //tensor_print(&params->h[i].mlp.c_fc.bias);
+//          //mlp
+//             //c_fc
+//             snprintf(name, sizeof(name), "h.%zu.mlp.c_fc.bias", i);
+//             params->h[i].mlp.c_fc.bias = safetensors_create_tensor(tmp_data,  name);
+//             //tensor_print(&params->h[i].mlp.c_fc.bias);
             
-            snprintf(name, sizeof(name), "h.%zu.mlp.c_fc.weight", i);
-            params->h[i].mlp.c_fc.weight = safetensors_create_tensor(tmp_data,  name);
-            //tensor_print(&params->h[i].mlp.c_fc.weight);
+//             snprintf(name, sizeof(name), "h.%zu.mlp.c_fc.weight", i);
+//             params->h[i].mlp.c_fc.weight = safetensors_create_tensor(tmp_data,  name);
+//             //tensor_print(&params->h[i].mlp.c_fc.weight);
 
-            //c_proj
-            snprintf(name, sizeof(name), "h.%zu.mlp.c_proj.bias", i);
-            params->h[i].mlp.c_proj.bias = safetensors_create_tensor(tmp_data,  name);
-            //tensor_print(&params->h[i].mlp.c_proj.bias);
+//             //c_proj
+//             snprintf(name, sizeof(name), "h.%zu.mlp.c_proj.bias", i);
+//             params->h[i].mlp.c_proj.bias = safetensors_create_tensor(tmp_data,  name);
+//             //tensor_print(&params->h[i].mlp.c_proj.bias);
              
-            snprintf(name, sizeof(name), "h.%zu.mlp.c_proj.weight", i);
-            params->h[i].mlp.c_proj.weight = safetensors_create_tensor(tmp_data,  name);
-            //tensor_print(&params->h[i].mlp.c_proj.weight);
+//             snprintf(name, sizeof(name), "h.%zu.mlp.c_proj.weight", i);
+//             params->h[i].mlp.c_proj.weight = safetensors_create_tensor(tmp_data,  name);
+//             //tensor_print(&params->h[i].mlp.c_proj.weight);
 
-    }
+//     }
 
-    //ln_f
-    snprintf(name, sizeof(name), "ln_f.bias");
-    params->ln_f.bias = safetensors_create_tensor(tmp_data,  name);
-    //tensor_print(&params->ln_f.bias, name);
+//     //ln_f
+//     snprintf(name, sizeof(name), "ln_f.bias");
+//     params->ln_f.bias = safetensors_create_tensor(tmp_data,  name);
+//     //tensor_print(&params->ln_f.bias, name);
     
-    snprintf(name, sizeof(name), "ln_f.weight");
-    params->ln_f.weight = safetensors_create_tensor(tmp_data,  name);
-    //tensor_print(&params->ln_f.weight, name);
+//     snprintf(name, sizeof(name), "ln_f.weight");
+//     params->ln_f.weight = safetensors_create_tensor(tmp_data,  name);
+//     //tensor_print(&params->ln_f.weight, name);
 
-    params->head.weight = tensor_transpose(&params->wte.weight);
+//     params->head.weight = tensor_transpose(&params->wte.weight);
 
-    params->head.bias   = tensor_init(NULL, (uint32_t[]){params->wte.weight.shape[0]}, 1, DTYPE_FP32, "head.bias");
+//     params->head.bias   = tensor_init(NULL, (uint32_t[]){params->wte.weight.shape[0]}, 1, DTYPE_FP32, "head.bias");
 
-}
+// }
 
 static inline size_t get_json_len(Tensor *t, char *json, uint32_t offset_start, uint32_t offset_end) {
     uint64_t json_len;
@@ -226,14 +225,13 @@ void safetensors_save_model(const char *filename, Tensor **tensors, size_t no_of
         perror("Error opening file");
         exit(-1);
     }
-    //json_len = get_json_len(&params->wpe.weight, wpe_json, 0, params->wpe.weight.size);
     uint64_t json_len;
 
 
     size_t pos = 0;
     uint32_t curr_offset = 0;
     uint32_t prev_offset = 0;
-    char json[20000] = "\0";
+    char json[1000000] = "\0";
     size_t json_size = sizeof(json);
 
     //size_t max_tensors_to_save = 2;
@@ -294,66 +292,6 @@ void safetensors_save_model(const char *filename, Tensor **tensors, size_t no_of
         uint32_t t_size = t->size * (t->elem_size);
         fwrite(t->data, 1, t_size, fptr);
     }
-
-
-
-    // fwrite(params->wte.weight.data, 1, params->wte.weight.size, fptr);
-
-    // json_len = snprintf(
-    //     json, sizeof(json),
-    //     "{\"%s\":{\"dtype\":\"%s\",\"data_offsets\":[%u,%u],\"shape\":[%u,%u]}}",
-    //     t.name,
-    //     tensor_dtype_name(t.dtype),
-    //     0,
-    //     t_size,
-    //     t.shape[0],
-    //     t.shape[1]
-    // );
-
-    
-    // printf(
-    //     "{\"%s\":{\"dtype\":\"%s\",\"shape\":[%u, %u],\"data_offsets\":[%u,%u]}}",
-    //     t.name,
-    //     tensor_dtype_name(t.dtype),
-    //     t.shape[0],
-    //     t.shape[1],
-    //     0,
-    //     t_size
-    // );
-
-    // Step 4: write file
-    // fwrite(&json_len, 8, 1, fptr);         // header
-    // fwrite(json, 1, json_len, fptr);       // JSON
-    // fwrite(t.data, 1, t_size, fptr);   // tensor data
-
     fclose(fptr);
-    // rewind(fptr);
-    //fseek(fptr, 0, SEEK_SET);
 
-    // char shape_str[128] = {0};
-    // char tmp[16];
-
-    // for (size_t i = 0; i < t->ndim; i++) {
-    //     snprintf(tmp, sizeof(tmp), "%u", t->shape[i]);
-    //     strcat(shape_str, tmp);
-    //     if (i + 1 < t->ndim) strcat(shape_str, ",");
-    // }
-    // char json[512];
-    // int json_len = snprintf(json, sizeof(json),
-    //     "{\"%s\":{\"shape\":[%s],\"dtype\":\"%s\",\"offset\":%llu,\"length\":%llu}}",
-    //     t->name,
-    //     shape_str,
-    //     t->dtype,
-    //     t->data + sizeof(uint64_t),
-    //     t->ndim
-    // );
-
-    //fprintf(fptr, "uname:{%s},shape:[%u],dtype:%s\n", tensor->size, name, size, dtype_str);
-    // write JSON
-    //fwrite(json, 1, json_len, fptr);
-
-    // // update header length
-    // uint64_t header_len = json_len;
-    // fseek(fptr, 0, SEEK_SET);
-    // fwrite(&header_len, sizeof(header_len), 1, fptr);
 }
