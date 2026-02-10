@@ -857,40 +857,14 @@ void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output
     //size_t t2_batch_size = tensor2->ndim == 3 ? tensor2->shape[0]: 1;
     size_t out_rows = output_tensor->ndim == 3 ? output_tensor->shape[1]: output_tensor->shape[0];
     size_t out_cols = output_tensor->ndim == 3 ? output_tensor->shape[2]: output_tensor->shape[1];
-
+    
     for(size_t i = 0; i < out_rows; i++){
         for(size_t j = 0; j < out_cols; j++){
             double result = 0;
             for(size_t k = 0; k < t1_cols; k++){
                 float elem1 = tensor_get_elem(tensor1, tensor1->ndim == 3 ?(uint32_t[]){batch_dim, i, k}: (uint32_t[]){i, k});
                 float elem2 = tensor_get_elem(tensor2, tensor2->ndim == 3 ?(uint32_t[]){batch_dim, k, j}: (uint32_t[]){k, j});
-                 // Handle NaN / Inf
-                if (!isfinite(elem1)) {
-                    printf("Warning: elem1 at i=%zu, j=%zu, k=%zu is not finite (%f). Clamping to 0.\n", i, j, k, elem1);
-                    elem1 = 0.0f;
-                }
-                if (!isfinite(elem2)) {
-                    printf("Warning: elem2 at i=%zu, j=%zu, k=%zu is not finite (%f). Clamping to 0.\n", i, j, k, elem2);
-                    elem2 = 0.0f;
-                }
-
-                if (isnan(elem1)) {
-                    printf("Warning: elem1 at i=%zu, j=%zu, k=%zu is nana (%f). Clamping to 0.\n", i, j, k, elem1);
-                    elem1 = 0.0f;
-                }
-                if (isnan(elem2)) {
-                    printf("Warning: elem2 at i=%zu, j=%zu, k=%zu is nan (%f). Clamping to 0.\n", i, j, k, elem2);
-                    elem2 = 0.0f;
-                }
-
                 result += (elem1 * elem2);
-
-                // Optional: clamp intermediate product to avoid Inf
-                if (!isfinite(result)) {
-                    printf("Warning: product at i=%zu, j=%zu, k=%zu is not finite. Clamping to 0.\n", i, j, k);
-                    result = 0.0;
-                }
-
             }
             if(output_tensor->ndim == 3) tensor_put_elem(output_tensor, (uint32_t[]){batch_dim, i, j}, result);
             else if(output_tensor->ndim == 2)  tensor_put_elem(output_tensor, tensor2->ndim == 3 ? (uint32_t[]){batch_dim, i, j}: (uint32_t[]){i, j}, result);

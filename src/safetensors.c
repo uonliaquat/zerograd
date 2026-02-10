@@ -8,8 +8,8 @@
 #include "../include/tensor.h"
 #include "../include/utils.h"
 
-static inline void extract_vals(char *start, uint32_t *vals, uint8_t *len){
-    uint32_t dim = 0;
+static inline void extract_vals(char *start, uint64_t *vals, uint8_t *len){
+    uint64_t dim = 0;
     while(1){
         if(start[0] == ',' || start[0] == ']'){
             vals[(*len)++] = dim;
@@ -28,7 +28,6 @@ static inline void extract_vals(char *start, uint32_t *vals, uint8_t *len){
 Tensor safetensors_create_tensor(char *data, char *t_name){
     uint64_t json_size = 0;
     memcpy(&json_size, data, 8);
-    // printf("json_size: %llu\n", json_size);
 
     char raw_json[json_size];
     memcpy(raw_json, data+8, json_size);
@@ -36,17 +35,16 @@ Tensor safetensors_create_tensor(char *data, char *t_name){
 
     // //get name
     char *layer_start = strstr(raw_json, t_name);
-    //char *t_name_end = strstr(start, "\"");
-    // char t_name[TENSOR_MAX_LEN_NAME] = "\0";
-    // memcpy(t_name, start, t_name_end - start);
-    // printf("t_name: %s\n", t_name);
-    // printf("%.*s\n", 128, start);
 
     // //Read Shape
     char *shape_start   = strstr(layer_start, "shape") + 8;
-    uint32_t shape[TENSOR_MAX_SHAPE_DIM] = {0};
+    uint64_t shape_tmp[TENSOR_MAX_SHAPE_DIM] = {0};
     uint8_t ndim = 0;
-    extract_vals(shape_start, shape, &ndim);
+    extract_vals(shape_start, shape_tmp, &ndim);
+    uint32_t shape[TENSOR_MAX_SHAPE_DIM] = {0};
+    for(size_t i = 0; i < ndim; i++){
+        shape[i] = shape_tmp[i];
+    }
     // printf("ndim: %u\n", ndim);
     // printf("shape: (");
     // for(size_t i = 0; i < ndim; i++){
@@ -54,10 +52,11 @@ Tensor safetensors_create_tensor(char *data, char *t_name){
     // }
     // printf(")\n");
 
-
+    // printf("shape_start: %s\n", shape_start);
     // // Read data_offsets
     char *data_offsers_start = strstr(shape_start, "data_offsets") + 15;
-    uint32_t offset[2] = {0};
+
+    uint64_t offset[2] = {0};
     uint8_t len = 0;
     extract_vals(data_offsers_start, offset, &len);
     assert(len == 2);
@@ -75,6 +74,7 @@ Tensor safetensors_create_tensor(char *data, char *t_name){
     // // for(size_t i = 0; i < 10; i++){
     // //     printf("%f\n", weights[i]);
     // // }
+
     Tensor my_tensor = tensor_init(weights, shape, ndim, DTYPE_FP32, t_name);
     free(weights);
     return my_tensor;
@@ -226,8 +226,8 @@ void safetensors_save_model(const char *filename, Tensor **tensors, size_t no_of
         exit(-1);
     }
     uint64_t json_len;
-
-
+    
+    printf("not of tensors: %zu\n", no_of_tensors);
     size_t pos = 0;
     uint32_t curr_offset = 0;
     uint32_t prev_offset = 0;

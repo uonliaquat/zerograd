@@ -90,13 +90,15 @@ void model_gpt_init_params(const char *filename, GPTModel *model){
 
     GPTParams *params = &model->params;
     char name[128] = "\0";
-    snprintf(name, sizeof(name), "wpe.weight");
-    params->wpe.weight = safetensors_create_tensor(data,  name);
-    tensor_print(&params->wpe.weight, name);
 
     snprintf(name, sizeof(name), "wte.weight");
     params->wte.weight = safetensors_create_tensor(data,  name);
     tensor_print(&params->wte.weight, name);
+
+    snprintf(name, sizeof(name), "wpe.weight");
+    params->wpe.weight = safetensors_create_tensor(data,  name);
+    tensor_print(&params->wpe.weight, name);
+
 
     params->h = calloc(model->config.n_layers, sizeof(TransformerLayerParams));
     for(size_t h = 0; h < model->config.n_layers; h++){
@@ -310,25 +312,25 @@ void model_gpt_forward(GPTModel *model, Tensor *x, const char *prompt){
 void model_gpt_write(GPTModel *model, const char *filename){
     printf("Saving Model ......\n");
     fflush(stdout);
-    Tensor *tensors[2000];
+    Tensor *tensors[10000];
     size_t tensors_len = 0;
     embedding_layer_write(&model->wte, tensors, &tensors_len);
     embedding_layer_write(&model->wpe, tensors, &tensors_len);
 
-    for(size_t h = 0; h < model->config.n_layers; h++){
-        tensors[tensors_len++] = &model->workspace.embeddings[h];
-        transformer_layer_write(&model->h[h], tensors, &tensors_len);
-    }
-    tensors[tensors_len++] = &model->workspace.embeddings[model->config.n_layers];
+    // for(size_t h = 0; h < model->config.n_layers; h++){
+    //     tensors[tensors_len++] = &model->workspace.embeddings[h];
+    //     transformer_layer_write(&model->h[h], tensors, &tensors_len);
+    // }
+    // tensors[tensors_len++] = &model->workspace.embeddings[model->config.n_layers];
 
-    layer_norm_write(&model->ln_f, tensors, &tensors_len);
-    linear_layer_write(&model->head, tensors, &tensors_len);
+    // layer_norm_write(&model->ln_f, tensors, &tensors_len);
+    // linear_layer_write(&model->head, tensors, &tensors_len);
     
-    tensors[tensors_len++] = &model->workspace.output;
-    tensors[tensors_len++] = &model->workspace.next_token_prob_dist;
+    // tensors[tensors_len++] = &model->workspace.output;
+    // tensors[tensors_len++] = &model->workspace.next_token_prob_dist;
     
 
-    printf("writing %zu tensors to disk\n", tensors_len);
+    // printf("writing %zu tensors to disk\n", tensors_len);
 
     for(size_t i = 0; i < tensors_len; i++){
         if(tensors[i] != NULL){
@@ -342,6 +344,5 @@ void model_gpt_write(GPTModel *model, const char *filename){
             exit(1);
         }
     }
-
     safetensors_save_model(filename, tensors, tensors_len);
 }

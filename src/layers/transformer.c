@@ -78,7 +78,7 @@ void transformer_layer_forward(TransformerLayer *layer, Tensor *x){
 
 void transformer_layer_write(TransformerLayer *layer, Tensor **tensors, size_t *tensors_len){
     layer_norm_write(&layer->ln_1, tensors, tensors_len);
-    multi_head_attention_layer_write(&layer->attn, tensors, tensors_len);
+    // multi_head_attention_layer_write(&layer->attn, tensors, tensors_len);
     tensors[(*tensors_len)++] = &layer->workspace.resid1_output;
     layer_norm_write(&layer->ln_2, tensors, tensors_len);
     multi_layer_perceptron_write(&layer->mlp, tensors, tensors_len);
