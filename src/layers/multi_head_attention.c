@@ -123,15 +123,14 @@ void multi_head_attention_layer_free(const MultiHeadAttentionLayer *layer){
     tensor_free(&layer->bias);
 }
 
-
 void multi_head_attention_layer_forward(MultiHeadAttentionLayer *layer, Tensor *x){
-    
     linear_layer_forward(&layer->c_attn, x);
 
     tensor_chunk_(&layer->c_attn.workspace.output, 3, 1, layer->workspace.qkv);
     tensor_chunk_(&layer->workspace.qkv[0],   layer->n_heads, 1, layer->workspace.q_heads);
     tensor_chunk_(&layer->workspace.qkv[1],   layer->n_heads, 1, layer->workspace.k_heads);
     tensor_chunk_(&layer->workspace.qkv[2],   layer->n_heads, 1, layer->workspace.v_heads);
+
 
     for(size_t head = 0; head < layer->n_heads; head++){
         // // K^T
@@ -173,6 +172,7 @@ void multi_head_attention_layer_forward(MultiHeadAttentionLayer *layer, Tensor *
         );
         // tensor_copy_(&layer->workspace.ctx_vecs[head], &layer->output);
     }
+
     tensor_concat_(layer->workspace.ctx_vecs, layer->n_heads, 1, &layer->workspace.conact_vecs);  
     linear_layer_forward(&layer->c_proj,  &layer->workspace.conact_vecs);
     tensor_copy_(&layer->c_proj.workspace.output, &layer->workspace.output);

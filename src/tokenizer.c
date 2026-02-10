@@ -256,26 +256,25 @@ static inline void tokenizer_write_vocab(char *filename){
 }
 
 
-Vocab tokenizer_read_vocab(const char *filename){
+void tokenizer_read_vocab(const char *filename, Vocab *vocab){
     printf("\n************************************** Reading Vocab **************************************\n");
     FILE *fptr = fopen(filename, "r");  // fresh file
     if(fptr == NULL){
         printf("Error opening file: %s\n", filename);
         exit(1);
     }
-    Vocab vocab;
+    vocab->len = 0;
     size_t token_index = 0;
     int c;  // must be int to handle EOF
     while ((c = fgetc(fptr)) != EOF) {
-        vocab.tokens[vocab.len].token[token_index++] = c;
+        vocab->tokens[vocab->len].token[token_index++] = c;
         if(token_index == 64){
-            vocab.len++;
+            vocab->len++;
             token_index = 0;
         } 
     }
     fclose(fptr);
     printf("*********************************** Done Reading Vocab ************************************\n");
-    return vocab;
 }
 
 void tokenizer_write_merge_rules(char *filename){

@@ -3,13 +3,15 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <float.h>
+#include <time.h>
+
 #include "../../../include/tensor.h"
 #include "../../../include/layers/multi_head_attention.h"
 #include "../../../include/utils.h"
 #include "../../../include/models/gpt2/gpt.h"
 #include "../../../include/safetensors.h"
 
-#include <float.h>
 
 
 
@@ -50,6 +52,7 @@ static inline void model_gpt_workspace_init(GPTModel *model, char *name){
     snprintf(tmp_name, sizeof(tmp_name), "pos.indices");
     tensor_reset(&model->workspace.pos_indices, tmp_name);
 
+    model->workspace.embeddings = calloc(model->config.n_heads+1, sizeof(Tensor));
     for(size_t h = 0; h < model->config.n_layers + 1; h++){
         snprintf(tmp_name, sizeof(tmp_name), "h.%zu.input_embedding", h);
         tensor_reset(&model->workspace.embeddings[h], tmp_name);
@@ -78,12 +81,14 @@ static inline void model_gpt_workspace_free(GPTWrokspace *workspace, const size_
     }
     tensor_free(&workspace->next_token_prob_dist);
     tensor_free(&workspace->output);
+    free(workspace->embeddings);
 }
 
 
-void model_gpt_init_params(const char *filename, GPTParams *params){
+void model_gpt_init_params(const char *filename, GPTModel *model){
     char *data = read_file(filename);
 
+    GPTParams *params = &model->params;
     char name[128] = "\0";
     snprintf(name, sizeof(name), "wpe.weight");
     params->wpe.weight = safetensors_create_tensor(data,  name);
@@ -93,9 +98,8 @@ void model_gpt_init_params(const char *filename, GPTParams *params){
     params->wte.weight = safetensors_create_tensor(data,  name);
     tensor_print(&params->wte.weight, name);
 
-    for(size_t h = 0; h < 12; h++){
-
-
+    params->h = calloc(model->config.n_layers, sizeof(TransformerLayerParams));
+    for(size_t h = 0; h < model->config.n_layers; h++){
         // Multi Head Attention
         snprintf(name, sizeof(name), "h.%zu.attn.bias", h);
         params->h[h].attn.bias = safetensors_create_tensor(data,  name);
@@ -176,8 +180,8 @@ void model_gpt_init_params(const char *filename, GPTParams *params){
 }
 
 GPTModel model_gpt_init(
-    GPTParams *params,
-    Vocab *vocab,
+    const char *params_filename,
+    const char * vocab_filename,
     const size_t vocab_size,
     const size_t context_len, 
     const size_t embed_dim, 
@@ -191,28 +195,29 @@ GPTModel model_gpt_init(
 ){
     GPTModel model;
     strcpy(model.name, name);
-    
-    model.params = params;
-    model.vocab = vocab;
-    
     model_gpt_config_init(&model.config, vocab_size, context_len, embed_dim, n_heads, n_layers, drop_rate, qkv_bias, batch_size, dtype, name);
+    model.h = calloc(model.config.n_layers, sizeof(TransformerLayer));
+    tokenizer_read_vocab(vocab_filename, &model.vocab);
+    model_gpt_init_params(params_filename, &model);
+
     
+
     char tmp_name[128] = "\0";
     snprintf(tmp_name, sizeof(tmp_name), "pos_emb");
-    model.wpe = embedding_layer_init(&params->wpe, embed_dim, tmp_name);
+    model.wpe = embedding_layer_init(&model.params.wpe, embed_dim, tmp_name);
 
     snprintf(tmp_name, sizeof(tmp_name), "token_emb");
-    model.wte = embedding_layer_init(&params->wte, embed_dim, tmp_name);
+    model.wte = embedding_layer_init(&model.params.wte, embed_dim, tmp_name);
 
     for(size_t i = 0; i < model.config.n_layers; i++){
         snprintf(tmp_name, sizeof(tmp_name), "h.%zu", i);
-        model.h[i] = transformer_layer_init(&params->h[i], n_heads, tmp_name);
+        model.h[i] = transformer_layer_init(&model.params.h[i], n_heads, tmp_name);
     }    
     snprintf(tmp_name, sizeof(tmp_name), "ln_f");
-    model.ln_f = layer_norm_init(&params->ln_f, tmp_name);
+    model.ln_f = layer_norm_init(&model.params.ln_f, tmp_name);
 
     snprintf(tmp_name, sizeof(tmp_name), "head");
-    model.head = linear_layer_init(&params->head, tmp_name);
+    model.head = linear_layer_init(&model.params.head, tmp_name);
 
     model_gpt_workspace_init(&model, name);
     return model;
@@ -228,6 +233,7 @@ void model_gpt_free(GPTModel *model){
     }
     layer_norm_free(&model->ln_f);
     linear_layer_free(&model->head);
+    free(model->h);
 
 }
 
@@ -247,13 +253,8 @@ static inline int get_next_token_id(Tensor * next_token_prob_dist){
 
 void model_gpt_forward(GPTModel *model, Tensor *x, const char *prompt){
     assert(x->ndim == 3);
-
-    // for(size_t i = 0; i < vocab.len; i++){
-    //     printf("%s\n", vocab.tokens[i].token);
-    // }
-
-    // size_t next_token_index = 5;
-    size_t max_itrs = 500;
+    size_t max_itrs = 50;
+    
     printf("\n\n%s", prompt);
     fflush(stdout);
     for(size_t itr = 0; itr < max_itrs; itr++){
@@ -277,7 +278,6 @@ void model_gpt_forward(GPTModel *model, Tensor *x, const char *prompt){
             transformer_layer_forward(&model->h[h], &model->workspace.embeddings[h]);
             tensor_copy_(&model->h[h].workspace.output, &model->workspace.embeddings[h+1]);
         }
-
         layer_norm_forward(&model->ln_f, &model->workspace.embeddings[model->config.n_layers]);
         linear_layer_forward(&model->head, &model->ln_f.workspace.output);
         tensor_softmax_(&model->head.workspace.output, 1,  &model->workspace.output);
@@ -300,7 +300,7 @@ void model_gpt_forward(GPTModel *model, Tensor *x, const char *prompt){
         }
         ((int*)x->data)[x->size-1] = next_token_id;
         //model_gpt_write(model, "c_model.safetensors");
-        printf("%s",  model->vocab->tokens[next_token_id].token);
+        printf("%s",  model->vocab.tokens[next_token_id].token);
         fflush(stdout);
     }
     printf("\n");

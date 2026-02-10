@@ -46,7 +46,7 @@ typedef struct Vocab{
     int32_t len;
 } Vocab;
 
-Vocab tokenizer_read_vocab(const char *filename);
+void tokenizer_read_vocab(const char *filename, Vocab *vocab);
 
 
 #endif

@@ -53,10 +53,14 @@ void transformer_layer_free(TransformerLayer *layer){
 
 }
 
+
 void transformer_layer_forward(TransformerLayer *layer, Tensor *x){
-    //print_centered_heading("Self Attention Multi HEAD");
+
+
+
     layer_norm_forward(&layer->ln_1, x);
     multi_head_attention_layer_forward(&layer->attn, &layer->ln_1.workspace.output);
+
 
     // Resisudal Conenction 1
     tensor_add_(x, &layer->attn.workspace.output, &layer->workspace.resid1_output);

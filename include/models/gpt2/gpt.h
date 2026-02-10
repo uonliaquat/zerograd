@@ -35,7 +35,7 @@ typedef struct GPTConfig {
 typedef struct GPTParams{
     EmbeddingLayerParams wpe;
     EmbeddingLayerParams wte;
-    TransformerLayerParams h[12];
+    TransformerLayerParams *h;
     LayerNormParams ln_f;
     LinearLayerParams head;
 } GPTParams;
@@ -89,7 +89,7 @@ typedef struct GPTParams{
 typedef struct GPTWrokspace{
     Tensor indices;
     Tensor pos_indices;
-    Tensor embeddings[13];
+    Tensor *embeddings;
     Tensor next_token_prob_dist;
     Tensor output;
 } GPTWrokspace;
@@ -98,20 +98,20 @@ typedef struct GPTWrokspace{
 typedef struct GPTModel{
     char name[128];
     GPTConfig config;
-    GPTParams *params;
+    GPTParams params;
+    Vocab vocab;
     EmbeddingLayer wte;
     EmbeddingLayer wpe;
-    TransformerLayer h[12];
+    TransformerLayer *h;
     LayerNorm ln_f;
     LinearLayer head;
-    Vocab *vocab;
     GPTWrokspace workspace;
 } GPTModel;
 
 
 GPTModel model_gpt_init(
-    GPTParams *params,
-    Vocab *vocab,
+    const char *params_filename,
+    const char *vocab_filename,
     const size_t vocab_size,
     const size_t context_len, 
     const size_t embed_dim, 
@@ -127,7 +127,7 @@ GPTModel model_gpt_init(
 void model_gpt_free(GPTModel *model);
 void model_gpt_forward(GPTModel *model, Tensor *x, const char *prompt);
 void model_gpt_write(GPTModel *model, const char *filename);
-void model_gpt_init_params(const char *filename, GPTParams *params);
+void model_gpt_init_params(const char *filename, GPTModel *model);
 // void model_gpt_safetensors_write(const char *filename, GPTParameters *params);
 
 
