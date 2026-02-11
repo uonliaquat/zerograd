@@ -62,17 +62,17 @@ int main(){
     //     print_byte_pair(merge_rules[i]);
     // }
 
-    //GPT2-small 124M Params
+    // GPT2-small 124M Params
 
-    size_t vocab_size  = 50257;   // GPT-2 BPE vocab
-    size_t context_len = 7;    // Max sequence length (n_ctx)
-    size_t embed_dim   = 768;     // Embedding dimension (n_embd)
-    size_t n_heads     = 12;      // Attention heads (n_head)
-    size_t n_layers    = 12;      // Transformer blocks (n_layer)
-    float drop_rate    = 0.1;     // Dropout
-    bool qkv_bias      = true;    // GPT-2 uses bias in QKV
-    size_t batch_size  = 1;       // Batch Size 
-    char *params_filename = "/Users/uonliaquat/Downloads/gpt2.safetensors";
+    // size_t vocab_size  = 50257;   // GPT-2 BPE vocab
+    // size_t context_len = 7;    // Max sequence length (n_ctx)
+    // size_t embed_dim   = 768;     // Embedding dimension (n_embd)
+    // size_t n_heads     = 12;      // Attention heads (n_head)
+    // size_t n_layers    = 12;      // Transformer blocks (n_layer)
+    // float drop_rate    = 0.1;     // Dropout
+    // bool qkv_bias      = true;    // GPT-2 uses bias in QKV
+    // size_t batch_size  = 1;       // Batch Size 
+    // char *params_filename = "/Users/uonliaquat/Downloads/gpt2.safetensors";
 
 
     //GPT2-medium 345M Params
@@ -88,16 +88,16 @@ int main(){
     // char *params_filename = "/Users/uonliaquat/Downloads/gpt2-medium.safetensors";
 
     // //GPT2-xl 1.5 B
-    // size_t vocab_size  = 50257;   // GPT-2 BPE vocab
-    // size_t context_len = 7;    // Max sequence length (n_ctx)
-    // size_t embed_dim   = 1600;     // Embedding dimension (n_embd)
-    // size_t n_heads     = 25;      // Attention heads (n_head)
-    // size_t n_layers    = 48;      // Transformer blocks (n_layer)
-    // float drop_rate    = 0.1;     // Dropout
-    // bool qkv_bias      = true;    // GPT-2 uses bias in QKV
-    // size_t batch_size  = 1;       // Batch Size 
+    size_t vocab_size  = 50257;   // GPT-2 BPE vocab
+    size_t context_len = 7;    // Max sequence length (n_ctx)
+    size_t embed_dim   = 1600;     // Embedding dimension (n_embd)
+    size_t n_heads     = 25;      // Attention heads (n_head)
+    size_t n_layers    = 48;      // Transformer blocks (n_layer)
+    float drop_rate    = 0.1;     // Dropout
+    bool qkv_bias      = true;    // GPT-2 uses bias in QKV
+    size_t batch_size  = 1;       // Batch Size 
 
-    // char *params_filename = "/Users/uonliaquat/Downloads/gpt2-xl.safetensors";
+    char *params_filename = "/Users/uonliaquat/Downloads/gpt2-xl.safetensors";
 
     char *vocab_filename = "/Users/uonliaquat/workspace/zerograd/python/gpt2_vocab.bin";
 

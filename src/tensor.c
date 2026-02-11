@@ -844,34 +844,135 @@ void tensor_arange_(const int start, const int end, const int steps, Tensor *out
 }
 
 
-void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim){
+// void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim){
 
-    size_t t1_batch_size = tensor1->ndim == 3 ? tensor1->shape[0]: 1;
-    size_t t1_rows = tensor1->ndim == 3 ? tensor1->shape[1]: tensor1->shape[0];
-    size_t t1_cols = tensor1->ndim == 3 ? tensor1->shape[2]: tensor1->shape[1];
+//     size_t t1_batch_size = tensor1->ndim == 3 ? tensor1->shape[0]: 1;
+//     size_t t1_rows = tensor1->ndim == 3 ? tensor1->shape[1]: tensor1->shape[0];
+//     size_t t1_cols = tensor1->ndim == 3 ? tensor1->shape[2]: tensor1->shape[1];
 
-    size_t t2_batch_size = tensor2->ndim == 3 ? tensor2->shape[0]: 1;
-    size_t t2_rows = tensor2->ndim == 3 ? tensor2->shape[1]: tensor2->shape[0];
-    size_t t2_cols = tensor2->ndim == 3 ? tensor2->shape[2]: tensor2->shape[1];
+//     size_t t2_batch_size = tensor2->ndim == 3 ? tensor2->shape[0]: 1;
+//     size_t t2_rows = tensor2->ndim == 3 ? tensor2->shape[1]: tensor2->shape[0];
+//     size_t t2_cols = tensor2->ndim == 3 ? tensor2->shape[2]: tensor2->shape[1];
 
-    //size_t t2_batch_size = tensor2->ndim == 3 ? tensor2->shape[0]: 1;
-    size_t out_rows = output_tensor->ndim == 3 ? output_tensor->shape[1]: output_tensor->shape[0];
-    size_t out_cols = output_tensor->ndim == 3 ? output_tensor->shape[2]: output_tensor->shape[1];
+//     //size_t t2_batch_size = tensor2->ndim == 3 ? tensor2->shape[0]: 1;
+//     size_t out_rows = output_tensor->ndim == 3 ? output_tensor->shape[1]: output_tensor->shape[0];
+//     size_t out_cols = output_tensor->ndim == 3 ? output_tensor->shape[2]: output_tensor->shape[1];
     
-    for(size_t i = 0; i < out_rows; i++){
-        for(size_t j = 0; j < out_cols; j++){
-            double result = 0;
-            for(size_t k = 0; k < t1_cols; k++){
-                float elem1 = tensor_get_elem(tensor1, tensor1->ndim == 3 ?(uint32_t[]){batch_dim, i, k}: (uint32_t[]){i, k});
-                float elem2 = tensor_get_elem(tensor2, tensor2->ndim == 3 ?(uint32_t[]){batch_dim, k, j}: (uint32_t[]){k, j});
-                result += (elem1 * elem2);
+//     for(size_t i = 0; i < out_rows; i++){
+//         for(size_t j = 0; j < out_cols; j++){
+//             double result = 0;
+//             for(size_t k = 0; k < t1_cols; k++){
+//                 float elem1 = tensor_get_elem(tensor1, tensor1->ndim == 3 ?(uint32_t[]){batch_dim, i, k}: (uint32_t[]){i, k});
+//                 float elem2 = tensor_get_elem(tensor2, tensor2->ndim == 3 ?(uint32_t[]){batch_dim, k, j}: (uint32_t[]){k, j});
+//                 result += (elem1 * elem2);
+//             }
+//             if(output_tensor->ndim == 3) tensor_put_elem(output_tensor, (uint32_t[]){batch_dim, i, j}, result);
+//             else if(output_tensor->ndim == 2)  tensor_put_elem(output_tensor, tensor2->ndim == 3 ? (uint32_t[]){batch_dim, i, j}: (uint32_t[]){i, j}, result);
+//         }
+//     }
+// }
+
+// Remove these lines from your tensor.c file:
+// #define ACCELERATE_NEW_LAPACK
+// #define ACCELERATE_LAPACK_ILP64
+
+#include <Accelerate/Accelerate.h>
+#include <arm_neon.h>
+
+void tensor_mat_mul(const Tensor *tensor1, const Tensor *tensor2, Tensor *output_tensor, size_t batch_dim) {
+    size_t M = tensor1->ndim == 3 ? tensor1->shape[1] : tensor1->shape[0];
+    size_t K = tensor1->ndim == 3 ? tensor1->shape[2] : tensor1->shape[1];
+    size_t N = tensor2->ndim == 3 ? tensor2->shape[2] : tensor2->shape[1];
+    
+    size_t a_batch_offset = tensor1->ndim == 3 ? batch_dim * tensor1->stride[0] : 0;
+    size_t b_batch_offset = tensor2->ndim == 3 ? batch_dim * tensor2->stride[0] : 0;
+    size_t c_batch_offset = output_tensor->ndim == 3 ? batch_dim * output_tensor->stride[0] : 0;
+    
+    size_t a_row_stride = tensor1->ndim == 3 ? tensor1->stride[1] : tensor1->stride[0];
+    size_t a_col_stride = tensor1->ndim == 3 ? tensor1->stride[2] : tensor1->stride[1];
+    size_t b_row_stride = tensor2->ndim == 3 ? tensor2->stride[1] : tensor2->stride[0];
+    size_t b_col_stride = tensor2->ndim == 3 ? tensor2->stride[2] : tensor2->stride[1];
+    size_t c_row_stride = output_tensor->ndim == 3 ? output_tensor->stride[1] : output_tensor->stride[0];
+    size_t c_col_stride = output_tensor->ndim == 3 ? output_tensor->stride[2] : output_tensor->stride[1];
+    
+    const float *A = (const float*)tensor1->data + a_batch_offset;
+    const float *B = (const float*)tensor2->data + b_batch_offset;
+    float *C = (float*)output_tensor->data + c_batch_offset;
+    
+    // Check if data is contiguous (can use Accelerate)
+    if (a_col_stride == 1 && b_col_stride == 1 && c_col_stride == 1) {
+        // Fast path: Use Accelerate framework
+        cblas_sgemm(
+            CblasRowMajor,
+            CblasNoTrans,
+            CblasNoTrans,
+            (int)M,                    // Rows of A
+            (int)N,                    // Cols of B
+            (int)K,                    // Cols of A / Rows of B
+            1.0f,                      // alpha
+            A,                         // Matrix A
+            (int)a_row_stride,         // Leading dimension of A
+            B,                         // Matrix B
+            (int)b_row_stride,         // Leading dimension of B
+            0.0f,                      // beta
+            C,                         // Matrix C (output)
+            (int)c_row_stride          // Leading dimension of C
+        );
+    } else {
+        // Fallback: Custom NEON implementation for strided data
+        // Initialize output
+        for (size_t i = 0; i < M; i++) {
+            for (size_t j = 0; j < N; j++) {
+                C[i * c_row_stride + j * c_col_stride] = 0.0f;
             }
-            if(output_tensor->ndim == 3) tensor_put_elem(output_tensor, (uint32_t[]){batch_dim, i, j}, result);
-            else if(output_tensor->ndim == 2)  tensor_put_elem(output_tensor, tensor2->ndim == 3 ? (uint32_t[]){batch_dim, i, j}: (uint32_t[]){i, j}, result);
+        }
+        
+        // ikj ordering with NEON
+        for (size_t i = 0; i < M; i++) {
+            for (size_t k = 0; k < K; k++) {
+                float a_val = A[i * a_row_stride + k * a_col_stride];
+                float32x4_t a_vec = vdupq_n_f32(a_val);
+                
+                size_t j = 0;
+                // SIMD loop (process 4 elements at once)
+                for (; j + 3 < N; j += 4) {
+                    size_t c_idx = i * c_row_stride + j * c_col_stride;
+                    size_t b_idx = k * b_row_stride + j * b_col_stride;
+                    
+                    // Load B elements (may be strided)
+                    float32x4_t b_vec = {
+                        B[b_idx],
+                        B[b_idx + b_col_stride],
+                        B[b_idx + 2 * b_col_stride],
+                        B[b_idx + 3 * b_col_stride]
+                    };
+                    
+                    // Load C elements (may be strided)
+                    float32x4_t c_vec = {
+                        C[c_idx],
+                        C[c_idx + c_col_stride],
+                        C[c_idx + 2 * c_col_stride],
+                        C[c_idx + 3 * c_col_stride]
+                    };
+                    
+                    // FMA: c = c + a * b
+                    c_vec = vfmaq_f32(c_vec, a_vec, b_vec);
+                    
+                    // Store C elements back (may be strided)
+                    C[c_idx] = vgetq_lane_f32(c_vec, 0);
+                    C[c_idx + c_col_stride] = vgetq_lane_f32(c_vec, 1);
+                    C[c_idx + 2 * c_col_stride] = vgetq_lane_f32(c_vec, 2);
+                    C[c_idx + 3 * c_col_stride] = vgetq_lane_f32(c_vec, 3);
+                }
+                
+                // Handle remainder
+                for (; j < N; j++) {
+                    C[i * c_row_stride + j * c_col_stride] += a_val * B[k * b_row_stride + j * b_col_stride];
+                }
+            }
         }
     }
 }
-
 
 // Tensor tensor_dot_product(const Tensor *input1, const Tensor *input2){
 //     //assert(tensor1->ndim == tensor2->ndim);
