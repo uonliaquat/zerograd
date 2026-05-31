@@ -5,7 +5,6 @@
 Tensor *tensor_create(
     Graph *graph,
     char *name, 
-    size_t data_offset, 
     size_t *shape, 
     uint8_t ndim, 
     Tensor **src,
@@ -18,7 +17,7 @@ Tensor *tensor_create(
     out->id = token_curr_id++;
     strcpy(out->name, name);
 
-    out->data_offset = data_offset;
+    out->data_offset = 0;
     out->nbytes = 1;
     for(size_t i = 0; i < ndim; i++){
          out->nbytes *= shape[i];
@@ -39,31 +38,28 @@ Tensor *tensor_create(
     return out;
 }
 
-void tensor_print_header()
+void tensor_print_header(void)
 {
-    printf("%-4s | %-20s | %-14s | %-42s | %-8s | %-15s\n",
+    printf("%-4s %-32s %-8s %-15s\n",
            "ID",
            "NAME",
-           "OFFSET",
-           "SOURCES",
            "DTYPE",
            "OP");
 
-    printf("-----------------------------------------------------------------------------------------------\n");
+    printf("--------------------------------------------------------------------------\n");
 }
 
-void tensor_print(const Tensor *t){
-    char src_buf[256] = {0};
-    for(size_t i = 0; i < t->nsrc; i++){
-        strcat(src_buf, t->src[i]->name);
-        if(i+1 < t->nsrc) strcat(src_buf, ", ");
-    }
-    printf("%-4zu | %-20s | 0x%012zu | %-42s | %-8s | %-15s\n",
+void tensor_print(const Tensor *t)
+{
+    printf("%-4zu %-32s %-8s %-15s\n",
            t->id,
            t->name,
-           t->data_offset,
-           src_buf,
            dtype_name(t->d_type),
-           op_name(t->op_type)
-    );
+           op_name(t->op_type));
+
+    for (size_t i = 0; i < t->nsrc; i++) {
+        printf("      %s %s\n",
+               (i + 1 == t->nsrc) ? "└──" : "├──",
+               t->src[i]->name);
+    }
 }

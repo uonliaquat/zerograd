@@ -38,7 +38,6 @@ typedef struct Tensor {
 Tensor *tensor_create(
     Graph *graph,
     char *name, 
-    size_t data_offset, 
     size_t *shape, 
     uint8_t ndim, 
     Tensor **src,
