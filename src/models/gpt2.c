@@ -68,6 +68,7 @@ void build_gpt2(GPT2Config *config){
 
 
     graph_print(&graph);
+    graph_export_dot(&graph, "graph.dot");
 }
 
 

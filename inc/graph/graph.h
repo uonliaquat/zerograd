@@ -20,4 +20,5 @@ Graph graph_init(Context *ctx, size_t n_nodes);
 void graph_free(Graph *graph);
 Tensor *graph_alloc_node(Graph *graph);
 void graph_print(const Graph *graph);
+void graph_export_dot(const Graph *graph, const char *filename);
 #endif  

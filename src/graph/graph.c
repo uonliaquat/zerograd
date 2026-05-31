@@ -32,5 +32,46 @@ void graph_print(const Graph *graph){
     }
 }
 
+#include <stdio.h>
+
+void graph_export_dot(const Graph *graph, const char *filename)
+{
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        perror("fopen");
+        return;
+    }
+
+    fprintf(fp, "digraph G {\n");
+    fprintf(fp, "    rankdir=LR;\n");
+    fprintf(fp, "    node [shape=box, style=rounded];\n\n");
+
+    for (size_t i = 0; i < graph->n_nodes; i++) {
+        const Tensor *t = &graph->nodes[i];
+
+        fprintf(fp,
+                "    n%zu [label=\"%s\\n%s\"];\n",
+                t->id,
+                t->name,
+                op_name(t->op_type));
+    }
+
+    fprintf(fp, "\n");
+
+    for (size_t i = 0; i < graph->n_nodes; i++) {
+        const Tensor *t = &graph->nodes[i];
+
+        for (size_t j = 0; j < t->nsrc; j++) {
+            fprintf(fp,
+                    "    n%zu -> n%zu;\n",
+                    t->src[j]->id,
+                    t->id);
+        }
+    }
+
+    fprintf(fp, "}\n");
+    fclose(fp);
+}
+
 
 
