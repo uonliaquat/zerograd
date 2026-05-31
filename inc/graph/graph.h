@@ -1,0 +1,23 @@
+#ifndef __GRAPH_H__
+#define __GRAPH_H__
+
+
+#include "./context.h"
+#include "./tensor.h"
+
+#include <string.h>
+
+
+typedef struct Graph{
+    Context *ctx;
+    Tensor *nodes;
+    size_t n_nodes; 
+    size_t curr_node;
+} Graph;
+
+
+Graph graph_init(Context *ctx, size_t n_nodes);
+void graph_free(Graph *graph);
+Tensor *graph_alloc_node(Graph *graph);
+void graph_print(const Graph *graph);
+#endif  
