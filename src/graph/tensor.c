@@ -40,22 +40,24 @@ Tensor *tensor_create(
 
 void tensor_print_header(void)
 {
-    printf("%-4s %-32s %-8s %-15s\n",
+    printf("%-4s %-32s %-8s %-15s %-12s\n",
            "ID",
            "NAME",
            "DTYPE",
-           "OP");
+           "OP",
+           "OFFSET");
 
-    printf("--------------------------------------------------------------------------\n");
+    printf("---------------------------------------------------------------------------------------\n");
 }
 
 void tensor_print(const Tensor *t)
 {
-    printf("%-4zu %-32s %-8s %-15s\n",
+    printf("%-4zu %-32s %-8s %-15s %-12zu\n",
            t->id,
            t->name,
            dtype_name(t->d_type),
-           op_name(t->op_type));
+           op_name(t->op_type),
+           t->data_offset);
 
     for (size_t i = 0; i < t->nsrc; i++) {
         printf("      %s %s\n",

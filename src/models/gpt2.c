@@ -67,8 +67,9 @@ void build_gpt2(GPT2Config *config){
     Tensor *lm_head     = tensor_create(&graph, "lm.head", (size_t[]){config->ctx_win, config->vocab_size}, 2, (Tensor*[]){wte, ln_out}, 2, DType_F32, OP_LINEAR);
 
 
+    graph_plan_memory(&graph);
     graph_print(&graph);
-    graph_export_dot(&graph, "graph.dot");
+    //graph_export_dot(&graph, "graph.dot");
     //graph_export_mermaid(&graph, "graph.md");
     // graph_export_json(&graph, "graph.json");
 }

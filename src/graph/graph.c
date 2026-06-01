@@ -2,36 +2,44 @@
 
 #include <assert.h>
 #include <stdlib.h>
-Graph graph_init(Context *ctx, size_t n_nodes){
+Graph graph_init(Context *ctx, size_t capacity){
     Graph graph;
     graph.ctx = ctx;
-    graph.nodes = calloc(n_nodes, sizeof(Tensor));
-    graph.curr_node = 0;
-    graph.n_nodes = n_nodes;
+    graph.nodes = calloc(capacity, sizeof(Tensor));
+    graph.size = 0;
+    graph.capacity = capacity;
     return graph;
 }
 
 void graph_free(Graph *graph){
-    assert(graph->n_nodes > 0);
+    assert(graph->capacity > 0);
     free(graph->nodes);
-    graph->n_nodes = 0;
+    graph->capacity = 0;
 }
 
 Tensor *graph_alloc_node(Graph *graph){
-    assert(graph->curr_node <= graph->n_nodes);
-    Tensor *node = &graph->nodes[graph->curr_node];
-    graph->curr_node++;
+    assert(graph->size <= graph->capacity);
+    Tensor *node = &graph->nodes[graph->size];
+    graph->size++;
     return node;
 }
-
 void graph_plan_memory(Graph *graph){
-
+    size_t data_offset = 0;
+    size_t scratch_bytes = 0;
+    size_t activation_bytes = 0;
+    for(size_t i = 0; i < graph->size; i++){
+        graph->nodes[i].data_offset = data_offset;
+        if(graph->nodes[i].op_type != OP_NONE)
+            scratch_bytes = OpTable[graph->nodes[i].op_type].scratch_bytes();
+        activation_bytes = graph->nodes[i].nbytes;
+        data_offset += scratch_bytes + activation_bytes;
+    } 
 }
 
 
 void graph_print(const Graph *graph){
     tensor_print_header();
-    for(size_t i = 0; i < graph->n_nodes; i++){
+    for(size_t i = 0; i < graph->capacity; i++){
         tensor_print(&graph->nodes[i]);
     }
 }
@@ -66,7 +74,7 @@ void graph_export_dot(const Graph *graph, const char *filename)
         "        arrowsize=0.7\n"
         "    ];\n\n");
 
-    for (size_t i = 0; i < graph->curr_node; i++) {
+    for (size_t i = 0; i < graph->size; i++) {
 
         const Tensor *t = &graph->nodes[i];
 
@@ -162,7 +170,7 @@ void graph_export_dot(const Graph *graph, const char *filename)
 
     fprintf(fp, "\n");
 
-    for (size_t i = 0; i < graph->n_nodes; i++) {
+    for (size_t i = 0; i < graph->size; i++) {
 
         const Tensor *t = &graph->nodes[i];
 
@@ -190,10 +198,10 @@ void graph_export_mermaid(const Graph *graph, const char *filename)
 
     fprintf(fp, "graph LR\n\n");
 
-    printf("Exporting %zu nodes\n", graph->curr_node);
+    printf("Exporting %zu nodes\n", graph->size);
 
     // Declare nodes
-    for (size_t i = 0; i < graph->curr_node; i++) {
+    for (size_t i = 0; i < graph->size; i++) {
 
         Tensor *t = &graph->nodes[i];
 
@@ -214,7 +222,7 @@ void graph_export_mermaid(const Graph *graph, const char *filename)
     fprintf(fp, "\n");
 
     // Declare edges
-    for (size_t i = 0; i < graph->curr_node; i++) {
+    for (size_t i = 0; i < graph->size; i++) {
 
         Tensor *t = &graph->nodes[i];
 
@@ -250,7 +258,7 @@ void graph_export_json(const Graph *graph, const char *filename)
     // Nodes
     fprintf(fp, "  \"nodes\": [\n");
 
-    for (size_t i = 0; i < graph->n_nodes; i++) {
+    for (size_t i = 0; i < graph->size; i++) {
 
         const Tensor *t = &graph->nodes[i];
 
@@ -278,7 +286,7 @@ void graph_export_json(const Graph *graph, const char *filename)
 
         fprintf(fp, "]}");
 
-        if (i + 1 < graph->n_nodes)
+        if (i + 1 < graph->size)
             fprintf(fp, ",");
 
         fprintf(fp, "\n");
@@ -291,7 +299,7 @@ void graph_export_json(const Graph *graph, const char *filename)
 
     int first = 1;
 
-    for (size_t i = 0; i < graph->n_nodes; i++) {
+    for (size_t i = 0; i < graph->size; i++) {
 
         const Tensor *t = &graph->nodes[i];
 
