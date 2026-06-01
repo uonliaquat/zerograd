@@ -8,7 +8,7 @@ void kernel_index_cpu_f32(
 ){
     for(size_t i = 0; i < size_indices; i++){
         size_t token_id = indices[i];
-        token_id = 1; //this needs to be removed in future
+        token_id = 0; //this needs to be removed in future
         memcpy(out, &table[token_id * embed_dim], embed_dim * sizeof(float));
         out += embed_dim * sizeof(float);
     }

@@ -47,7 +47,7 @@ void graph_execute(Graph *graph){
 }
 
 Tensor *graph_find_node(Graph *graph, const char *name){
-    for(size_t i = 0; i < 4; i++){
+    for(size_t i = 0; i < graph->size; i++){
         printf("%s | %s\n", name, graph->nodes[i].name);
         if(strcmp(name, graph->nodes[i].name) == 0){
             printf("matched\n");
@@ -94,7 +94,7 @@ void graph_load_weights(Graph *graph, const char *model_filename, const char *we
 }
 
 void graph_print_weights(const Graph *graph){
-    for(size_t i = 0; i < graph->size; i++){
+    for(size_t i = 0; i < 10; i++){
         tensor_print_weights(&graph->ctx, &graph->nodes[i]);
     }
 }

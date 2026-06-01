@@ -4,5 +4,5 @@
 #include <stdio.h>
 
 void op_gelu_forward(Context *ctx, Tensor *tensor){
-    printf("Executing %s\n", op_name(tensor->op_type));
+    //printf("Executing %s\n", op_name(tensor->op_type));
 }

@@ -67,8 +67,10 @@ void build_graph_gpt2(GPT2Config *config){
     graph.ctx = context_init(nbytes);
     graph_load_weights(&graph, "/Users/uonliaquat/workspace/zerograd/gpt2.zg", "/Users/uonliaquat/Downloads/gpt2.safetensors");
     graph_print_weights(&graph);
-    // graph_print(&graph);
-    // graph_execute(&graph);
+    //graph_print(&graph);
+    graph_execute(&graph);
+    graph_print_weights(&graph);
+    //graph_print(&graph);
     
     //graph_export_dot(&graph, "graph.dot");
     //graph_export_mermaid(&graph, "graph.md");
