@@ -14,9 +14,9 @@ void init_gpt2_offsets(){
 
 }
 
-void build_gpt2(GPT2Config *config){
+void build_graph_gpt2(GPT2Config *config){
     char buff[128] = {0};
-    Graph graph = graph_init(NULL, 300);
+    Graph graph = graph_init(274);
 
     Tensor *token_ids = tensor_create(&graph, "token.ids", (size_t[]){config->ctx_win}, 1, NULL, 0, DType_I32, OP_NONE);
     Tensor *wte = tensor_create(&graph, "wte", (size_t[]){config->vocab_size, config->ndim}, 2, NULL, 0, DType_F32, OP_NONE);
@@ -67,8 +67,11 @@ void build_gpt2(GPT2Config *config){
     Tensor *lm_head     = tensor_create(&graph, "lm.head", (size_t[]){config->ctx_win, config->vocab_size}, 2, (Tensor*[]){wte, ln_out}, 2, DType_F32, OP_LINEAR);
 
 
-    graph_plan_memory(&graph);
+    size_t nbytes = graph_plan_memory(&graph);
+    graph.ctx = context_init(nbytes);
     graph_print(&graph);
+    graph_execute(&graph);
+    
     //graph_export_dot(&graph, "graph.dot");
     //graph_export_mermaid(&graph, "graph.md");
     // graph_export_json(&graph, "graph.json");

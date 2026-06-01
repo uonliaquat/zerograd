@@ -2,9 +2,8 @@
 
 #include <assert.h>
 #include <stdlib.h>
-Graph graph_init(Context *ctx, size_t capacity){
+Graph graph_init(size_t capacity){
     Graph graph;
-    graph.ctx = ctx;
     graph.nodes = calloc(capacity, sizeof(Tensor));
     graph.size = 0;
     graph.capacity = capacity;
@@ -23,7 +22,8 @@ Tensor *graph_alloc_node(Graph *graph){
     graph->size++;
     return node;
 }
-void graph_plan_memory(Graph *graph){
+
+size_t graph_plan_memory(Graph *graph){
     size_t data_offset = 0;
     size_t scratch_bytes = 0;
     size_t activation_bytes = 0;
@@ -34,6 +34,14 @@ void graph_plan_memory(Graph *graph){
         activation_bytes = graph->nodes[i].nbytes;
         data_offset += scratch_bytes + activation_bytes;
     } 
+    return data_offset;
+}
+
+void graph_execute(Graph *graph){
+    for(size_t i = 0; i < graph->size; i++){
+        if(graph->nodes[i].op_type == OP_NONE) continue;
+         OpTable[graph->nodes[i].op_type].forward(&graph->ctx, &graph->nodes[i]);
+    }
 }
 
 

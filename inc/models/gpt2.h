@@ -22,5 +22,5 @@ typedef struct GPT2Offsets{
 } GPT2Offsets;
 
 
-void build_gpt2(GPT2Config *config);
+void build_graph_gpt2(GPT2Config *config);
 #endif

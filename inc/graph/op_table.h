@@ -10,6 +10,7 @@
 #include "./../ops/op_gelu.h"
 
 typedef struct Tensor Tensor;
+typedef struct Context Context;
 
 typedef enum OpType {
     OP_NONE,
@@ -23,7 +24,7 @@ typedef enum OpType {
 
 
 typedef struct OpVTable{
-    void (*forward)(Tensor*);
+    void (*forward)(Context *, Tensor*);
     size_t (*scratch_bytes)();
 } OpVTable;
 

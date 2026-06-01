@@ -23,6 +23,7 @@ typedef struct Tensor {
 
     size_t data_offset;
     size_t nbytes;
+    size_t nelems;
 
     size_t shape[4];
     size_t stride[4];

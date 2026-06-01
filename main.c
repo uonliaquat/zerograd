@@ -10,6 +10,6 @@ int main(){
         .nlayers = 12,
         .qkv_bias = true
     };
-    build_gpt2(&config);
+    build_graph_gpt2(&config);
     return 0;
 }
