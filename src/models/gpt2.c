@@ -69,6 +69,8 @@ void build_gpt2(GPT2Config *config){
 
     graph_print(&graph);
     graph_export_dot(&graph, "graph.dot");
+    //graph_export_mermaid(&graph, "graph.md");
+    // graph_export_json(&graph, "graph.json");
 }
 
 

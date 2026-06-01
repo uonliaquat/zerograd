@@ -1,6 +1,16 @@
 #ifndef __OP_TABLE_H__
 #define __OP_TABLE_H__
 
+
+#include "./../ops/op_index.h"
+#include "./../ops/op_add.h"
+#include "./../ops/op_layernorm.h"
+#include "./../ops/op_linear.h"
+#include "./../ops/op_attention.h"
+#include "./../ops/op_gelu.h"
+
+typedef struct Tensor Tensor;
+
 typedef enum OpType {
     OP_NONE,
     OP_INDEX,
@@ -10,6 +20,12 @@ typedef enum OpType {
     OP_ATTENTION,
     OP_GELU
 } OpType;
+
+
+typedef struct OpVTable{
+    void (*forward)(Tensor*);
+    size_t (*scratch_bytes)();
+} OpVTable;
 
 
 static inline char *op_name(OpType op_type){
@@ -24,5 +40,9 @@ static inline char *op_name(OpType op_type){
         default:            return "UNKNOWN";
     }
 }
+
+extern OpVTable OpTable[7];
+
+
 
 #endif
