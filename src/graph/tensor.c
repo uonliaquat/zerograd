@@ -112,3 +112,15 @@ void tensor_print(const Tensor *t)
                t->src[i]->name);
     }
 }
+
+void tensor_print_weights(const Context *ctx, const Tensor *t){
+    printf("%s\n", t->name);
+    for(size_t i = 0; i < 10; i++){
+        printf("%.3f, ", ((float*)&ctx->mem[t->data_offset])[i]);
+    }
+    printf("\n");
+    for(size_t i = 0; i < 10; i++){
+        printf("%.3f, ", ((float*)&ctx->mem[t->data_offset+t->nbytes-(10*sizeof(float))])[i]);
+    }
+    printf("\n\n");
+}

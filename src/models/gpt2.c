@@ -10,10 +10,6 @@ static inline char *layer_name(char *buff, size_t buff_size, size_t i, char *suf
     return buff;
 }
 
-void init_gpt2_offsets(){
-
-}
-
 void build_graph_gpt2(GPT2Config *config){
     char buff[128] = {0};
     Graph graph = graph_init(274);
@@ -69,8 +65,10 @@ void build_graph_gpt2(GPT2Config *config){
 
     size_t nbytes = graph_plan_memory(&graph);
     graph.ctx = context_init(nbytes);
-    graph_print(&graph);
-    graph_execute(&graph);
+    graph_load_weights(&graph, "/Users/uonliaquat/workspace/zerograd/gpt2.zg", "/Users/uonliaquat/Downloads/gpt2.safetensors");
+    graph_print_weights(&graph);
+    // graph_print(&graph);
+    // graph_execute(&graph);
     
     //graph_export_dot(&graph, "graph.dot");
     //graph_export_mermaid(&graph, "graph.md");

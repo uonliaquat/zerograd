@@ -1,6 +1,7 @@
 #include "../../inc/graph/graph.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 Graph graph_init(size_t capacity){
     Graph graph;
@@ -37,6 +38,7 @@ size_t graph_plan_memory(Graph *graph){
     return data_offset;
 }
 
+
 void graph_execute(Graph *graph){
     for(size_t i = 0; i < graph->size; i++){
         if(graph->nodes[i].op_type == OP_NONE) continue;
@@ -44,6 +46,58 @@ void graph_execute(Graph *graph){
     }
 }
 
+Tensor *graph_find_node(Graph *graph, const char *name){
+    for(size_t i = 0; i < 4; i++){
+        printf("%s | %s\n", name, graph->nodes[i].name);
+        if(strcmp(name, graph->nodes[i].name) == 0){
+            printf("matched\n");
+            exit(1);
+            return &graph->nodes[i];
+        }
+    }
+    return NULL;
+}
+
+void graph_load_weights(Graph *graph, const char *model_filename, const char *weights_filename){
+    FILE *model_f   = fopen(model_filename, "r");
+    FILE *weights_f = fopen(weights_filename, "r");
+    if(model_f == NULL || weights_f == NULL) {
+        perror("Error opening file");
+        exit(1);
+    }
+    char line[512] = {0};
+    // char layer_name[40] = {0};
+    size_t offsets[2] = {0};
+    for(size_t i = 0;  i < graph->size; i++){
+        while(fgets(line, sizeof(line), model_f) != NULL){
+            size_t pos = 0;
+
+            if(strstr(line, graph->nodes[i].name)){
+                memset(offsets, 0, sizeof(offsets));
+                char *offsets_str = line + 40;
+                char *token = strtok(offsets_str, ",");
+                offsets[0] = strtoull(token, NULL, 10);
+                token = strtok(NULL, ",");
+                offsets[1] = strtoull(token, NULL, 10);
+                
+                //Read weights to Context
+                fseek(weights_f, offsets[0], SEEK_SET);
+                fread(&graph->ctx.mem[graph->nodes[i].data_offset], 1, offsets[1] - offsets[0], weights_f);
+                //printf("%s | offsets=[%zu, %zu]\n", graph->nodes[i].name, offsets[0], offsets[1]);
+                break;
+            }
+        }
+        rewind(model_f);
+    }
+    fclose(model_f);
+    fclose(weights_f);
+}
+
+void graph_print_weights(const Graph *graph){
+    for(size_t i = 0; i < graph->size; i++){
+        tensor_print_weights(&graph->ctx, &graph->nodes[i]);
+    }
+}
 
 void graph_print(const Graph *graph){
     tensor_print_header();
