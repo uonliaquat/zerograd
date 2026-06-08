@@ -3,7 +3,7 @@
 
 
 void kernel_linear_cpu_f32_forward(
-    float *weight, float *input, float *bias, 
+    float *input, float *weight, float *bias, 
     float *out,
     size_t m, size_t n, size_t k,
     bool trans_weight

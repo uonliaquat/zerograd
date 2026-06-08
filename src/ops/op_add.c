@@ -9,7 +9,7 @@
 
 size_t op_add_scratch_bytes(const Tensor *tensor){
     switch(tensor->d_type){
-        case DTYPE_F32: return kernel_add_cpu_f32_sctach_bytes();
+        case DTYPE_F32: return kernel_add_cpu_f32_scratch_bytes();
         default: return 0;
     }
 }

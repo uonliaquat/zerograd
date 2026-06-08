@@ -60,9 +60,9 @@ void op_linear_forward(Context *ctx, Tensor *tensor){
     //         cols_input,      rows_weight,      rows_input,      rows_out,      cols_weight,      cols_out,      size_bias);
     assert(cols_input == rows_weight && rows_input == rows_out && cols_weight == cols_out && size_bias == cols_out);
     kernel_linear_cpu_f32_forward(
+        input,
         weight, 
         bias,
-        input,
         out, 
         rows_out, cols_out, cols_input, 
         ((LinearParams*)(tensor->op_params))->trans_weight

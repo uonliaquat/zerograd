@@ -4,10 +4,9 @@
 #include <stdio.h>
 
 
-static inline size_t kernel_attention_cpu_f32_sctach_bytes() {
-    size_t n_heads = 12;
-    size_t ctx_win = 1024;
-    size_t emebd_dim = 768;
+static inline size_t kernel_attention_cpu_f32_scratch_bytes(
+    const size_t n_heads, const size_t ctx_win, const size_t emebd_dim
+) {
     size_t head_dim = emebd_dim / n_heads;
     return (((ctx_win * head_dim) + (ctx_win * ctx_win)) * n_heads) * sizeof(float);
 }

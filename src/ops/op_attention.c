@@ -9,8 +9,9 @@
 
 
 size_t op_attention_scratch_bytes(const Tensor *tensor){
+    AttentionParams *params = ((AttentionParams*)(tensor->op_params));
     switch(tensor->d_type){
-        case DTYPE_F32: return kernel_attention_cpu_f32_sctach_bytes();
+        case DTYPE_F32: return kernel_attention_cpu_f32_scratch_bytes(params->n_heads, params->ctx_win, params->embed_dim);
         default: return 0;
     }
 }

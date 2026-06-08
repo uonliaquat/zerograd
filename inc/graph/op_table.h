@@ -45,6 +45,7 @@ typedef struct AttentionParams{
     size_t embed_dim;
     size_t head_dim;
     size_t n_heads;
+    size_t ctx_win;
 } AttentionParams;
 
 // typedef struct GeluParams {
@@ -60,17 +61,6 @@ typedef struct AttentionParams{
 // } WeightParams;
 
 
-// typedef union OpParams {
-//     IndexParams index_params;
-//     ArangePrams arange_params;
-//     AddParams add_params;
-//     LayerNormParams layernorm_params;
-//     LinearParams linear_params;
-//     AttentionParams attn_parms;
-//     GeluParams gelu_params;
-//     InputPrams input_params;
-//     WeightParams weight_params;
-// } OpParams;
 
 
 // extern OpParams op_params[8];

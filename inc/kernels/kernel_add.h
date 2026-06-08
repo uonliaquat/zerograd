@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 
-static inline size_t kernel_add_cpu_f32_sctach_bytes() {
+static inline size_t kernel_add_cpu_f32_scratch_bytes() {
     return 0;
 }
 
