@@ -1,7 +1,20 @@
 #include "../../inc/models/gpt2.h"
-#include "../../inc/graph/graph.h"
+#include "../../inc/ops/op_input.h"
+#include "../../inc/ops/op_weight.h"
+#include "../../inc/ops/op_index.h"
+#include "../../inc/ops/op_arange.h"
+#include "../../inc/ops/op_add.h"
+#include "../../inc/ops/op_linear.h"
+#include "../../inc/ops/op_layernorm.h"
+#include "../../inc/ops/op_attention.h"
+#include "../../inc/ops/op_gelu.h"
+
 
 #include <stdio.h>
+#include <stdlib.h>
+
+
+
 
 static inline char *layer_name(char *buff, size_t buff_size, size_t i, char *suffix){
     memset(buff, 0, buff_size);
@@ -10,71 +23,60 @@ static inline char *layer_name(char *buff, size_t buff_size, size_t i, char *suf
     return buff;
 }
 
-void build_graph_gpt2(GPT2Config *config){
-    char buff[128] = {0};
-    Graph graph = graph_init(274);
 
-    Tensor *token_ids = tensor_create(&graph, "token.ids", (size_t[]){config->ctx_win}, 1, NULL, 0, DType_I32, OP_NONE);
-    Tensor *wte = tensor_create(&graph, "wte", (size_t[]){config->vocab_size, config->ndim}, 2, NULL, 0, DType_F32, OP_NONE);
-    Tensor *token_indices = tensor_create(&graph, "token.indices", (size_t[]){config->ctx_win}, 1, NULL, 0, DType_I32, OP_NONE);
-    Tensor *wpe = tensor_create(&graph, "wpe", (size_t[]){config->ctx_win, config->ndim}, 2, NULL, 0, DType_F32, OP_NONE);
-    Tensor *token_embed = tensor_create(&graph, "token.embed", (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){wte, token_ids}, 2, DType_F32, OP_INDEX);
-    Tensor *pos_embed = tensor_create(&graph, "pos.embed", (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){wpe, token_indices}, 2, DType_F32, OP_INDEX);
-    Tensor *input_embed = tensor_create(&graph, "input.embed", (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){token_embed, pos_embed}, 2, DType_F32, OP_ADD);
+
+void build_graph_gpt2(GPT2Config *config, Graph *graph){
+    char buff[128] = {0};
+    DType dtype = config->dtype;
+    Tensor *token_ids       = op_input(graph, "token.ids", config->ctx_win);
+    Tensor *wte             = op_weight(graph, "wte", config->vocab_size, config->ndim, dtype);
+    Tensor *token_indices   = op_arange(graph, "token.indices", config->ctx_win);
+    Tensor *wpe             = op_weight(graph, "wpe", config->ctx_win, config->ndim, dtype);
+    Tensor *token_embed     = op_index(graph, "token.embed", config->ctx_win, config->ndim, wte, token_ids);
+    Tensor *pos_embed       = op_index(graph, "pos.embed", config->ctx_win, config->ndim, wpe, token_indices);
+    Tensor *input_embed     = op_add(graph, "input.embed", token_embed, pos_embed);
+    
     
     //Transfromer Block
     for(size_t i = 0; i < config->nlayers; i++){
-        Tensor *ln1_weight = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "ln1.weight"), (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *ln1_bias = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "ln1.bias"), (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *ln1_out = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "ln1.out"), (size_t[]){config->ctx_win ,config->ndim}, 2, (Tensor*[]){ln1_weight, ln1_bias, input_embed}, 3, DType_F32, OP_LAYER_NORM);
+        Tensor *ln1_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "ln1.weight"), 1, config->ndim, dtype);
+        Tensor *ln1_bias    = op_weight(graph, layer_name(buff, sizeof(buff), i, "ln1.bias"), 1, config->ndim, dtype);
+        Tensor *ln1_out     = op_layernorm(graph, layer_name(buff, sizeof(buff), i, "ln1.out"), ln1_weight, ln1_bias, input_embed);
         
-        Tensor *qkv_weight = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "qkv.weight"), (size_t[]){config->ndim, config->ndim*3}, 2, NULL, 0, DType_F32, OP_NONE);
-        Tensor *qkv_bias = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "qkv.bias"), (size_t[]){config->ndim*3}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *qkv_proj = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "qkv.proj"), (size_t[]){config->ctx_win, config->ndim*3}, 2, (Tensor*[]){qkv_weight, qkv_bias, ln1_out}, 3, DType_F32, OP_LINEAR);
+        Tensor *qkv_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "qkv.weight"), config->ndim, config->ndim*3, dtype);
+        Tensor *qkv_bias    = op_weight(graph, layer_name(buff, sizeof(buff), i, "qkv.bias"), 1, config->ndim*3, dtype);
+        Tensor *qkv_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "qkv.proj"), qkv_weight, qkv_bias, ln1_out, true);
         
-        Tensor *attn_out = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "attn.out"), (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){qkv_proj}, 1, DType_F32, OP_ATTENTION);
-        
-        Tensor *attn_proj_weight = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "attn.proj.weight"), (size_t[]){config->ndim, config->ndim}, 2, NULL, 0, DType_F32, OP_NONE);
-        Tensor *attn_proj_bias = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "attn.proj.bias"), (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *attn_proj = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "attn.proj"), (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){attn_proj_weight, attn_proj_bias, attn_out}, 3, DType_F32, OP_LINEAR);
+        Tensor *attn_out    = op_attention(graph, layer_name(buff, sizeof(buff), i, "attn.out"), config->ctx_win, config->ndim, config->nheads, qkv_proj);
+        Tensor *attn_proj_weight = op_weight(graph, layer_name(buff, sizeof(buff), i, "attn.proj.weight"), config->ndim, config->ndim, dtype);
+        Tensor *attn_proj_bias = op_weight(graph, layer_name(buff, sizeof(buff), i, "attn.proj.bias"), 1, config->ndim, dtype);
+        Tensor *attn_proj = op_linear(graph, layer_name(buff, sizeof(buff), i, "attn.proj"), attn_proj_weight, attn_proj_bias, attn_out, true);
 
-        Tensor *res_conn1 = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "res.conn1"), (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){attn_proj, input_embed}, 2, DType_F32, OP_ADD);
+        Tensor *res_conn1 = op_add(graph, layer_name(buff, sizeof(buff), i, "res.conn1"), attn_proj, input_embed);
 
-        Tensor *ln2_weight = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "ln2.weight"), (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *ln2_bias = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "ln2.bias"), (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *ln2_out = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "ln2.out"), (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){ln2_weight, ln2_bias, res_conn1}, 3, DType_F32, OP_LAYER_NORM);
+        Tensor *ln2_weight = op_weight(graph, layer_name(buff, sizeof(buff), i, "ln2.weight"), 1, config->ndim, dtype);
+        Tensor *ln2_bias = op_weight(graph, layer_name(buff, sizeof(buff), i, "ln2.bias"), 1, config->ndim, dtype);
+        Tensor *ln2_out = op_layernorm(graph, layer_name(buff, sizeof(buff), i, "ln2.out"), ln2_weight, ln2_bias, res_conn1);
 
         //MLP
-        Tensor *mlp_up_weight = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "mlp.up.weight"), (size_t[]){config->ndim, config->ndim*4}, 2, NULL, 0, DType_F32, OP_NONE);
-        Tensor *mlp_up_bias = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "mlp.up.bias"), (size_t[]){config->ndim*4}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *mlp_up_proj = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "mlp.up.proj"), (size_t[]){config->ctx_win, config->ndim*4}, 2, (Tensor*[]){mlp_up_weight, mlp_up_bias, ln2_out}, 3, DType_F32, OP_LINEAR);
-        Tensor *mlp_up_proj_gelu_out = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "mlp.up.proj.gelu.out"), (size_t[]){config->ctx_win, config->ndim*4}, 2, (Tensor*[]){mlp_up_proj}, 1, DType_F32, OP_GELU);
-        Tensor *mlp_down_weight = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "mlp.down.weight"), (size_t[]){config->ndim*4, config->ndim}, 2, NULL, 0, DType_F32, OP_NONE);
-        Tensor *mlp_down_bias = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "mlp.down.bias"), (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-        Tensor *mlp_down_proj = tensor_create(&graph,layer_name(buff, sizeof(buff), i, "mlp.down.proj"), (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){mlp_down_weight, mlp_down_bias, mlp_up_proj_gelu_out}, 3, DType_F32, OP_LINEAR);
-        input_embed = tensor_create(&graph, layer_name(buff, sizeof(buff), i, "out"), (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){res_conn1, mlp_down_proj}, 2, DType_F32, OP_ADD);
+        Tensor *mlp_up_weight = op_weight(graph, layer_name(buff, sizeof(buff), i, "mlp.up.weight"), config->ndim, config->ndim*4, dtype);
+        Tensor *mlp_up_bias = op_weight(graph, layer_name(buff, sizeof(buff), i, "mlp.up.bias"), 1, config->ndim*4, dtype);
+        Tensor *mlp_up_proj = op_linear(graph, layer_name(buff, sizeof(buff), i, "mlp.up.proj"), mlp_up_weight, mlp_up_bias, ln2_out, true);
+        
+        Tensor *mlp_up_proj_gelu_out = op_gelu(graph, layer_name(buff, sizeof(buff), i, "mlp.up.proj.gelu.out"), config->ctx_win, config->ndim*4, mlp_up_proj);
+        Tensor *mlp_down_weight = op_weight(graph, layer_name(buff, sizeof(buff), i, "mlp.down.weight"), config->ndim*4, config->ndim, dtype);
+        Tensor *mlp_down_bias = op_weight(graph, layer_name(buff, sizeof(buff), i, "mlp.down.bias"), 1, config->ndim, dtype);
+        Tensor *mlp_down_proj = op_linear(graph,layer_name(buff, sizeof(buff), i, "mlp.down.proj"),  mlp_down_weight, mlp_down_bias, mlp_up_proj_gelu_out, true);
+        input_embed = op_add(graph, layer_name(buff, sizeof(buff), i, "out"), res_conn1, mlp_down_proj);
 
     }
 
-    Tensor *ln_weight   = tensor_create(&graph, "ln.weight", (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-    Tensor *ln_bias     = tensor_create(&graph, "ln.bias", (size_t[]){config->ndim}, 1, NULL, 0, DType_F32, OP_NONE);
-    Tensor *ln_out      = tensor_create(&graph, "ln.out", (size_t[]){config->ctx_win, config->ndim}, 2, (Tensor*[]){ln_weight, ln_bias, input_embed}, 3, DType_F32, OP_LAYER_NORM);
+    Tensor *ln_weight   = op_weight(graph, "ln.weight", 1, config->ndim, dtype);
+    Tensor *ln_bias     = op_weight(graph, "ln.bias", 1, config->ndim, dtype);
+    Tensor *ln_out      = op_layernorm(graph, "ln.out", ln_weight, ln_bias, input_embed);
 
-    Tensor *lm_head     = tensor_create(&graph, "lm.head", (size_t[]){config->ctx_win, config->vocab_size}, 2, (Tensor*[]){wte, ln_out}, 2, DType_F32, OP_LINEAR);
-
-
-    size_t nbytes = graph_plan_memory(&graph);
-    graph.ctx = context_init(nbytes);
-    graph_load_weights(&graph, "/Users/uonliaquat/workspace/zerograd/gpt2.zg", "/Users/uonliaquat/Downloads/gpt2.safetensors");
-    graph_print_weights(&graph);
-    //graph_print(&graph);
-    graph_execute(&graph);
-    graph_print_weights(&graph);
-    //graph_print(&graph);
-    
-    //graph_export_dot(&graph, "graph.dot");
-    //graph_export_mermaid(&graph, "graph.md");
-    // graph_export_json(&graph, "graph.json");
+    tensor_print(ln_out);
+    Tensor *lm_head     = op_linear(graph, "lm.head", wte, NULL, ln_out, false);
 }
 
 

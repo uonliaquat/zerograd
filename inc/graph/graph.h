@@ -10,6 +10,7 @@
 
 typedef struct Graph{
     Context ctx;
+    
     Tensor *nodes;
     size_t size; 
     size_t capacity;
@@ -25,6 +26,7 @@ Tensor *graph_find_node(Graph *graph, const char *name);
 void graph_load_weights(Graph *graph, const char *model_filename, const char *weights_filename);
 void graph_print(const Graph *graph);
 void graph_print_weights(const Graph *graph);
+void graph_write(Graph *graph, const char *filename);
 void graph_export_dot(const Graph *graph, const char *filename);
 void graph_export_mermaid(const Graph *graph, const char *filename);
 void graph_export_json(const Graph *graph, const char *filename);

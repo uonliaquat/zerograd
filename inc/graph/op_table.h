@@ -1,13 +1,9 @@
 #ifndef __OP_TABLE_H__
 #define __OP_TABLE_H__
 
+#include <string.h>
+#include <stdbool.h>
 
-#include "./../ops/op_index.h"
-#include "./../ops/op_add.h"
-#include "./../ops/op_layernorm.h"
-#include "./../ops/op_linear.h"
-#include "./../ops/op_attention.h"
-#include "./../ops/op_gelu.h"
 
 typedef struct Tensor Tensor;
 typedef struct Context Context;
@@ -15,6 +11,7 @@ typedef struct Context Context;
 typedef enum OpType {
     OP_NONE,
     OP_INDEX,
+    OP_ARANGE,
     OP_ADD,
     OP_LAYER_NORM,
     OP_LINEAR,
@@ -23,16 +20,74 @@ typedef enum OpType {
 } OpType;
 
 
+// typedef struct IndexParams {
+
+// } IndexParams;
+
+// typedef struct ArangePrams {
+
+// } ArangePrams;
+
+// typedef struct AddParams {
+
+// } AddParams;
+
+// typedef struct LayerNormParams {
+
+// } LayerNormParams;
+
+typedef struct LinearParams {
+    bool trans_weight;
+    bool is_bias;
+} LinearParams;
+
+typedef struct AttentionParams{
+    size_t embed_dim;
+    size_t head_dim;
+    size_t n_heads;
+} AttentionParams;
+
+// typedef struct GeluParams {
+
+// } GeluParams;
+
+// typedef struct InputPrams {
+
+// } InputPrams;
+
+// typedef struct WeightParams {
+
+// } WeightParams;
+
+
+// typedef union OpParams {
+//     IndexParams index_params;
+//     ArangePrams arange_params;
+//     AddParams add_params;
+//     LayerNormParams layernorm_params;
+//     LinearParams linear_params;
+//     AttentionParams attn_parms;
+//     GeluParams gelu_params;
+//     InputPrams input_params;
+//     WeightParams weight_params;
+// } OpParams;
+
+
+// extern OpParams op_params[8];
+
+
 typedef struct OpVTable{
     void (*forward)(Context *, Tensor*);
-    size_t (*scratch_bytes)();
+    size_t (*scratch_bytes)(const Tensor *);
 } OpVTable;
 
+extern OpVTable OpTable[8];
 
 static inline char *op_name(OpType op_type){
     switch(op_type){
         case OP_NONE:       return "OP_NONE";
         case OP_INDEX:      return "OP_INDEX";
+        case OP_ARANGE:     return "OP_ARANGE";
         case OP_ADD:        return "OP_ADD";
         case OP_LAYER_NORM: return "OP_LAYER_NORM";
         case OP_LINEAR:     return "OP_LINEAR";
@@ -42,7 +97,7 @@ static inline char *op_name(OpType op_type){
     }
 }
 
-extern OpVTable OpTable[7];
+
 
 
 

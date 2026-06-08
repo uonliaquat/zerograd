@@ -1,5 +1,5 @@
 #include "../../inc/graph/graph.h"
-
+#include "../../inc/graph/op_table.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,25 +24,59 @@ Tensor *graph_alloc_node(Graph *graph){
     return node;
 }
 
+// size_t graph_plan_memory(Graph *graph){
+//     //assuming the graph is topologically sorted
+//     size_t data_offset = 0;
+//     size_t scratch_offset = 0;
+//     size_t scratch_bytes = 0;
+//     size_t activation_bytes = 0;
+//     for(size_t i = 0; i < graph->size; i++){
+
+//         graph->nodes[i].data_offset = data_offset;
+//         // graph->nodes[i].scratch_offset = data_offset - scratch_offset;
+//         // printf("%s | %zu\n",    graph->nodes[i].name,   graph->nodes[i].data_offset);
+//         scratch_bytes = 0;
+//         if(graph->nodes[i].op_type != OP_NONE){
+//             scratch_bytes = OpTable[graph->nodes[i].op_type].scratch_bytes();
+//             graph->nodes[i].nbytes_scratch = scratch_bytes;
+
+//         }
+//         activation_bytes = graph->nodes[i].nbytes;
+//         data_offset += scratch_bytes + activation_bytes;
+//         graph->nodes[i].scratch_offset = graph->nodes[i].scratch_offset - scratch_bytes;
+//     } 
+//     return data_offset;
+// }
+
+
 size_t graph_plan_memory(Graph *graph){
-    size_t data_offset = 0;
-    size_t scratch_bytes = 0;
-    size_t activation_bytes = 0;
+    //assuming the graph is topologically sorted
+    size_t total_mem = 0;
     for(size_t i = 0; i < graph->size; i++){
+        size_t data_offset = 0;
+        size_t scratch_bytes = 0;
+        size_t scratch_offset = 0;
+        if(graph->nodes[i].op_type != OP_NONE){
+            scratch_bytes = OpTable[graph->nodes[i].op_type].scratch_bytes(&graph->nodes[i]);
+            scratch_offset = total_mem;
+            total_mem += scratch_bytes;
+        }
+        data_offset = total_mem;
+        total_mem += graph->nodes[i].nbytes;
+
         graph->nodes[i].data_offset = data_offset;
-        if(graph->nodes[i].op_type != OP_NONE)
-            scratch_bytes = OpTable[graph->nodes[i].op_type].scratch_bytes();
-        activation_bytes = graph->nodes[i].nbytes;
-        data_offset += scratch_bytes + activation_bytes;
+        graph->nodes[i].scratch_offset = scratch_offset;
+        graph->nodes[i].nbytes_scratch = scratch_bytes;
     } 
-    return data_offset;
+    return total_mem;
 }
 
 
+
 void graph_execute(Graph *graph){
-    for(size_t i = 0; i < graph->size; i++){
+    for(size_t i = 0; i < 120; i++){
         if(graph->nodes[i].op_type == OP_NONE) continue;
-         OpTable[graph->nodes[i].op_type].forward(&graph->ctx, &graph->nodes[i]);
+        OpTable[graph->nodes[i].op_type].forward(&graph->ctx, &graph->nodes[i]);
     }
 }
 
@@ -83,7 +117,19 @@ void graph_load_weights(Graph *graph, const char *model_filename, const char *we
                 //Read weights to Context
                 fseek(weights_f, offsets[0], SEEK_SET);
                 fread(&graph->ctx.mem[graph->nodes[i].data_offset], 1, offsets[1] - offsets[0], weights_f);
-                //printf("%s | offsets=[%zu, %zu]\n", graph->nodes[i].name, offsets[0], offsets[1]);
+                
+                // if(strstr(line, "attn.proj.weight")){
+                //     // printf("%zu\n", graph->nodes[i].data_offset);
+                //     tensor_print(&graph->nodes[i]);
+                //     printf("%s | offsets=[%zu, %zu]\n", graph->nodes[i].name, offsets[0], offsets[1]);
+                //     for(size_t k = 0; k < 10; k++){
+                //         float *data = (float *)((char *)graph->ctx.mem + graph->nodes[i].data_offset);
+                //         printf("%.3f, ", data[k]);
+                        
+                //     }
+                //     printf("\n\n");
+                //     exit(1);
+                // }
                 break;
             }
         }
@@ -94,7 +140,7 @@ void graph_load_weights(Graph *graph, const char *model_filename, const char *we
 }
 
 void graph_print_weights(const Graph *graph){
-    for(size_t i = 0; i < 10; i++){
+    for(size_t i = 0; i < 20; i++){
         tensor_print_weights(&graph->ctx, &graph->nodes[i]);
     }
 }
@@ -105,6 +151,87 @@ void graph_print(const Graph *graph){
         tensor_print(&graph->nodes[i]);
     }
 }
+
+void graph_write(Graph *graph, const char *filename){ 
+    FILE *fptr = fopen(filename, "w"); // fresh file
+    fclose(fptr);
+
+    fptr = fopen(filename, "a");
+    if(!fptr){
+        perror("Error opening file");
+        exit(-1);
+    }
+    uint64_t json_len;
+    
+    printf("not of tensors: %zu\n", graph->size);
+    size_t pos = 0;
+    uint32_t curr_offset = 0;
+    uint32_t prev_offset = 0;
+    char json[1000000] = "\0";
+    size_t json_size = sizeof(json);
+
+    //size_t max_tensors_to_save = 2;
+    for(size_t i = 0; i < graph->size; i++){
+        Tensor * t = &graph->nodes[i];
+        uint32_t t_size = t->nbytes;
+        curr_offset += t_size;
+        /* JSON header */
+        if(i == 0){
+            pos += snprintf(
+                json + pos, json_size - pos,
+                "{"
+            );
+        }
+        pos += snprintf(
+            json + pos, json_size - pos,
+            "\"%s\":{\"dtype\":\"%s\",\"data_offsets\":[%u,%u],\"shape\":[",
+            t->name,
+            dtype_name(t->d_type),
+            prev_offset,
+            curr_offset
+        );
+
+        /* shape array */
+        for (uint8_t i = 0; i < t->ndim; i++) {
+            pos += snprintf(
+                json + pos,
+                json_size - pos,
+                "%s%zu",
+                (i == 0) ? "" : ",",
+                t->shape[i]
+            );
+        }
+
+        /* close JSON */
+        pos += snprintf(
+            json + pos, json_size - pos,
+            (i == graph->size - 1) ? "]}":"]},"
+        );
+
+        prev_offset = curr_offset; // probbaly needs to add 1
+    }
+
+    pos += snprintf(
+        json + pos, json_size - pos,
+        "}"
+    );
+
+    json_len = pos;
+
+    printf("json_len %llu\n", json_len);
+
+    //strcat(wpe_json, wte_json);
+    fwrite(&json_len, 8, 1, fptr);         // header
+    fwrite(json, 1, json_len, fptr);       // json
+    for(size_t i = 0; i < graph->size; i++){
+        Tensor * t = &graph->nodes[i];
+        uint32_t t_size = t->nbytes;
+        fwrite(&graph->ctx.mem[t->data_offset], 1, t_size, fptr);
+    }
+    fclose(fptr);
+
+}
+
 #include <stdio.h>
 #include <string.h>
 

@@ -2,23 +2,26 @@
 #include "../../inc/graph/graph.h"
 
 #include <stdio.h>
-Tensor *tensor_create(
-    Graph *graph,
-    char *name, 
-    size_t *shape, 
-    uint8_t ndim, 
+void tensor_create(
+    Tensor *out,
+    const char *name, 
+    const size_t *shape, 
+    const uint8_t ndim, 
     Tensor **src,
-    size_t nsrc,
-    DType d_type, 
-    OpType op_type
+    const size_t nsrc,
+    const DType d_type,
+    const OpType op_type,
+    void *op_params
 ){
 
-    Tensor *out = graph_alloc_node(graph);
+    static size_t token_curr_id = 0;
     out->id = token_curr_id++;
     strcpy(out->name, name);
 
     out->data_offset = 0;
     out->nbytes = 1;
+    out->scratch_offset = 0;
+    out->nbytes_scratch = 0;
     out->nelems = 1;
     out->ndim = ndim;
     for(size_t i = 0; i < ndim; i++){
@@ -42,24 +45,26 @@ Tensor *tensor_create(
     for(size_t i = 0; i < nsrc; i++) out->src[i] = src[i];
     out->d_type = d_type;
     out->op_type = op_type;
-    
-    return out;
+    out->op_params = op_params;
+
 }
 
 void tensor_print_header(void)
 {
-    printf("%-4s %-24s %-8s %-15s %-12s %-20s %-20s %-12s %-12s\n",
+    printf("%-4s %-24s %-8s %-15s %-12s %-12s %-12s %-20s %-20s %-12s %-12s\n",
            "ID",
            "NAME",
            "DTYPE",
            "OP",
            "OFFSET",
+           "SCRATCH",
+           "SCR_BYTES",
            "SHAPE",
            "STRIDE",
            "NELEMS",
            "NBYTES");
 
-    printf("------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    printf("-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
 void tensor_print(const Tensor *t)
@@ -95,12 +100,14 @@ void tensor_print(const Tensor *t)
 
     snprintf(stride + pos, sizeof(stride) - pos, "]");
 
-    printf("%-4zu %-24s %-8s %-15s %-12zu %-20s %-20s %-12zu %-12zu\n",
+    printf("%-4zu %-24s %-8s %-15s %-12zu %-12zu %-12zu %-20s %-20s %-12zu %-12zu\n",
            t->id,
            t->name,
            dtype_name(t->d_type),
            op_name(t->op_type),
            t->data_offset,
+           t->scratch_offset,
+           t->nbytes_scratch,
            shape,
            stride,
            t->nelems,
@@ -116,11 +123,14 @@ void tensor_print(const Tensor *t)
 void tensor_print_weights(const Context *ctx, const Tensor *t){
     printf("%s\n", t->name);
     for(size_t i = 0; i < 10; i++){
-        printf("%.3f, ", ((float*)&ctx->mem[t->data_offset])[i]);
+        if(t->d_type == DTYPE_I32)
+            printf("%d, ", ((int*)&ctx->mem[t->data_offset])[i]);
+        else
+            printf("%.3f, ", ((float*)&ctx->mem[t->data_offset])[i]);
     }
     printf("\n");
-    for(size_t i = 0; i < 10; i++){
-        printf("%.3f, ", ((float*)&ctx->mem[t->data_offset+t->nbytes-(10*sizeof(float))])[i]);
-    }
-    printf("\n\n");
+    // for(size_t i = 0; i < 10; i++){
+    //     printf("%.3f, ", ((float*)&ctx->mem[t->data_offset+t->nbytes-(10*sizeof(float))])[i]);
+    // }
+    // printf("\n\n");
 }

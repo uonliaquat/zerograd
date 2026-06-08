@@ -1,8 +1,12 @@
 #ifndef __MODEL_GPT2_H__
 #define __MODEL_GPT2_H__
 
+#include "../../inc/graph/graph.h"
+
 #include <string.h>
 #include <stdbool.h>
+
+typedef enum DType DType;
 
 typedef struct GPT2Config{
     size_t ctx_win;
@@ -11,6 +15,7 @@ typedef struct GPT2Config{
     size_t nheads;
     size_t nlayers;
     bool qkv_bias;
+    DType dtype;
 } GPT2Config;
 
 typedef struct GPT2Offsets{
@@ -22,5 +27,5 @@ typedef struct GPT2Offsets{
 } GPT2Offsets;
 
 
-void build_graph_gpt2(GPT2Config *config);
+void build_graph_gpt2(GPT2Config *config, Graph *graph);
 #endif

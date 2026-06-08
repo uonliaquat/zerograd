@@ -20,9 +20,12 @@ void context_reset(Context *ctx){
     ctx->size = 0;
 }
 
-// size_t context_alloc(size_t nbytes){
-//     return 0;
-// }
+size_t context_alloc(Context *ctx, size_t nbytes){
+    assert(ctx->size + nbytes < ctx->nbytes);
+    size_t pos = ctx->size;
+    ctx->size += nbytes; 
+    return pos;
+}
 
 // Tensor *context_get_node(Context *ctx){
 //     assert(ctx->nnodes < GRAPH_MAX_NODES);

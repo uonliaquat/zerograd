@@ -14,7 +14,7 @@ typedef struct Context {
 Context context_init(size_t nbytes);
 void context_free(Context *ctx);
 void context_reset(Context *ctx);
-// size_t context_alloc(size_t nbytes);
+size_t context_alloc(Context *ctx, size_t nbytes);
 
 // Tensor *context_get_node(Context *ctx);
 #endif

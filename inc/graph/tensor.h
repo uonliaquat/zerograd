@@ -6,13 +6,11 @@
 
 #include "./op_table.h"
 
-typedef struct Graph Graph;
 
-static size_t token_curr_id = 0;
 
 typedef enum DType {
-    DType_F32,
-    DType_I32
+    DTYPE_F32,
+    DTYPE_I32
 } DType;
 
 
@@ -22,7 +20,9 @@ typedef struct Tensor {
     char name[128];
 
     size_t data_offset;
+    size_t scratch_offset;
     size_t nbytes;
+    size_t nbytes_scratch;
     size_t nelems;
 
     size_t shape[4];
@@ -33,18 +33,20 @@ typedef struct Tensor {
     size_t nsrc;
     DType d_type;
     OpType op_type;
+    void *op_params;
 
 } Tensor;
 
-Tensor *tensor_create(
-    Graph *graph,
-    char *name, 
-    size_t *shape, 
-    uint8_t ndim, 
+void tensor_create(
+    Tensor *out,
+    const char *name, 
+    const size_t *shape, 
+    const uint8_t ndim, 
     Tensor **src,
-    size_t nsrc,
-    DType d_type,
-    OpType op_type
+    const size_t nsrc,
+    const DType d_type,
+    const OpType op_type,
+    void *op_params
 );
 
 void tensor_print_header();
@@ -53,16 +55,16 @@ void tensor_print_weights(const Context *ctx, const Tensor *t);
 
 static inline size_t dtype_size(DType d_type){
     switch(d_type){
-        case DType_F32: return 4;
-        case DType_I32: return 4;
+        case DTYPE_F32: return 4;
+        case DTYPE_I32: return 4;
         default: return -1;
     }
 }
 
 static inline char *dtype_name(DType d_type){
     switch(d_type){
-        case DType_F32: return "F32";
-        case DType_I32: return "I32";
+        case DTYPE_F32: return "F32";
+        case DTYPE_I32: return "I32";
         default: return "UNKNOWN"; 
     }
 }
