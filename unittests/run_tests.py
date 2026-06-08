@@ -4,7 +4,9 @@ tests = [
     "unittests/test_add.py",
     "unittests/test_arange.py",
     "unittests/test_index.py",
-    "unittests/test_layernorm.py"
+    "unittests/test_layernorm.py",
+    "unittests/test_gelu.py",
+    "unittests/test_linear.py"
 ]
 
 passed = 0

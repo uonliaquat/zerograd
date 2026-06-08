@@ -7,5 +7,5 @@ static inline size_t kernel_gelu_cpu_f32_scratch_bytes() {
     return 0;
 }
 
-void kernel_gelu_cpu_f32_forward(const float *x, float *out);
+void kernel_gelu_cpu_f32_forward(float *x, float *out, const size_t n);
 #endif

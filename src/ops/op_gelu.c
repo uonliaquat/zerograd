@@ -17,7 +17,6 @@ void *op_gelu(Graph *graph, const char *name, const size_t ctx_win, const size_t
             Tensor *src1)
 {
     Tensor *out = graph_alloc_node(graph);
-    tensor_create(out, name, (size_t[]){ctx_win, ndim}, 2, (Tensor*[]){src1}, 1, src1->d_type, OP_GELU, NULL);
     return out;
 }
 void op_gelu_forward(Context *ctx, Tensor *tensor){
@@ -27,7 +26,6 @@ void op_gelu_forward(Context *ctx, Tensor *tensor){
     size_t elems    = tensor->nelems;
     float *out      = &ctx->mem[tensor->data_offset];
 
-    for(size_t i = 0 ; i < elems; i++){
-        kernel_gelu_cpu_f32_forward(mlp_proj + i, out + i);
-    }
+
+    kernel_gelu_cpu_f32_forward(mlp_proj, out, elems);
 }

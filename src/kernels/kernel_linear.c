@@ -9,7 +9,10 @@ void kernel_linear_cpu_f32_forward(
     bool trans_weight
 ){
 
-    matmul_cpu_f32(input, weight, out, m, k, k, n);
+    if(!trans_weight)
+        matmul_cpu_f32(input, weight, out, m, k, k, n, trans_weight);
+    else
+        matmul_cpu_f32(input, weight, out, m, k, n, k, trans_weight);
     if(bias != NULL){
         for(size_t i = 0; i < m; i++){
             for(size_t j = 0; j < n; j++){

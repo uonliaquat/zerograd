@@ -35,7 +35,7 @@ void kernel_attention_cpu_f32_forward(
 
             //Q.K^t
             float *qk_t = k_t + (ctx_win * head_dim);
-            matmul_cpu_f32(q, k_t, qk_t, ctx_win, head_dim, head_dim, ctx_win);
+            matmul_cpu_f32(q, k_t, qk_t, ctx_win, head_dim, head_dim, ctx_win, true);
 
             // printf("\n\nAttention Scores\n");
             // for(size_t i = 0; i < 10; i++){
@@ -77,7 +77,7 @@ void kernel_attention_cpu_f32_forward(
   
 
             // softmax((Q.K^t) / sqrt(head_dim)) * V
-            matmul_cpu_f32(qk_t, v, head_out, ctx_win, ctx_win, ctx_win, head_dim);
+            matmul_cpu_f32(qk_t, v, head_out, ctx_win, ctx_win, ctx_win, head_dim, true);
 
             // printf("\n\nkast\n");
             // for(size_t i = 0; i < 10; i++){
