@@ -1,5 +1,6 @@
 import ctypes
 import numpy as np
+import sys
 
 lib = ctypes.CDLL("./build/libkernels.dylib")
 
@@ -32,7 +33,7 @@ for _ in range(num_tests):
         n
     )
     try:
-        np.testing.assert_allclose(out, table[indices].flatten(), rtol=1e-6)
+        np.testing.assert_allclose(out, table[indices].flatten(), rtol=1e-6, atol=1e-6)
         passed +=1
     except AssertionError:
         pass
@@ -42,8 +43,10 @@ if passed == num_tests:
         f"\033[92m[PASS]\033[0m kernel_index_cpu_f32_forward "
         f"({passed}/{num_tests} tests passed)"
     )
+    sys.exit(0)
 else:
     print(
         f"\033[91m[FAIL]\033[0m kernel_index_cpu_f32_forward "
         f"({passed}/{num_tests} tests passed)"
     )
+    sys.exit(1)

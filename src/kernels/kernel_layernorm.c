@@ -6,13 +6,12 @@
 void kernel_layernorm_cpu_f32_forward(
     const float *embed, const float *weights, const float *bias, 
     float *out, 
-    const size_t seq_len, const size_t embed_dim
+    const size_t seq_len, const size_t embed_dim,
+    const float eps
 ){
-
-    float eps = 1e-7;
     for(size_t i = 0; i < seq_len; i++){
-        float mean = 0;
-        float variance = 0;
+        double mean = 0;
+        double variance = 0;
         for(size_t j = 0; j < embed_dim; j++){
             mean += embed[(i*embed_dim) + j];
         }

@@ -22,7 +22,9 @@ Tensor *op_layernorm(Graph *graph, const char *name,
         size_t ctx_win = input->shape[0];
         size_t ndim = input->shape[1];
         Tensor *out = graph_alloc_node(graph);
-        tensor_create(out, name, (size_t[]){ctx_win, ndim}, 2, (Tensor*[]){weight, bias, input}, 3, input->d_type, OP_LAYER_NORM, NULL);
+        LayerNormParams *op_params = calloc(1, sizeof(LayerNormParams));
+        op_params->eps = 1e-5;
+        tensor_create(out, name, (size_t[]){ctx_win, ndim}, 2, (Tensor*[]){weight, bias, input}, 3, input->d_type, OP_LAYER_NORM, op_params);
         return out;
     }
 
@@ -42,6 +44,6 @@ void op_layernorm_forward(Context *ctx, Tensor *tensor){
     // printf("size_weights: %zu, size_bias: %zu, seq_len: %zu\n", size_weights, size_bias, seq_len);
     assert(size_weights == size_bias);
 
-
-    kernel_layernorm_cpu_f32_forward(embed, weights, bias, out, seq_len, embed_dim);
+    LayerNormParams * params = ((LayerNormParams*)(tensor->op_params));
+    kernel_layernorm_cpu_f32_forward(embed, weights, bias, out, seq_len, embed_dim, params->eps);
 }

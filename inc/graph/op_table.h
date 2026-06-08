@@ -32,9 +32,9 @@ typedef enum OpType {
 
 // } AddParams;
 
-// typedef struct LayerNormParams {
-
-// } LayerNormParams;
+typedef struct LayerNormParams {
+    float eps
+} LayerNormParams;
 
 typedef struct LinearParams {
     bool trans_weight;
@@ -61,6 +61,17 @@ typedef struct AttentionParams{
 // } WeightParams;
 
 
+// typedef union OpParams {
+//     IndexParams index_params;
+//     ArangePrams arange_params;
+//     AddParams add_params;
+//     LayerNormParams layernorm_params;
+//     LinearParams linear_params;
+//     AttentionParams attn_parms;
+//     GeluParams gelu_params;
+//     InputPrams input_params;
+//     WeightParams weight_params;
+// } OpParams;
 
 
 // extern OpParams op_params[8];
