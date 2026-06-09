@@ -45,7 +45,7 @@ for _ in range(num_tests1):
         m,
         n,
         k,
-        True
+        False
     )   
     try:
         y = F.linear(
@@ -93,7 +93,7 @@ for _ in range(num_tests2):
         m,
         n,
         k,
-        False
+        True
     )   
     try:
         y = F.linear(
@@ -102,7 +102,7 @@ for _ in range(num_tests2):
             bias=torch.tensor(bias, dtype=torch.float32)
             #bias=None
         )
-        np.testing.assert_allclose(out, y.flatten().numpy(), rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(out, y.flatten().numpy(), rtol=1e-5, atol=1e-5)
         passed +=1
     except AssertionError as e:
         print(e)

@@ -11,7 +11,7 @@
 size_t op_attention_scratch_bytes(const Tensor *tensor){
     AttentionParams *params = ((AttentionParams*)(tensor->op_params));
     switch(tensor->d_type){
-        case DTYPE_F32: return kernel_attention_cpu_f32_scratch_bytes(params->n_heads, params->ctx_win, params->embed_dim);
+        case DTYPE_F32: return kernel_multi_head_attention_cpu_f32_scratch_bytes(params->n_heads, params->ctx_win, params->embed_dim);
         default: return 0;
     }
 }
@@ -55,5 +55,5 @@ void op_attention_forward(Context *ctx, Tensor *tensor){
     assert(nbytes_scratch > 0);
     
 
-    kernel_attention_cpu_f32_forward(query, key, value, out, scratch, ctx_win, embed_dim, n_heads, head_dim);
+    kernel_multi_head_attention_cpu_f32_forward(query, key, value, out, scratch, ctx_win, embed_dim, n_heads, head_dim);
 }

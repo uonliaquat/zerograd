@@ -5,20 +5,34 @@
 #include <math.h>
 #include <stdlib.h>
 
-void kernel_attention_cpu_f32_forward(
-    float *query, float *key, float *value, 
-    float *out, float *scratch,
+void kernel_multi_head_attention_cpu_f32_forward(
+    float **query, float **key, float **value, 
+    float **out, float **scratch,
     const size_t ctx_win, const size_t embed_dim, 
     const size_t n_heads, const size_t head_dim
 ){
-        
         for(size_t head = 0; head < n_heads; head++){
-            size_t offset = (head * ctx_win * head_dim);
-            float *q = query + offset;
-            float *k = key + offset;
-            float *v = value + offset;
-            float * head_out = out;
-            float *k_t = scratch + head * ((ctx_win * head_dim) + (ctx_win * ctx_win));
+            float *q = query[head];
+            float *k = key[head];
+            float *v = value[head];
+            float * head_out = out[head];
+
+            float *k_t = scratch[head];
+
+
+            // printf("q\n");
+            // for(size_t i = 0; i < 10; i++){
+            //     printf("%.4f, ", q[i]);
+            // }
+            // printf("\n\nk\n");
+            // for(size_t i = 0; i < 10; i++){
+            //     printf("%.4f, ", k[i]);
+            // }
+            // printf("\n\nv\n");
+            // for(size_t i = 0; i < 10; i++){
+            //     printf("%.4f, ", v[i]);
+            // }
+
             //key transpose
             for(size_t i = 0; i < ctx_win; i++){
                 for(size_t j = 0; j < head_dim; j++){
@@ -26,12 +40,10 @@ void kernel_attention_cpu_f32_forward(
                     k_t[(j * ctx_win) + i] = val;
                 }
             }
-
-            for(size_t i = 0; i < 10; i++){
-                printf("%.3f, ", k[i]);
-            }
-            exit(1);
-
+            // printf("\n\nK^T\n");
+            // for(size_t i = 0; i < 10; i++){
+            //     printf("%.4f, ", k_t[i]);
+            // }
 
             //Q.K^t
             float *qk_t = k_t + (ctx_win * head_dim);
@@ -42,24 +54,27 @@ void kernel_attention_cpu_f32_forward(
             //     printf("%.3f, ", qk_t[i]);
             // }
 
+
             // // (Q.K^t) / sqrt(head_dim)
             for(size_t i = 0; i < ctx_win * ctx_win; i++){
                 qk_t[i] = qk_t[i] / sqrt(head_dim);
             }
-            // printf("\n\nScaled Attention Scores\n");
+
+            // printf("\n\nScaled \n");
             // for(size_t i = 0; i < 10; i++){
             //     printf("%.3f, ", qk_t[i]);
             // }
 
+    
 
-            // //causal mask
+            // causal mask
             for(size_t i = 1; i < ctx_win; i++){
                 for(size_t j = i; j < ctx_win; j++){
                     qk_t[((i-1) * ctx_win) + j] = -INFINITY;
                 }
             }
 
-            // printf("\n\nScaled Causal Attention Scores\n");
+            // printf("\n\nMasked\n");
             // for(size_t i = 0; i < 10; i++){
             //     printf("%.3f, ", qk_t[i]);
             // }
@@ -69,7 +84,7 @@ void kernel_attention_cpu_f32_forward(
                 softmax_cpu_f32(qk_t+(i*ctx_win), qk_t+(i*ctx_win), ctx_win);
             }
 
-            // printf("\n\nAttention Weights\n");
+            // printf("\n\nSoftmax\n");
             // for(size_t i = 0; i < 10; i++){
             //     printf("%.3f, ", qk_t[i]);
             // }
@@ -79,13 +94,11 @@ void kernel_attention_cpu_f32_forward(
             // softmax((Q.K^t) / sqrt(head_dim)) * V
             matmul_cpu_f32(qk_t, v, head_out, ctx_win, ctx_win, ctx_win, head_dim, true);
 
-            // printf("\n\nkast\n");
+            // printf("\n\nOutput\n");
             // for(size_t i = 0; i < 10; i++){
             //     printf("%.3f, ", head_out[i]);
             // }
-            // printf("\n");
-            //exit(1);
-
+            // printf("\n\n");
 
         }
 

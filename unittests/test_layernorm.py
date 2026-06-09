@@ -56,7 +56,7 @@ for _ in range(num_tests):
 
 if passed == num_tests:
     print(
-        f"\033[92m[PASS]\033[0m kernel_layernom_cpu_f32_forward "
+        f"\033[92m[PASS]\033[0m kernel_layernorm_cpu_f32_forward "
         f"({passed}/{num_tests} tests passed)"
     )
     sys.exit(0)

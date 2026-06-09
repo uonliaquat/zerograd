@@ -6,7 +6,8 @@ tests = [
     "unittests/test_index.py",
     "unittests/test_layernorm.py",
     "unittests/test_gelu.py",
-    "unittests/test_linear.py"
+    "unittests/test_linear.py",
+    "unittests/test_mha.py"
 ]
 
 passed = 0

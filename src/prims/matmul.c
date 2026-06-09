@@ -6,7 +6,7 @@ void matmul_cpu_f32(float *mat1, float *mat2, float *out,
     bool trans_weight
 ){
 
-    if(!trans_weight){
+    if(trans_weight){
         for(size_t i = 0; i < rows_mat1; i++){
             for(size_t j = 0; j < cols_mat2; j++){
                 float sum = 0;

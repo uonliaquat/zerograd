@@ -33,7 +33,7 @@ typedef enum OpType {
 // } AddParams;
 
 typedef struct LayerNormParams {
-    float eps
+    float eps;
 } LayerNormParams;
 
 typedef struct LinearParams {
