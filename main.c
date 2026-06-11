@@ -4,7 +4,9 @@
 
 typedef enum DType DType;
 int main(){
+    
     printf("Running inference engine\n");
+
     GPT2Config config = {
         .ctx_win = 1024,
         .ndim = 768,
@@ -14,6 +16,7 @@ int main(){
         .qkv_bias = true,
         .dtype = DTYPE_F32
     };
+    
     Graph graph = graph_init(274);
     build_graph_gpt2(&config, &graph);
     // size_t nbytes = graph_plan_memory(&graph);

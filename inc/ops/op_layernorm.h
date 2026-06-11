@@ -5,8 +5,9 @@
 #include "../../inc/graph/graph.h"
 #include <string.h>
 
-// typedef struct Tensor Tensor;
-typedef struct Graph Graph;
+typedef struct LayerNormParams {
+    float eps;
+} LayerNormParams;
 
 size_t op_layernorm_scratch_bytes(const Tensor *tensor);
 Tensor *op_layernorm(Graph *graph, const char *name,

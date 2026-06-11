@@ -5,8 +5,12 @@
 #include "../../inc/graph/graph.h"
 #include <string.h>
 
-// typedef struct Tensor Tensor;
-// typedef struct Graph Graph;
+typedef struct AttentionParams{
+    size_t embed_dim;
+    size_t head_dim;
+    size_t n_heads;
+    size_t ctx_win;
+} AttentionParams;
 
 size_t op_attention_scratch_bytes(const Tensor *tensor);
 

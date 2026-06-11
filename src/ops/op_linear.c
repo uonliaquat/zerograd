@@ -22,7 +22,7 @@ Tensor *op_linear(
     bool trans_weight
 ){
     if(trans_weight) assert(input->shape[1] == weight->shape[0]);
-    else assert(input->shape[0] == weight->shape[0]);
+    else assert(input->shape[1] == weight->shape[1]);
     size_t rows = input->shape[0];
     size_t cols = weight->shape[1];
     Tensor *out = graph_alloc_node(graph);

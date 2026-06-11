@@ -12,8 +12,8 @@ static inline size_t kernel_multi_head_attention_cpu_f32_scratch_bytes(
 }
 
 void kernel_multi_head_attention_cpu_f32_forward(
-    float **query, float **key, float **value, 
-    float **out, float **scratch,
+    float *query, float *key, float *value, 
+    float *out, float *scratch,
     const size_t ctx_win, const size_t embed_dim, 
     const size_t n_heads, const size_t head_dim
 );

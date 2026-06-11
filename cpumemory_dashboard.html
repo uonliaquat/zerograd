@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>What Every Programmer Should Know About Memory — Interactive Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink:    '#0b0f17',
+          panel:  '#0f1525',
+          panel2: '#141c30',
+          line:   '#243049',
+          l1:     '#22c55e',   // fast / L1 — green
+          l2:     '#84cc16',
+          l3:     '#eab308',
+          dram:   '#ef4444',   // slow / main memory — red
+          accent: '#38bdf8',
+          accent2:'#a78bfa',
+          muted:  '#8b9bb4',
+        },
+        fontFamily: {
+          mono: ['ui-monospace','SFMono-Regular','Menlo','Consolas','monospace'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+  html,body{background:#0b0f17;color:#e6edf6;}
+  ::selection{background:#38bdf8;color:#04121f;}
+  /* scrollbar */
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:#0b0f17;}
+  ::-webkit-scrollbar-thumb{background:#243049;border-radius:6px;}
+  ::-webkit-scrollbar-thumb:hover{background:#38506e;}
+
+  .nav-link{transition:all .15s ease;border-left:3px solid transparent;}
+  .nav-link.active{background:#141c30;border-left-color:#38bdf8;color:#fff;}
+  .nav-link:hover{background:#11192b;}
+
+  .chapter{display:none;animation:fade .25s ease;}
+  .chapter.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .card{background:linear-gradient(180deg,#0f1525,#0d1320);border:1px solid #243049;border-radius:14px;}
+  .pill{border:1px solid #243049;border-radius:999px;}
+  .kbd{font-family:ui-monospace,monospace;background:#0b1120;border:1px solid #243049;border-radius:6px;padding:1px 7px;font-size:.78rem;}
+
+  code,pre{font-family:ui-monospace,monospace;}
+  pre{background:#070b14;border:1px solid #1c2740;border-radius:10px;overflow:auto;}
+  .tok-key{color:#c792ea;} .tok-fn{color:#82aaff;} .tok-num{color:#f78c6c;}
+  .tok-str{color:#c3e88d;} .tok-cmt{color:#546688;font-style:italic;} .tok-ty{color:#ffcb6b;}
+
+  .glow-fast{box-shadow:0 0 0 1px #14532d,0 0 22px -6px #22c55e;}
+  .glow-slow{box-shadow:0 0 0 1px #7f1d1d,0 0 22px -6px #ef4444;}
+
+  /* MESI nodes */
+  .mesi-node{transition:all .25s ease;cursor:pointer;}
+  .mesi-node.active{filter:drop-shadow(0 0 10px currentColor);}
+
+  /* matrix cells */
+  .mcell{transition:background .08s linear;}
+
+  details>summary{cursor:pointer;list-style:none;}
+  details>summary::-webkit-details-marker{display:none;}
+
+  .tag{font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;}
+</style>
+</head>
+
+<body class="font-sans antialiased">
+
+<!-- ===================== LAYOUT ===================== -->
+<div class="flex min-h-screen">
+
+  <!-- ====== SIDEBAR ====== -->
+  <aside class="w-72 shrink-0 border-r border-line bg-panel/60 backdrop-blur sticky top-0 h-screen overflow-y-auto hidden lg:flex flex-col">
+    <div class="px-5 py-5 border-b border-line">
+      <div class="text-[11px] tracking-widest text-muted uppercase">Drepper · 2007</div>
+      <h1 class="text-lg font-bold leading-tight mt-1">What Every Programmer<br>Should Know About Memory</h1>
+      <div class="mt-2 text-xs text-muted">Interactive architecture dashboard</div>
+    </div>
+    <nav id="nav" class="py-2 text-sm flex-1"></nav>
+    <div class="px-5 py-3 border-t border-line text-[11px] text-muted">
+      <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm bg-l1"></span> Fast / on-die</div>
+      <div class="flex items-center gap-2 mt-1"><span class="inline-block w-3 h-3 rounded-sm bg-dram"></span> Slow / main memory bottleneck</div>
+    </div>
+  </aside>
+
+  <!-- ====== MAIN ====== -->
+  <main class="flex-1 min-w-0">
+
+    <!-- top bar (mobile nav + progress) -->
+    <header class="sticky top-0 z-30 bg-ink/85 backdrop-blur border-b border-line">
+      <div class="px-4 sm:px-8 py-3 flex items-center gap-4">
+        <select id="mobileNav" class="lg:hidden bg-panel border border-line rounded-lg px-3 py-2 text-sm"></select>
+        <div class="flex-1">
+          <div class="h-1.5 w-full bg-panel2 rounded-full overflow-hidden">
+            <div id="progressBar" class="h-full bg-gradient-to-r from-l1 via-l3 to-dram transition-all" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button id="prevBtn" class="pill px-3 py-1.5 text-sm hover:bg-panel2">‹ Prev</button>
+          <button id="nextBtn" class="pill px-3 py-1.5 text-sm hover:bg-panel2">Next ›</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="px-4 sm:px-8 lg:px-12 py-8 max-w-5xl mx-auto" id="content"></div>
+
+  </main>
+</div>
+
+<!-- ===================== TEMPLATES / CONTENT ===================== -->
+<!-- Chapters are injected by JS into #content. We define them inline as <template> so the file stays single-file & editable. -->
+
+<!-- ========== CH 0 : OVERVIEW ========== -->
+<template data-title="Overview &amp; the Memory Wall" data-id="overview">
+  <section class="chapter">
+    <div class="tag text-accent">Introduction</div>
+    <h2 class="text-3xl font-bold mt-1">The Memory Wall</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      For decades CPU cores got dramatically faster while DRAM latency barely moved. The result is a structural
+      mismatch Drepper calls the central problem of the paper: a modern core can execute <b>hundreds of instructions</b>
+      in the time it takes a single load to come back from main memory. Every cache, every TLB, every prefetcher exists
+      to hide this gap. This dashboard rebuilds the paper's mental model from the silicon up.
+    </p>
+
+    <!-- Latency pyramid (interactive) -->
+    <div class="card p-6 mt-6">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h3 class="font-semibold text-lg">The latency hierarchy — hover a tier</h3>
+        <span class="text-xs text-muted">cycles ≈ approximate, for a ~3 GHz core (figures from the paper &amp; era-typical)</span>
+      </div>
+      <div id="pyramid" class="mt-5 space-y-2"></div>
+      <p id="pyramidNote" class="mt-4 text-sm text-muted min-h-[2.5rem]">Hover or tap a tier to see why it costs what it costs.</p>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4 mt-6">
+      <div class="card p-5">
+        <div class="text-l1 text-2xl font-bold">≈ 1×</div>
+        <div class="text-sm mt-1">L1 hit ≈ register-class speed (~3–4 cycles)</div>
+      </div>
+      <div class="card p-5">
+        <div class="text-l3 text-2xl font-bold">≈ 14×</div>
+        <div class="text-sm mt-1">L2 / L3 miss adds tens of cycles</div>
+      </div>
+      <div class="card p-5">
+        <div class="text-dram text-2xl font-bold">≈ 200×+</div>
+        <div class="text-sm mt-1">A main-memory load can stall ~200+ cycles</div>
+      </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">How to read this dashboard</h3>
+      <ul class="mt-3 space-y-2 text-sm text-muted">
+        <li>→ <b class="text-white">Chapters 1–3</b> (Hardware, Caches, Coherency) are the deep core — full visualizations &amp; the three interactives.</li>
+        <li>→ <b class="text-white">Chapters 4–6</b> (Virtual Memory, NUMA, Optimization) extend the model up into the OS and into your code.</li>
+        <li>→ Green = fast/on-die. Red = the main-memory bottleneck. Watch the color travel outward as we go.</li>
+      </ul>
+    </div>
+  </section>
+</template>
+
+<!-- ========== CH 1 : COMMODITY HARDWARE ========== -->
+<template data-title="1 · Commodity Hardware &amp; DRAM" data-id="hardware">
+  <section class="chapter">
+    <div class="tag text-accent">Chapter 1 — Hardware</div>
+    <h2 class="text-3xl font-bold mt-1">Commodity Hardware Architecture</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      To understand why memory is slow you have to look at the wires and the cells. We start with the classic
+      Northbridge/Southbridge topology Drepper describes, then descend into a single DRAM cell and watch a read
+      happen cycle-by-cycle (RAS, CAS, precharge, multiplexed address lines).
+    </p>
+
+    <!-- System topology SVG -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Classic topology: FSB → Northbridge → Memory Controller</h3>
+      <p class="text-sm text-muted mt-1">All CPUs share one Front Side Bus to the Northbridge; the Northbridge owns the memory controller and talks to DRAM. This single shared path is the original bottleneck.</p>
+      <div class="mt-4 overflow-x-auto">
+      <svg viewBox="0 0 760 360" class="w-full min-w-[640px]">
+        <defs>
+          <marker id="arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38bdf8"/></marker>
+        </defs>
+        <!-- CPUs -->
+        <g>
+          <rect x="40" y="30" width="130" height="60" rx="8" fill="#0f1525" stroke="#22c55e"/>
+          <text x="105" y="58" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">CPU 0</text>
+          <text x="105" y="76" fill="#8b9bb4" font-size="10" text-anchor="middle">cores · L1/L2</text>
+          <rect x="190" y="30" width="130" height="60" rx="8" fill="#0f1525" stroke="#22c55e"/>
+          <text x="255" y="58" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">CPU 1</text>
+          <text x="255" y="76" fill="#8b9bb4" font-size="10" text-anchor="middle">cores · L1/L2</text>
+        </g>
+        <!-- FSB -->
+        <line x1="105" y1="90" x2="180" y2="150" stroke="#eab308" stroke-width="3" marker-end="url(#arrow)"/>
+        <line x1="255" y1="90" x2="200" y2="150" stroke="#eab308" stroke-width="3" marker-end="url(#arrow)"/>
+        <text x="350" y="125" fill="#eab308" font-size="11" font-weight="bold">FSB (shared!)</text>
+        <!-- Northbridge -->
+        <rect x="120" y="150" width="180" height="70" rx="8" fill="#141c30" stroke="#38bdf8"/>
+        <text x="210" y="180" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">Northbridge</text>
+        <text x="210" y="200" fill="#8b9bb4" font-size="10" text-anchor="middle">Memory Controller (MC)</text>
+        <!-- DRAM channels -->
+        <line x1="210" y1="220" x2="210" y2="270" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow)"/>
+        <text x="225" y="250" fill="#ef4444" font-size="11">DRAM bus</text>
+        <g>
+          <rect x="60" y="270" width="90" height="46" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="105" y="298" fill="#e6edf6" font-size="11" text-anchor="middle">DRAM DIMM</text>
+          <rect x="165" y="270" width="90" height="46" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="210" y="298" fill="#e6edf6" font-size="11" text-anchor="middle">DRAM DIMM</text>
+          <rect x="270" y="270" width="90" height="46" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="315" y="298" fill="#e6edf6" font-size="11" text-anchor="middle">DRAM DIMM</text>
+        </g>
+        <!-- Southbridge -->
+        <line x1="300" y1="185" x2="430" y2="185" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+        <rect x="430" y="150" width="170" height="70" rx="8" fill="#141c30" stroke="#243049"/>
+        <text x="515" y="180" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">Southbridge</text>
+        <text x="515" y="200" fill="#8b9bb4" font-size="10" text-anchor="middle">PCIe · SATA · USB</text>
+        <!-- annotations -->
+        <text x="620" y="45" fill="#8b9bb4" font-size="11">▸ One FSB shared by all CPUs</text>
+        <text x="620" y="65" fill="#8b9bb4" font-size="11">▸ MC bandwidth caps everything</text>
+        <text x="620" y="85" fill="#8b9bb4" font-size="11">▸ DMA traffic competes too</text>
+      </svg>
+      </div>
+      <div class="mt-4 grid sm:grid-cols-2 gap-4 text-sm">
+        <div class="rounded-lg border border-line p-4">
+          <div class="font-semibold text-accent">The shared-bus problem</div>
+          <p class="text-muted mt-1">With every core funneling through one Northbridge, memory bandwidth is divided, not multiplied, as you add cores. This is exactly why the industry moved the memory controller <i>onto the die</i> (next panel) and adopted NUMA.</p>
+        </div>
+        <div class="rounded-lg border border-line p-4">
+          <div class="font-semibold text-accent2">Modern evolution (post-paper)</div>
+          <p class="text-muted mt-1">Integrated Memory Controllers (Intel QPI/UPI, AMD HyperTransport/Infinity Fabric) give each socket its own DRAM channels. The FSB became a point-to-point mesh — and per-socket-local memory created <span class="text-white">NUMA</span> (Ch. 5).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRAM cell -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Inside a DRAM cell — one capacitor, one transistor</h3>
+      <div class="grid md:grid-cols-2 gap-6 mt-3 items-center">
+        <svg viewBox="0 0 300 200" class="w-full">
+          <line x1="40" y1="20" x2="40" y2="180" stroke="#38bdf8" stroke-width="2"/>
+          <text x="10" y="100" fill="#38bdf8" font-size="10" transform="rotate(-90 18,100)">Word line (row select)</text>
+          <line x1="40" y1="120" x2="260" y2="120" stroke="#a78bfa" stroke-width="2"/>
+          <text x="150" y="140" fill="#a78bfa" font-size="10">Bit line / sense line (column)</text>
+          <!-- transistor -->
+          <rect x="120" y="95" width="22" height="50" rx="3" fill="none" stroke="#e6edf6"/>
+          <line x1="40" y1="120" x2="120" y2="120" stroke="#243049"/>
+          <!-- capacitor -->
+          <line x1="142" y1="120" x2="200" y2="120" stroke="#243049" stroke-width="2"/>
+          <line x1="200" y1="105" x2="200" y2="135" stroke="#22c55e" stroke-width="3"/>
+          <line x1="212" y1="105" x2="212" y2="135" stroke="#22c55e" stroke-width="3"/>
+          <text x="196" y="160" fill="#22c55e" font-size="10">capacitor = 1 bit</text>
+        </svg>
+        <div class="text-sm text-muted space-y-2">
+          <p>A bit is a charge on a tiny capacitor, gated by one transistor. This is dense and cheap — but it has consequences:</p>
+          <ul class="space-y-1.5">
+            <li>⚡ <b class="text-white">Leaky.</b> Charge drains, so DRAM must be <b>refreshed</b> thousands of times/sec — refresh cycles steal bandwidth.</li>
+            <li>⚡ <b class="text-white">Destructive read.</b> Sensing the charge drains it; the row must be written back.</li>
+            <li>⚡ <b class="text-white">Slow sense amps.</b> The voltage swing is tiny; sense amplifiers need time to settle → latency.</li>
+            <li>Contrast <b class="text-l1">SRAM</b> (used for caches): 6 transistors per bit, no refresh, fast — but big and expensive, so we get only kilobytes/megabytes of it.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRAM read timing - step interactive -->
+    <div class="card p-6 mt-6">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h3 class="font-semibold text-lg">A DRAM read, step by step (RAS → CAS → data → precharge)</h3>
+        <div class="flex gap-2">
+          <button id="dramPrev" class="pill px-3 py-1.5 text-sm hover:bg-panel2">‹</button>
+          <button id="dramNext" class="pill px-3 py-1.5 text-sm hover:bg-panel2">Step ›</button>
+        </div>
+      </div>
+      <p class="text-sm text-muted mt-1">The CPU address is <b>multiplexed</b>: the same pins carry the row, then the column. That's why timings are quoted as <span class="kbd">tRCD-CL-tRP</span>.</p>
+
+      <!-- timeline -->
+      <div id="dramSteps" class="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+      <div class="mt-4 rounded-lg border border-line bg-panel2/40 p-4">
+        <div id="dramTitle" class="font-semibold text-accent"></div>
+        <div id="dramBody" class="text-sm text-muted mt-1"></div>
+      </div>
+      <div class="mt-4 text-xs text-muted grid sm:grid-cols-3 gap-2">
+        <div class="rounded border border-line p-2"><b class="text-white">tRCD</b> — RAS→CAS delay: time after opening a row before you may issue a column read.</div>
+        <div class="rounded border border-line p-2"><b class="text-white">CL (CAS Latency)</b> — column address → first data word.</div>
+        <div class="rounded border border-line p-2"><b class="text-white">tRP</b> — precharge: close the row before opening another in the same bank.</div>
+      </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Why bursts &amp; banks matter to <i>you</i></h3>
+      <ul class="mt-3 space-y-2 text-sm text-muted">
+        <li>→ Opening a row is expensive, but once open, sequential columns stream cheaply in a <b class="text-white">burst</b>. <span class="text-l1">Sequential access amortizes RAS/precharge</span>; random access pays it every time.</li>
+        <li>→ Multiple <b>banks</b> let the controller pipeline: precharge one bank while reading another. The OS/controller interleaves addresses across banks to exploit this.</li>
+        <li>→ This is the hardware reason the rest of the paper keeps repeating: <b class="text-l1">access memory sequentially.</b></li>
+      </ul>
+    </div>
+  </section>
+</template>
+
+<!-- ========== CH 2 : CPU CACHES ========== -->
+<template data-title="2 · CPU Caches &amp; Associativity" data-id="caches">
+  <section class="chapter">
+    <div class="tag text-accent">Chapter 2 — Caches</div>
+    <h2 class="text-3xl font-bold mt-1">CPU Caches: Hierarchy, Lines &amp; Associativity</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      Caches are small, fast SRAM buffers that exploit <b>temporal</b> and <b>spatial</b> locality. The unit of transfer
+      is never a byte — it's a <b class="text-white">cache line</b> (typically 64 B). Below: the hierarchy, then the
+      interactive heart of this chapter — how a physical address is split into <b>Tag / Set / Offset</b>.
+    </p>
+
+    <!-- hierarchy -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">The hierarchy (per modern multicore die)</h3>
+      <div class="mt-4 grid sm:grid-cols-4 gap-3 text-sm">
+        <div class="rounded-lg border border-l1 p-4 glow-fast">
+          <div class="font-bold text-l1">L1 I + D</div>
+          <div class="text-muted mt-1">~32 KB each, per-core, split instr/data. ~3–4 cyc. Smallest, fastest.</div>
+        </div>
+        <div class="rounded-lg border border-l2 p-4">
+          <div class="font-bold text-l2">L2</div>
+          <div class="text-muted mt-1">256 KB–1 MB, per-core, unified. ~10–14 cyc.</div>
+        </div>
+        <div class="rounded-lg border border-l3 p-4">
+          <div class="font-bold text-l3">L3 (LLC)</div>
+          <div class="text-muted mt-1">Several–tens of MB, shared across cores. ~40–75 cyc. Coherency point.</div>
+        </div>
+        <div class="rounded-lg border border-dram p-4 glow-slow">
+          <div class="font-bold text-dram">DRAM</div>
+          <div class="text-muted mt-1">GBs, off-die. ~150–250+ cyc. The bottleneck.</div>
+        </div>
+      </div>
+      <p class="text-xs text-muted mt-3">Inclusive vs. exclusive policies vary by vendor; the key invariant is each level is bigger &amp; slower than the one inside it. A miss at every level = full DRAM penalty.</p>
+    </div>
+
+    <!-- cache line -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">The cache line is the atom of memory traffic</h3>
+      <div class="grid md:grid-cols-2 gap-6 mt-3 items-center">
+        <div>
+          <div class="flex flex-wrap gap-0.5">
+            <!-- 64 byte line -->
+            <div class="w-full text-xs text-muted mb-1">One 64-byte line = 64 cells. Touching <b class="text-white">any</b> byte fetches <b class="text-white">all 64</b>.</div>
+            <div id="lineBytes" class="grid gap-0.5 w-full" style="grid-template-columns:repeat(16,1fr)"></div>
+          </div>
+        </div>
+        <div class="text-sm text-muted space-y-2">
+          <p>Consequences that drive the whole paper:</p>
+          <ul class="space-y-1.5">
+            <li>📦 Reading 1 byte costs the same as reading 64 contiguous bytes — <b class="text-l1">spatial locality is free performance</b>.</li>
+            <li>📦 A struct that straddles a line boundary needs <b>two</b> line fetches. → <b class="text-white">alignment matters</b> (Ch. 6).</li>
+            <li>📦 Two threads writing different variables in the <i>same line</i> ping-pong it → <b class="text-dram">false sharing</b> (Ch. 3).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- associativity -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Associativity — where can a line live?</h3>
+      <div class="grid md:grid-cols-3 gap-4 mt-4 text-sm">
+        <div class="rounded-lg border border-line p-4">
+          <div class="font-bold">Direct-mapped</div>
+          <div class="text-muted mt-1">Each address maps to exactly <b>one</b> slot. Cheap, fast lookup — but two hot addresses that map to the same slot evict each other endlessly (conflict misses).</div>
+          <div class="mt-2 grid grid-cols-4 gap-1">
+            <div class="h-6 rounded bg-panel2 border border-line"></div><div class="h-6 rounded bg-accent/30 border border-accent"></div><div class="h-6 rounded bg-panel2 border border-line"></div><div class="h-6 rounded bg-panel2 border border-line"></div>
+          </div>
+          <div class="text-[11px] text-muted mt-1">addr → 1 fixed slot</div>
+        </div>
+        <div class="rounded-lg border border-line p-4">
+          <div class="font-bold">Fully associative</div>
+          <div class="text-muted mt-1">A line may live in <b>any</b> slot. Zero conflict misses, but every slot's tag must be compared in parallel — only feasible for tiny caches (e.g. TLBs).</div>
+          <div class="mt-2 grid grid-cols-4 gap-1">
+            <div class="h-6 rounded bg-accent/30 border border-accent"></div><div class="h-6 rounded bg-accent/30 border border-accent"></div><div class="h-6 rounded bg-accent/30 border border-accent"></div><div class="h-6 rounded bg-accent/30 border border-accent"></div>
+          </div>
+          <div class="text-[11px] text-muted mt-1">addr → any slot (compare all tags)</div>
+        </div>
+        <div class="rounded-lg border border-accent2 p-4">
+          <div class="font-bold text-accent2">Set-associative (real CPUs)</div>
+          <div class="text-muted mt-1">Compromise: address picks a <b>set</b>; the line may live in any of the <b>N ways</b> in that set. "8-way" = 8 candidate slots. Tag compare ×N only.</div>
+          <div class="mt-2 grid grid-cols-4 gap-1">
+            <div class="h-6 rounded bg-panel2 border border-line"></div><div class="h-6 rounded bg-accent2/30 border border-accent2"></div><div class="h-6 rounded bg-accent2/30 border border-accent2"></div><div class="h-6 rounded bg-panel2 border border-line"></div>
+          </div>
+          <div class="text-[11px] text-muted mt-1">addr → 1 set, N ways inside</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE 1: address decode -->
+    <div class="card p-6 mt-6" id="decodeCard">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h3 class="font-semibold text-lg">🔧 Interactive — Decode an address into Tag / Set / Offset</h3>
+        <span class="text-xs text-muted">N-way set-associative</span>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-4 mt-4 text-sm">
+        <label class="block">Cache size (KB)
+          <select id="cacheSize" class="mt-1 w-full bg-panel2 border border-line rounded px-2 py-1.5">
+            <option>32</option><option>64</option><option>256</option><option>512</option><option>1024</option>
+          </select>
+        </label>
+        <label class="block">Line size (bytes)
+          <select id="lineSize" class="mt-1 w-full bg-panel2 border border-line rounded px-2 py-1.5">
+            <option>32</option><option selected>64</option><option>128</option>
+          </select>
+        </label>
+        <label class="block">Associativity (ways)
+          <select id="ways" class="mt-1 w-full bg-panel2 border border-line rounded px-2 py-1.5">
+            <option>1</option><option>2</option><option>4</option><option selected>8</option><option>16</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="block text-sm mt-4">Address (hex, 32-bit)
+        <input id="addrInput" value="0xDEADBEEF" class="mt-1 w-full font-mono bg-panel2 border border-line rounded px-3 py-2 text-accent"/>
+      </label>
+
+      <!-- bit field render -->
+      <div class="mt-5">
+        <div class="text-xs text-muted mb-1">32-bit address split (high → low):</div>
+        <div id="bitField" class="flex w-full rounded-lg overflow-hidden border border-line text-center font-mono text-xs"></div>
+        <div id="bitLegend" class="flex w-full mt-1 text-[11px] text-muted"></div>
+      </div>
+
+      <div id="decodeOut" class="mt-5 grid sm:grid-cols-3 gap-3 text-sm"></div>
+
+      <div class="mt-4 text-xs text-muted leading-relaxed">
+        <b class="text-white">Offset bits</b> = log₂(line size) — selects the byte within the line.
+        <b class="text-white">Set bits</b> = log₂(#sets), where #sets = size ÷ (line × ways).
+        <b class="text-white">Tag</b> = the remaining high bits, stored alongside each line to confirm a hit.
+      </div>
+    </div>
+
+    <!-- miss penalty -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">The "3 C's" of misses &amp; their cost</h3>
+      <div class="grid sm:grid-cols-3 gap-4 mt-4 text-sm">
+        <div class="rounded-lg border border-line p-4"><b class="text-white">Compulsory</b><p class="text-muted mt-1">First-ever touch of a line — unavoidable cold miss. Mitigated by <b>prefetching</b>.</p></div>
+        <div class="rounded-lg border border-line p-4"><b class="text-white">Capacity</b><p class="text-muted mt-1">Working set &gt; cache size. Mitigated by <b>blocking/tiling</b> (Ch. 6).</p></div>
+        <div class="rounded-lg border border-line p-4"><b class="text-white">Conflict</b><p class="text-muted mt-1">Too many hot lines map to one set. Mitigated by associativity &amp; layout/padding.</p></div>
+      </div>
+      <p class="text-sm text-muted mt-3">Drepper's benchmarks show the cliff: as the working set grows past L1, then L2, then L3, per-element time jumps in distinct steps — you can literally <i>see</i> the cache sizes in the latency curve.</p>
+    </div>
+  </section>
+</template>
+
+<!-- ========== CH 3 : COHERENCY & MULTICORE ========== -->
+<template data-title="3 · Coherency, MESI &amp; False Sharing" data-id="coherency">
+  <section class="chapter">
+    <div class="tag text-accent">Chapter 3 — Multicore</div>
+    <h2 class="text-3xl font-bold mt-1">Cache Coherency &amp; the MESI Protocol</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      Once each core has private caches, the same line can exist in several places. Hardware must guarantee every core
+      sees a single coherent value. The <b>MESI</b> protocol does this by tracking each cached line in one of four states
+      and snooping the bus for other cores' accesses.
+    </p>
+
+    <!-- INTERACTIVE 2: MESI -->
+    <div class="card p-6 mt-6" id="mesiCard">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h3 class="font-semibold text-lg">🔧 Interactive — MESI state machine</h3>
+        <button id="mesiReset" class="pill px-3 py-1.5 text-sm hover:bg-panel2">Reset to Invalid</button>
+      </div>
+      <p class="text-sm text-muted mt-1">Click an <b>event</b> below to drive the transition. The state diagram and the line's properties update live.</p>
+
+      <div class="grid md:grid-cols-2 gap-6 mt-5">
+        <!-- diagram -->
+        <svg viewBox="0 0 320 320" class="w-full">
+          <!-- M -->
+          <g class="mesi-node" data-state="M" style="color:#ef4444">
+            <circle cx="80" cy="80" r="42" fill="#0f1525" stroke="#ef4444" stroke-width="2"/>
+            <text x="80" y="78" text-anchor="middle" fill="#ef4444" font-size="22" font-weight="bold">M</text>
+            <text x="80" y="96" text-anchor="middle" fill="#8b9bb4" font-size="9">Modified</text>
+          </g>
+          <!-- E -->
+          <g class="mesi-node" data-state="E" style="color:#eab308">
+            <circle cx="240" cy="80" r="42" fill="#0f1525" stroke="#eab308" stroke-width="2"/>
+            <text x="240" y="78" text-anchor="middle" fill="#eab308" font-size="22" font-weight="bold">E</text>
+            <text x="240" y="96" text-anchor="middle" fill="#8b9bb4" font-size="9">Exclusive</text>
+          </g>
+          <!-- S -->
+          <g class="mesi-node" data-state="S" style="color:#22c55e">
+            <circle cx="240" cy="240" r="42" fill="#0f1525" stroke="#22c55e" stroke-width="2"/>
+            <text x="240" y="238" text-anchor="middle" fill="#22c55e" font-size="22" font-weight="bold">S</text>
+            <text x="240" y="256" text-anchor="middle" fill="#8b9bb4" font-size="9">Shared</text>
+          </g>
+          <!-- I -->
+          <g class="mesi-node" data-state="I" style="color:#8b9bb4">
+            <circle cx="80" cy="240" r="42" fill="#0f1525" stroke="#8b9bb4" stroke-width="2"/>
+            <text x="80" y="238" text-anchor="middle" fill="#8b9bb4" font-size="22" font-weight="bold">I</text>
+            <text x="80" y="256" text-anchor="middle" fill="#8b9bb4" font-size="9">Invalid</text>
+          </g>
+          <!-- edges (decorative) -->
+          <line x1="122" y1="80" x2="198" y2="80" stroke="#243049"/>
+          <line x1="240" y1="122" x2="240" y2="198" stroke="#243049"/>
+          <line x1="122" y1="240" x2="198" y2="240" stroke="#243049"/>
+          <line x1="80" y1="198" x2="80" y2="122" stroke="#243049"/>
+          <line x1="110" y1="110" x2="210" y2="210" stroke="#243049" stroke-dasharray="4"/>
+        </svg>
+
+        <!-- live state panel -->
+        <div>
+          <div class="rounded-lg border border-line p-4">
+            <div class="text-xs text-muted">Current state</div>
+            <div id="mesiState" class="text-3xl font-bold mt-1">Invalid</div>
+            <div id="mesiDesc" class="text-sm text-muted mt-2"></div>
+            <div class="grid grid-cols-3 gap-2 mt-3 text-center text-[11px]">
+              <div class="rounded border border-line p-2"><div class="text-muted">Valid?</div><div id="mValid" class="font-bold"></div></div>
+              <div class="rounded border border-line p-2"><div class="text-muted">Dirty?</div><div id="mDirty" class="font-bold"></div></div>
+              <div class="rounded border border-line p-2"><div class="text-muted">Others?</div><div id="mShared" class="font-bold"></div></div>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="text-xs text-muted mb-2">Drive an event:</div>
+            <div id="mesiEvents" class="grid grid-cols-2 gap-2"></div>
+          </div>
+          <div id="mesiLog" class="mt-3 text-sm text-accent min-h-[2.5rem]"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- false sharing -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Cache-line bouncing &amp; false sharing</h3>
+      <p class="text-sm text-muted mt-1">Two cores write to <i>different</i> variables that happen to share a 64-byte line. Every write invalidates the other core's copy (M→I) — the line ping-pongs across the interconnect even though there's no real data dependency.</p>
+
+      <div class="grid md:grid-cols-2 gap-6 mt-4">
+        <div>
+          <div class="text-xs text-dram mb-1 font-semibold">✗ False sharing — both vars in one line</div>
+<pre class="p-3 text-[12px]"><code><span class="tok-key">struct</span> { <span class="tok-ty">long</span> a; <span class="tok-ty">long</span> b; } s;  <span class="tok-cmt">// 16 B, one line</span>
+<span class="tok-cmt">// thread 0: ++s.a;   thread 1: ++s.b;</span>
+<span class="tok-cmt">// → line bounces M→I→M→I every iteration</span></code></pre>
+        </div>
+        <div>
+          <div class="text-xs text-l1 mb-1 font-semibold">✓ Padded to separate lines</div>
+<pre class="p-3 text-[12px]"><code><span class="tok-key">struct</span> {
+  <span class="tok-ty">long</span> a; <span class="tok-key">char</span> pad[<span class="tok-num">56</span>]; <span class="tok-cmt">// fill rest of line</span>
+  <span class="tok-ty">long</span> b;
+} s; <span class="tok-cmt">// a and b now in different lines</span>
+<span class="tok-cmt">// or: alignas(64) per-thread counters</span></code></pre>
+        </div>
+      </div>
+      <p class="text-sm text-muted mt-3">Drepper notes this can be a <b>10–100×</b> slowdown that's invisible in the source — the variables look independent. Fixes: pad/align hot per-thread data to <span class="kbd">alignas(64)</span>, or keep mutable shared state out of hot loops.</p>
+    </div>
+
+    <!-- atomics -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Atomic operations &amp; the cost of synchronization</h3>
+      <ul class="mt-3 space-y-2 text-sm text-muted">
+        <li>→ Atomic RMW (<span class="kbd">lock xadd</span>, CAS) must obtain the line in <b class="text-dram">Modified/Exclusive</b> state first — it forces a coherency transaction even when uncontended.</li>
+        <li>→ Under contention, the line bounces and atomics serialize: throughput collapses as core count rises. This is why lock-free isn't automatically fast.</li>
+        <li>→ Memory barriers (<span class="kbd">mfence</span>) constrain reordering but don't make memory faster — they add stalls. Prefer per-core/sharded state to reduce coherency traffic in the first place.</li>
+      </ul>
+    </div>
+  </section>
+</template>
+
+<!-- ========== CH 4 : VIRTUAL MEMORY ========== -->
+<template data-title="4 · Virtual Memory, Page Tables &amp; TLB" data-id="vm">
+  <section class="chapter">
+    <div class="tag text-accent2">Chapter 4 — OS Interaction</div>
+    <h2 class="text-3xl font-bold mt-1">Virtual Memory, Page Tables &amp; the TLB</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      Every address your program uses is virtual. The MMU translates it to physical via multi-level page tables — and
+      that translation is itself a memory access (several, actually). The <b>TLB</b> caches translations so the common
+      case is free.
+    </p>
+
+    <!-- multilevel walk -->
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">x86-64 four-level page walk</h3>
+      <p class="text-sm text-muted mt-1">A 48-bit virtual address splits into four 9-bit indices + a 12-bit page offset. Each level is a memory access — a TLB miss can mean <b>4 dependent DRAM loads</b> before your actual load even starts.</p>
+      <div class="mt-4 overflow-x-auto">
+        <div class="flex items-center gap-2 min-w-[700px] text-center text-xs">
+          <div class="rounded-lg border border-accent2 bg-panel2 px-3 py-2"><div class="text-accent2 font-bold">VA[47:39]</div><div class="text-muted">PML4 idx</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-line px-3 py-2"><div class="font-bold">PML4</div><div class="text-muted">+CR3</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-accent2 bg-panel2 px-3 py-2"><div class="text-accent2 font-bold">VA[38:30]</div><div class="text-muted">PDPT idx</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-line px-3 py-2"><div class="font-bold">PDPT</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-accent2 bg-panel2 px-3 py-2"><div class="text-accent2 font-bold">VA[29:21]</div><div class="text-muted">PD idx</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-line px-3 py-2"><div class="font-bold">PD</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-accent2 bg-panel2 px-3 py-2"><div class="text-accent2 font-bold">VA[20:12]</div><div class="text-muted">PT idx</div></div>
+          <span class="text-muted">→</span>
+          <div class="rounded-lg border border-l1 px-3 py-2"><div class="text-l1 font-bold">Phys frame</div><div class="text-muted">+VA[11:0]</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">TLB: caching translations</h3>
+      <div class="grid sm:grid-cols-2 gap-4 mt-3 text-sm">
+        <div class="rounded-lg border border-l1 p-4"><b class="text-l1">TLB hit</b><p class="text-muted mt-1">VA→PA in ~1 cycle. The page walk is skipped entirely. TLBs are small &amp; fully/highly associative.</p></div>
+        <div class="rounded-lg border border-dram p-4"><b class="text-dram">TLB miss</b><p class="text-muted mt-1">Hardware page walk (or OS fault). Up to 4 memory accesses on x86-64; the page-table levels are themselves cached, softening it.</p></div>
+      </div>
+      <p class="text-sm text-muted mt-3">TLB reach is small (e.g. 64 × 4 KB = 256 KB). A program striding across many pages thrashes the TLB even if data fits in L2 — a hidden cost separate from cache misses.</p>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Huge Pages — extending TLB reach</h3>
+      <ul class="mt-3 space-y-2 text-sm text-muted">
+        <li>→ 2 MB / 1 GB pages replace 512 / 262144 small entries with <b>one</b> TLB entry. One 2 MB hugepage = 512× the reach per entry.</li>
+        <li>→ Shorter walk too: a 2 MB page stops at the PD level (3 levels), a 1 GB page at the PDPT (2 levels).</li>
+        <li>→ Cost: internal fragmentation &amp; allocation friction (<span class="kbd">hugetlbfs</span>, THP). Big win for large contiguous working sets (DBs, JVM heaps, ML tensors).</li>
+      </ul>
+    </div>
+  </section>
+</template>
+
+<!-- ========== CH 5 : NUMA ========== -->
+<template data-title="5 · NUMA" data-id="numa">
+  <section class="chapter">
+    <div class="tag text-accent2">Chapter 5 — Topology</div>
+    <h2 class="text-3xl font-bold mt-1">NUMA — Non-Uniform Memory Access</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      Once memory controllers moved on-die, each socket got its own local DRAM. Accessing your own socket's memory is
+      fast; reaching another socket's memory crosses the interconnect (QPI/UPI/Infinity Fabric) and costs more. Memory
+      latency now depends on <i>where</i> the data lives relative to the core touching it.
+    </p>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Local vs. remote access</h3>
+      <div class="mt-4 overflow-x-auto">
+      <svg viewBox="0 0 620 240" class="w-full min-w-[560px]">
+        <!-- node 0 -->
+        <rect x="30" y="40" width="220" height="160" rx="12" fill="#0f1525" stroke="#22c55e"/>
+        <text x="140" y="64" text-anchor="middle" fill="#22c55e" font-size="13" font-weight="bold">NUMA Node 0</text>
+        <rect x="55" y="80" width="80" height="40" rx="6" fill="#141c30" stroke="#243049"/><text x="95" y="105" text-anchor="middle" fill="#e6edf6" font-size="11">Cores</text>
+        <rect x="150" y="80" width="80" height="40" rx="6" fill="#141c30" stroke="#243049"/><text x="190" y="105" text-anchor="middle" fill="#e6edf6" font-size="11">IMC</text>
+        <rect x="55" y="140" width="175" height="40" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="142" y="165" text-anchor="middle" fill="#ef4444" font-size="11">Local DRAM</text>
+        <!-- node 1 -->
+        <rect x="370" y="40" width="220" height="160" rx="12" fill="#0f1525" stroke="#22c55e"/>
+        <text x="480" y="64" text-anchor="middle" fill="#22c55e" font-size="13" font-weight="bold">NUMA Node 1</text>
+        <rect x="395" y="80" width="80" height="40" rx="6" fill="#141c30" stroke="#243049"/><text x="435" y="105" text-anchor="middle" fill="#e6edf6" font-size="11">Cores</text>
+        <rect x="490" y="80" width="80" height="40" rx="6" fill="#141c30" stroke="#243049"/><text x="530" y="105" text-anchor="middle" fill="#e6edf6" font-size="11">IMC</text>
+        <rect x="395" y="140" width="175" height="40" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="482" y="165" text-anchor="middle" fill="#ef4444" font-size="11">Local DRAM</text>
+        <!-- interconnect -->
+        <line x1="250" y1="100" x2="370" y2="100" stroke="#eab308" stroke-width="3"/>
+        <text x="310" y="92" text-anchor="middle" fill="#eab308" font-size="10">QPI / UPI</text>
+        <text x="310" y="118" text-anchor="middle" fill="#8b9bb4" font-size="9">+latency</text>
+        <!-- local arrow -->
+        <text x="95" y="220" fill="#22c55e" font-size="10">local: ~fast ✓</text>
+        <text x="400" y="220" fill="#ef4444" font-size="10">remote (0→1): 1.5–2× latency, less BW</text>
+      </svg>
+      </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Allocation strategies &amp; tooling</h3>
+      <ul class="mt-3 space-y-2 text-sm text-muted">
+        <li>→ <b class="text-white">First-touch policy:</b> Linux allocates a page on the node of the thread that <i>first writes</i> it — not the one that mallocs it. Initialize data on the thread that will use it (parallel-init pattern).</li>
+        <li>→ <b class="text-white">Pin threads &amp; memory:</b> <span class="kbd">numactl --cpunodebind --membind</span>, <span class="kbd">libnuma</span>, <span class="kbd">sched_setaffinity</span>. Keep a worker and its data co-located.</li>
+        <li>→ <b class="text-white">Interleave</b> across nodes for bandwidth-bound shared structures (<span class="kbd">numactl --interleave</span>).</li>
+        <li>→ Watch the implicit cost: cross-node coherency traffic + remote misses stack — a NUMA-oblivious threaded program can run <i>slower</i> on more sockets.</li>
+      </ul>
+    </div>
+  </section>
+</template>
+
+<!-- ========== CH 6 : PROGRAMMER OPTIMIZATIONS ========== -->
+<template data-title="6 · Programmer Optimizations" data-id="optim">
+  <section class="chapter">
+    <div class="tag text-accent2">Chapter 6 — Your Code</div>
+    <h2 class="text-3xl font-bold mt-1">What <i>You</i> Can Do</h2>
+    <p class="text-muted mt-3 leading-relaxed">
+      Everything above pays off here. Drepper's optimization advice reduces to: maximize locality, respect cache lines,
+      and feed the prefetcher. The matrix-multiply demo below is the canonical example — same FLOPs, wildly different
+      memory behavior.
+    </p>
+
+    <!-- INTERACTIVE 3: matrix mult -->
+    <div class="card p-6 mt-6" id="mmCard">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <h3 class="font-semibold text-lg">🔧 Interactive — Matrix multiply access patterns</h3>
+        <div class="flex gap-2 flex-wrap">
+          <button data-mode="naive" class="mmBtn pill px-3 py-1.5 text-sm hover:bg-panel2">Naïve i-j-k</button>
+          <button data-mode="transpose" class="mmBtn pill px-3 py-1.5 text-sm hover:bg-panel2">Transposed B</button>
+          <button data-mode="tiled" class="mmBtn pill px-3 py-1.5 text-sm hover:bg-panel2">Tiled (blocked)</button>
+          <button id="mmPlay" class="pill px-3 py-1.5 text-sm bg-accent text-ink font-semibold">▶ Animate</button>
+        </div>
+      </div>
+      <p class="text-sm text-muted mt-1">Watch which cells of <b>B</b> get touched. <span class="text-dram">Red</span> = a likely cache miss (long column stride); <span class="text-l1">green</span> = sequential, cache-friendly.</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5 items-start">
+        <div>
+          <div class="text-xs text-muted mb-1 text-center">A (row-major)</div>
+          <div id="matA" class="grid gap-0.5 mx-auto"></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted mb-1 text-center">B (row-major)</div>
+          <div id="matB" class="grid gap-0.5 mx-auto"></div>
+        </div>
+        <div>
+          <div class="text-xs text-muted mb-1 text-center">C = A·B</div>
+          <div id="matC" class="grid gap-0.5 mx-auto"></div>
+        </div>
+      </div>
+
+      <div class="mt-5 rounded-lg border border-line bg-panel2/40 p-4 text-sm">
+        <div id="mmTitle" class="font-semibold text-accent"></div>
+        <div id="mmBody" class="text-muted mt-1"></div>
+        <div class="mt-2 flex gap-6 text-xs">
+          <span>Cache-friendly accesses: <b id="mmGood" class="text-l1">0</b></span>
+          <span>Long-stride (miss-prone): <b id="mmBad" class="text-dram">0</b></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- code patterns -->
+    <div class="grid md:grid-cols-2 gap-4 mt-6">
+      <div class="card p-5">
+        <div class="text-xs text-dram font-semibold mb-2">✗ Naïve — B accessed column-wise (stride = N)</div>
+<pre class="p-3 text-[12px]"><code><span class="tok-key">for</span>(i=<span class="tok-num">0</span>;i&lt;N;i++)
+ <span class="tok-key">for</span>(j=<span class="tok-num">0</span>;j&lt;N;j++)
+  <span class="tok-key">for</span>(k=<span class="tok-num">0</span>;k&lt;N;k++)
+   C[i][j] += A[i][k]*B[k][j]; <span class="tok-cmt">// B jumps a row each k</span></code></pre>
+      </div>
+      <div class="card p-5">
+        <div class="text-xs text-l1 font-semibold mb-2">✓ Loop reorder i-k-j — B &amp; C streamed row-wise</div>
+<pre class="p-3 text-[12px]"><code><span class="tok-key">for</span>(i=<span class="tok-num">0</span>;i&lt;N;i++)
+ <span class="tok-key">for</span>(k=<span class="tok-num">0</span>;k&lt;N;k++)
+  <span class="tok-key">for</span>(j=<span class="tok-num">0</span>;j&lt;N;j++)
+   C[i][j] += A[i][k]*B[k][j]; <span class="tok-cmt">// B[k][*] sequential</span></code></pre>
+      </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Blocking / tiling — keep a sub-block resident in cache</h3>
+<pre class="p-3 text-[12px] mt-2"><code><span class="tok-key">for</span>(ii=<span class="tok-num">0</span>;ii&lt;N;ii+=B)
+ <span class="tok-key">for</span>(kk=<span class="tok-num">0</span>;kk&lt;N;kk+=B)
+  <span class="tok-key">for</span>(jj=<span class="tok-num">0</span>;jj&lt;N;jj+=B)
+   <span class="tok-key">for</span>(i=ii;i&lt;ii+B;i++)            <span class="tok-cmt">// B×B tile fits in L1/L2</span>
+    <span class="tok-key">for</span>(k=kk;k&lt;kk+B;k++)
+     <span class="tok-key">for</span>(j=jj;j&lt;jj+B;j++)
+      C[i][j] += A[i][k]*B[k][j];</code></pre>
+      <p class="text-sm text-muted mt-3">Choose tile size B so that one tile of each operand fits in the target cache level — turns capacity misses into reuse. This is the single biggest win in the paper's matmul study (multi-× speedups).</p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4 mt-6">
+      <div class="card p-5">
+        <h3 class="font-semibold">Data alignment &amp; structure layout</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-muted">
+          <li>→ <span class="kbd">alignas(64)</span> hot structs to line boundaries; avoid straddling.</li>
+          <li>→ <b>SoA over AoS</b> when you stream one field — no wasted line bytes.</li>
+          <li>→ Group hot fields together, cold fields elsewhere (struct splitting).</li>
+        </ul>
+      </div>
+      <div class="card p-5">
+        <h3 class="font-semibold">Prefetching</h3>
+        <ul class="mt-2 space-y-1.5 text-sm text-muted">
+          <li>→ HW prefetchers detect linear strides automatically — <b>so keep access linear</b>.</li>
+          <li>→ Software hint: <span class="kbd">__builtin_prefetch(p, rw, locality)</span> / <span class="kbd">_mm_prefetch</span> for irregular but predictable accesses (e.g. linked-list / pointer chasing ahead).</li>
+          <li>→ Don't over-prefetch: it wastes bandwidth &amp; can evict useful lines.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+      <h3 class="font-semibold text-lg">Measure it — Drepper's tools</h3>
+      <p class="text-sm text-muted mt-2">Use hardware performance counters to see the truth: <span class="kbd">perf stat -e cache-misses,LLC-load-misses,dTLB-load-misses</span>, <span class="kbd">cachegrind</span>, and the paper's own <span class="kbd">oprofile</span>-based methodology. Optimize against measured miss rates, not guesses.</p>
+    </div>
+
+    <div class="card p-6 mt-6 border-l-4 border-l1">
+      <h3 class="font-semibold text-lg text-l1">The one-sentence summary</h3>
+      <p class="text-muted mt-2">Lay out data so the bytes you'll use next are the bytes the hardware already fetched — sequential, line-aligned, reused while hot, and local to the core that touches it.</p>
+    </div>
+  </section>
+</template>
+
+<!-- ===================== APP SCRIPT ===================== -->
+<script>
+(function(){
+  "use strict";
+
+  // ---------- build nav + inject chapters ----------
+  const templates = Array.from(document.querySelectorAll('template[data-id]'));
+  const content   = document.getElementById('content');
+  const nav        = document.getElementById('nav');
+  const mobileNav  = document.getElementById('mobileNav');
+  const chapters   = [];
+
+  templates.forEach((tpl, i) => {
+    const id    = tpl.dataset.id;
+    const title = tpl.dataset.title;
+    const node  = tpl.content.firstElementChild.cloneNode(true);
+    node.id = 'ch-' + id;
+    content.appendChild(node);
+    chapters.push({id, title, node});
+
+    const a = document.createElement('a');
+    a.href = '#'; a.dataset.idx = i;
+    a.className = 'nav-link block px-5 py-2.5 text-muted';
+    a.innerHTML = `<span class="text-[11px] text-line/0 mr-2 font-mono">${String(i).padStart(2,'0')}</span>${title}`;
+    a.addEventListener('click', e => { e.preventDefault(); go(i); });
+    nav.appendChild(a);
+
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = title.replace(/&amp;/g,'&');
+    mobileNav.appendChild(opt);
+  });
+
+  let cur = 0;
+  const navLinks = Array.from(nav.querySelectorAll('.nav-link'));
+  function go(i){
+    cur = Math.max(0, Math.min(chapters.length-1, i));
+    chapters.forEach((c,idx)=> c.node.classList.toggle('active', idx===cur));
+    navLinks.forEach((l,idx)=> l.classList.toggle('active', idx===cur));
+    mobileNav.value = cur;
+    document.getElementById('progressBar').style.width = ((cur)/(chapters.length-1)*100)+'%';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  document.getElementById('nextBtn').onclick = ()=> go(cur+1);
+  document.getElementById('prevBtn').onclick = ()=> go(cur-1);
+  mobileNav.onchange = e => go(+e.target.value);
+  document.addEventListener('keydown', e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+    if(e.key==='ArrowRight') go(cur+1);
+    if(e.key==='ArrowLeft')  go(cur-1);
+  });
+
+  // ---------- Overview: latency pyramid ----------
+  const tiers = [
+    {n:'Register',    cyc:'~0',     w:18, c:'bg-l1',   note:'On the execution unit. Effectively free — no memory access at all.'},
+    {n:'L1 cache',    cyc:'~3–4',   w:30, c:'bg-l1',   note:'Per-core SRAM. A hit here is the gold standard; the prefetcher tries to keep you here.'},
+    {n:'L2 cache',    cyc:'~10–14', w:45, c:'bg-l2',   note:'Still on-die, per-core. ~3–4× an L1 hit but far better than going off-die.'},
+    {n:'L3 / LLC',    cyc:'~40–75', w:65, c:'bg-l3',   note:'Shared last-level cache. Also the coherency point where MESI is resolved between cores.'},
+    {n:'Main memory', cyc:'~150–250+', w:92, c:'bg-dram', note:'Off-die DRAM. A full miss costs hundreds of cycles — enough to retire hundreds of instructions. THE bottleneck.'},
+  ];
+  const pyr = document.getElementById('pyramid');
+  const pyrNote = document.getElementById('pyramidNote');
+  tiers.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 cursor-pointer group';
+    row.innerHTML = `
+      <div class="w-28 shrink-0 text-sm">${t.n}</div>
+      <div class="flex-1 h-8 rounded-md bg-panel2 overflow-hidden">
+        <div class="${t.c} h-full rounded-md flex items-center justify-end pr-2 text-[11px] font-mono text-ink/80 font-bold transition-all group-hover:brightness-125" style="width:${t.w}%">${t.cyc} cyc</div>
+      </div>`;
+    row.addEventListener('mouseenter', ()=> pyrNote.innerHTML = `<b class="text-white">${t.n}:</b> ${t.note}`);
+    row.addEventListener('click', ()=> pyrNote.innerHTML = `<b class="text-white">${t.n}:</b> ${t.note}`);
+    pyr.appendChild(row);
+  });
+
+  // ---------- Ch1: DRAM read steps ----------
+  const dramData = [
+    {t:'1 · RAS — Row Address Strobe', b:'The row part of the address is placed on the multiplexed address lines and RAS is asserted. The selected row is read into the sense amplifiers (the "row buffer"). This opening of the row costs tRCD before columns can be read.'},
+    {t:'2 · tRCD elapses', b:'RAS-to-CAS delay. The sense amps must settle on the tiny voltage differences from the capacitors. No data yet — pure latency. Only after tRCD may the column be selected.'},
+    {t:'3 · CAS — Column Address Strobe', b:'The column part of the address goes on the SAME address lines (multiplexed) and CAS is asserted. After CAS Latency (CL), the first data word appears. Subsequent words of the burst stream out back-to-back — cheap.'},
+    {t:'4 · Precharge (tRP)', b:'Because the read was destructive, the row buffer is written back and the bank is precharged (closed) so a different row can be opened. tRP must elapse before the next RAS to this bank. Sequential access keeps the row open and skips this!'},
+  ];
+  let dramStep = 0;
+  const dramStepsEl = document.getElementById('dramSteps');
+  dramData.forEach((d,i)=>{
+    const c = document.createElement('div');
+    c.className = 'rounded-lg border border-line p-3 text-xs text-center transition-all';
+    c.textContent = d.t.split('—')[0].split('·')[1] ? d.t.split('·')[0]+'· '+d.t.split('·')[1].split('—')[0].split('(')[0].trim() : d.t;
+    c.dataset.i = i;
+    dramStepsEl.appendChild(c);
+  });
+  function renderDram(){
+    Array.from(dramStepsEl.children).forEach((c,i)=>{
+      const active = i<=dramStep;
+      c.classList.toggle('border-accent', i===dramStep);
+      c.classList.toggle('bg-accent/10', i===dramStep);
+      c.classList.toggle('opacity-40', i>dramStep);
+    });
+    document.getElementById('dramTitle').textContent = dramData[dramStep].t;
+    document.getElementById('dramBody').textContent  = dramData[dramStep].b;
+  }
+  document.getElementById('dramNext').onclick = ()=>{ dramStep=(dramStep+1)%dramData.length; renderDram(); };
+  document.getElementById('dramPrev').onclick = ()=>{ dramStep=(dramStep-1+dramData.length)%dramData.length; renderDram(); };
+  renderDram();
+
+  // ---------- Ch2: 64-byte line render ----------
+  const lineBytes = document.getElementById('lineBytes');
+  for(let i=0;i<64;i++){
+    const d = document.createElement('div');
+    d.className='aspect-square rounded-sm bg-l1/20 border border-l1/40';
+    d.title='byte '+i;
+    lineBytes.appendChild(d);
+  }
+  // highlight one byte access -> whole line glows
+  lineBytes.addEventListener('mouseover', ()=> Array.from(lineBytes.children).forEach(c=>c.classList.add('bg-l1/50')));
+  lineBytes.addEventListener('mouseout',  ()=> Array.from(lineBytes.children).forEach(c=>c.classList.remove('bg-l1/50')));
+
+  // ---------- INTERACTIVE 1: address decode ----------
+  function log2(n){ return Math.round(Math.log(n)/Math.log(2)); }
+  function decode(){
+    const size = +document.getElementById('cacheSize').value * 1024;
+    const line = +document.getElementById('lineSize').value;
+    const ways = +document.getElementById('ways').value;
+    const sets = size/(line*ways);
+    const offBits = log2(line);
+    const setBits = log2(sets);
+    const tagBits = 32 - offBits - setBits;
+
+    let raw = document.getElementById('addrInput').value.trim().replace(/^0x/i,'');
+    let val = parseInt(raw,16);
+    if(isNaN(val)) val = 0;
+    val = val >>> 0;
+    const bin = (val>>>0).toString(2).padStart(32,'0');
+
+    // bitfield
+    const bf = document.getElementById('bitField');
+    bf.innerHTML='';
+    const colors = [['Tag', tagBits,'bg-accent2/30 text-accent2'],['Set', setBits,'bg-accent/30 text-accent'],['Offset', offBits,'bg-l1/30 text-l1']];
+    let pos=0;
+    colors.forEach(([name,bits,cls])=>{
+      if(bits<=0) return;
+      const seg = document.createElement('div');
+      seg.className = cls+' py-2 border-r border-line';
+      seg.style.flex = bits;
+      seg.textContent = bin.slice(pos,pos+bits);
+      seg.title = name+': '+bits+' bits';
+      bf.appendChild(seg);
+      pos+=bits;
+    });
+
+    const lg = document.getElementById('bitLegend');
+    lg.innerHTML='';
+    [['Tag',tagBits,'text-accent2'],['Set',setBits,'text-accent'],['Offset',offBits,'text-l1']].forEach(([n,b,cl])=>{
+      if(b<=0) return;
+      const s=document.createElement('div'); s.className=cl; s.style.flex=b;
+      s.textContent=`${n} (${b}b)`; lg.appendChild(s);
+    });
+
+    const offVal = val & (line-1);
+    const setVal = (val>>>offBits) & (sets-1);
+    const tagVal = val >>> (offBits+setBits);
+
+    const out = document.getElementById('decodeOut');
+    out.innerHTML = `
+      <div class="rounded-lg border border-accent2 p-4">
+        <div class="text-accent2 text-xs font-bold">TAG · ${tagBits} bits</div>
+        <div class="font-mono text-lg mt-1">0x${(tagVal>>>0).toString(16).toUpperCase()}</div>
+        <div class="text-xs text-muted mt-1">Stored with the line; compared on lookup to confirm a hit.</div>
+      </div>
+      <div class="rounded-lg border border-accent p-4">
+        <div class="text-accent text-xs font-bold">SET INDEX · ${setBits} bits</div>
+        <div class="font-mono text-lg mt-1">${setVal} <span class="text-muted text-sm">/ ${sets} sets</span></div>
+        <div class="text-xs text-muted mt-1">Selects the set; the ${ways} ways inside are searched in parallel.</div>
+      </div>
+      <div class="rounded-lg border border-l1 p-4">
+        <div class="text-l1 text-xs font-bold">OFFSET · ${offBits} bits</div>
+        <div class="font-mono text-lg mt-1">${offVal} <span class="text-muted text-sm">/ ${line} B</span></div>
+        <div class="text-xs text-muted mt-1">Byte position within the ${line}-byte line.</div>
+      </div>`;
+  }
+  ['cacheSize','lineSize','ways','addrInput'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', decode);
+    document.getElementById(id).addEventListener('change', decode);
+  });
+  decode();
+
+  // ---------- INTERACTIVE 2: MESI ----------
+  const mesi = {
+    M:{name:'Modified', desc:'This core holds the ONLY copy and it is dirty (differs from memory). Must write back before anyone else reads. No other cache has it.', valid:true,dirty:true,shared:false,color:'#ef4444'},
+    E:{name:'Exclusive',desc:'This core holds the only copy and it is clean (matches memory). Can be modified silently → goes to M with no bus traffic.', valid:true,dirty:false,shared:false,color:'#eab308'},
+    S:{name:'Shared',   desc:'Clean copy that may also exist in other cores’ caches. Reads are free; a write must invalidate the others first.', valid:true,dirty:false,shared:true,color:'#22c55e'},
+    I:{name:'Invalid',  desc:'No valid data. The next access is a miss that must fetch the line (and may downgrade other cores’ copies).', valid:false,dirty:false,shared:false,color:'#8b9bb4'},
+  };
+  // transition table: state -> event -> {to, msg}
+  const T = {
+    I:{
+      'Local read (miss, no sharer)':{to:'E',msg:'Miss → fetch from memory; no other copy exists → Exclusive.'},
+      'Local read (miss, sharer exists)':{to:'S',msg:'Miss → another core has it → load as Shared.'},
+      'Local write (miss)':{to:'M',msg:'Write miss → Read-For-Ownership: invalidate all others, fetch, mark Modified.'},
+    },
+    E:{
+      'Local write':{to:'M',msg:'Silent upgrade E→M — we already own it exclusively, no bus traffic.'},
+      'Remote read (snoop)':{to:'S',msg:'Another core reads → we downgrade to Shared (both clean copies).'},
+      'Local read':{to:'E',msg:'Hit, stays Exclusive.'},
+    },
+    M:{
+      'Remote read (snoop)':{to:'S',msg:'Other core reads → we write back dirty data, then become Shared.'},
+      'Remote write (snoop)':{to:'I',msg:'Other core writes → we write back, then Invalidate our copy.'},
+      'Local read/write':{to:'M',msg:'Hit on our exclusive dirty copy — stays Modified.'},
+    },
+    S:{
+      'Local write':{to:'M',msg:'Write → broadcast invalidate to all other sharers, then Modified.'},
+      'Remote write (snoop)':{to:'I',msg:'Another core writes → our copy is Invalidated.'},
+      'Local read':{to:'S',msg:'Hit, stays Shared.'},
+    },
+  };
+  let mState='I';
+  const nodes = Array.from(document.querySelectorAll('.mesi-node'));
+  function renderMesi(msg){
+    const s=mesi[mState];
+    document.getElementById('mesiState').textContent=s.name;
+    document.getElementById('mesiState').style.color=s.color;
+    document.getElementById('mesiDesc').textContent=s.desc;
+    document.getElementById('mValid').textContent = s.valid?'✓':'✗';
+    document.getElementById('mValid').style.color = s.valid?'#22c55e':'#ef4444';
+    document.getElementById('mDirty').textContent = s.dirty?'dirty':'clean';
+    document.getElementById('mShared').textContent= s.shared?'yes':'no';
+    nodes.forEach(n=> n.classList.toggle('active', n.dataset.state===mState));
+    // events
+    const evWrap=document.getElementById('mesiEvents');
+    evWrap.innerHTML='';
+    Object.keys(T[mState]).forEach(ev=>{
+      const b=document.createElement('button');
+      b.className='pill px-2 py-1.5 text-xs hover:bg-panel2 text-left';
+      b.textContent=ev;
+      b.onclick=()=>{ const tr=T[mState][ev]; mState=tr.to; renderMesi(`<b>${ev}</b> → ${tr.msg}`); };
+      evWrap.appendChild(b);
+    });
+    document.getElementById('mesiLog').innerHTML = msg||'';
+  }
+  document.getElementById('mesiReset').onclick=()=>{ mState='I'; renderMesi('Reset to Invalid.'); };
+  renderMesi('Start at <b>Invalid</b> — pick an event to see the transition.');
+
+  // ---------- INTERACTIVE 3: matrix mult ----------
+  const N=8, sz=N*N;
+  function buildGrid(el){
+    el.style.gridTemplateColumns=`repeat(${N},1fr)`;
+    el.style.width='100%'; el.style.maxWidth='180px';
+    el.innerHTML='';
+    for(let i=0;i<sz;i++){
+      const c=document.createElement('div');
+      c.className='mcell aspect-square rounded-[2px] bg-panel2 border border-line/50';
+      el.appendChild(c);
+    }
+    return Array.from(el.children);
+  }
+  const cellsA=buildGrid(document.getElementById('matA'));
+  const cellsB=buildGrid(document.getElementById('matB'));
+  const cellsC=buildGrid(document.getElementById('matC'));
+  let mmMode='naive', mmTimer=null;
+  const mmInfo={
+    naive:{t:'Naïve i-j-k order',b:'For each output C[i][j], we sweep k down a COLUMN of B (B[k][j]). Column access has stride N → each step likely lands in a new cache line → cache-thrashing. Worst pattern.'},
+    transpose:{t:'Transposed B (or i-k-j reorder)',b:'B is pre-transposed so the inner loop walks B row-wise (sequential). The hardware prefetcher loves this — accesses are contiguous, lines fully used.'},
+    tiled:{t:'Tiled / blocked',b:'Work on B×B sub-blocks that fit in cache. Each loaded tile is reused many times before eviction → turns capacity misses into cache hits. Best for large N.'}
+  };
+  function clearGrids(){ [...cellsA,...cellsB,...cellsC].forEach(c=>{c.className='mcell aspect-square rounded-[2px] bg-panel2 border border-line/50';}); }
+  function setMode(m){
+    mmMode=m;
+    document.querySelectorAll('.mmBtn').forEach(b=>{
+      b.classList.toggle('bg-accent2', b.dataset.mode===m);
+      b.classList.toggle('text-ink', b.dataset.mode===m);
+      b.classList.toggle('font-semibold', b.dataset.mode===m);
+    });
+    document.getElementById('mmTitle').textContent=mmInfo[m].t;
+    document.getElementById('mmBody').textContent=mmInfo[m].b;
+    // static preview of B access pattern
+    clearGrids();
+    let good=0,bad=0;
+    if(m==='naive'){
+      // show column access on B
+      for(let k=0;k<N;k++){ cellsB[k*N+0].classList.add('bg-dram','border-dram'); bad++; }
+    } else if(m==='transpose'){
+      for(let j=0;j<N;j++){ cellsB[0*N+j].classList.add('bg-l1','border-l1'); good++; }
+    } else {
+      const B=4;
+      for(let i=0;i<B;i++)for(let j=0;j<B;j++){ cellsB[i*N+j].classList.add('bg-l3','border-l3'); good++; }
+    }
+    document.getElementById('mmGood').textContent=good;
+    document.getElementById('mmBad').textContent=bad;
+  }
+  document.querySelectorAll('.mmBtn').forEach(b=> b.onclick=()=>{ stopMM(); setMode(b.dataset.mode); });
+
+  function stopMM(){ if(mmTimer){clearInterval(mmTimer); mmTimer=null; document.getElementById('mmPlay').textContent='▶ Animate';} }
+  document.getElementById('mmPlay').onclick=()=>{
+    if(mmTimer){ stopMM(); return; }
+    document.getElementById('mmPlay').textContent='⏸ Stop';
+    clearGrids();
+    let good=0,bad=0;
+    // sequence of (i,j,k) steps depending on mode
+    const steps=[];
+    if(mmMode==='naive'){
+      for(let i=0;i<N;i++)for(let j=0;j<N;j++)for(let k=0;k<N;k++)steps.push({i,j,k,miss:true});
+    } else if(mmMode==='transpose'){
+      for(let i=0;i<N;i++)for(let k=0;k<N;k++)for(let j=0;j<N;j++)steps.push({i,j,k,miss:false});
+    } else {
+      const B=4;
+      for(let ii=0;ii<N;ii+=B)for(let kk=0;kk<N;kk+=B)for(let jj=0;jj<N;jj+=B)
+        for(let i=ii;i<ii+B;i++)for(let k=kk;k<kk+B;k++)for(let j=jj;j<jj+B;j++)steps.push({i,j,k,miss:false});
+    }
+    let p=0;
+    const fast = mmMode==='naive'?40:18;
+    mmTimer=setInterval(()=>{
+      // fade previous
+      [...cellsA,...cellsB,...cellsC].forEach(c=>c.classList.remove('ring-2','ring-white','brightness-150'));
+      if(p>=steps.length){ stopMM(); return; }
+      const {i,j,k,miss}=steps[p];
+      cellsA[i*N+k].classList.add('bg-accent/40','border-accent');
+      cellsC[i*N+j].classList.add('bg-accent2/40','border-accent2');
+      const bcell=cellsB[k*N+j];
+      if(miss){ bcell.classList.add('bg-dram','border-dram'); bad++; }
+      else { bcell.classList.add('bg-l1','border-l1'); good++; }
+      bcell.classList.add('ring-2','ring-white');
+      document.getElementById('mmGood').textContent=good;
+      document.getElementById('mmBad').textContent=bad;
+      p++;
+    }, fast);
+  };
+  setMode('naive');
+
+  // ---------- init ----------
+  go(0);
+})();
+</script>
+</body>
+</html>

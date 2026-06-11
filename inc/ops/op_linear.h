@@ -3,10 +3,13 @@
 
 // #include "../../inc/graph/context.h"
 #include "../../inc/graph/graph.h"
-#include <string.h>
+#include <stdio.h>
 
-// typedef struct Tensor Tensor;
-// typedef struct Graph Graph;
+typedef struct LinearParams {
+    bool trans_weight;
+    bool is_bias;
+} LinearParams;
+
 
 size_t op_linear_scratch_bytes(const Tensor *tensor);
 Tensor *op_linear(

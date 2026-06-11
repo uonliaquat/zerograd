@@ -16,23 +16,31 @@ typedef enum DType {
 
 
 typedef struct Tensor {
+
+    // Identitiy
     size_t id;
     char name[128];
 
-    size_t data_offset;
-    size_t scratch_offset;
-    size_t nbytes;
-    size_t nbytes_scratch;
-    size_t nelems;
-
+    // Shape, type and sizes
     size_t shape[4];
     size_t stride[4];
     uint8_t ndim;
+    size_t nelems;
+    size_t nbytes;
+    DType d_type;
 
+
+    // Graph Structure
     struct Tensor *src[4];
     size_t nsrc;
-    DType d_type;
     OpType op_type;
+
+    // Memory Location 
+    size_t data_offset;
+    size_t scratch_offset;
+    size_t nbytes_scratch;
+
+    //OP configuration (How to compute)
     void *op_params;
 
 } Tensor;

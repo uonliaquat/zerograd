@@ -16,65 +16,9 @@ typedef enum OpType {
     OP_LAYER_NORM,
     OP_LINEAR,
     OP_ATTENTION,
+    OP_QKV_PROJ,
     OP_GELU
 } OpType;
-
-
-// typedef struct IndexParams {
-
-// } IndexParams;
-
-// typedef struct ArangePrams {
-
-// } ArangePrams;
-
-// typedef struct AddParams {
-
-// } AddParams;
-
-typedef struct LayerNormParams {
-    float eps;
-} LayerNormParams;
-
-typedef struct LinearParams {
-    bool trans_weight;
-    bool is_bias;
-} LinearParams;
-
-typedef struct AttentionParams{
-    size_t embed_dim;
-    size_t head_dim;
-    size_t n_heads;
-    size_t ctx_win;
-} AttentionParams;
-
-// typedef struct GeluParams {
-
-// } GeluParams;
-
-// typedef struct InputPrams {
-
-// } InputPrams;
-
-// typedef struct WeightParams {
-
-// } WeightParams;
-
-
-// typedef union OpParams {
-//     IndexParams index_params;
-//     ArangePrams arange_params;
-//     AddParams add_params;
-//     LayerNormParams layernorm_params;
-//     LinearParams linear_params;
-//     AttentionParams attn_parms;
-//     GeluParams gelu_params;
-//     InputPrams input_params;
-//     WeightParams weight_params;
-// } OpParams;
-
-
-// extern OpParams op_params[8];
 
 
 typedef struct OpVTable{
@@ -82,7 +26,7 @@ typedef struct OpVTable{
     size_t (*scratch_bytes)(const Tensor *);
 } OpVTable;
 
-extern OpVTable OpTable[8];
+extern OpVTable OpTable[9];
 
 static inline char *op_name(OpType op_type){
     switch(op_type){
@@ -93,13 +37,11 @@ static inline char *op_name(OpType op_type){
         case OP_LAYER_NORM: return "OP_LAYER_NORM";
         case OP_LINEAR:     return "OP_LINEAR";
         case OP_ATTENTION:  return "OP_ATTENTION";
+        case OP_QKV_PROJ:   return "OP_QKV_PROJ";
         case OP_GELU:       return "OP_GELU";
         default:            return "UNKNOWN";
     }
 }
-
-
-
 
 
 #endif

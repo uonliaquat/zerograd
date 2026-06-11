@@ -26,6 +26,7 @@ Tensor *op_attention(Graph *graph, const char *name,
     op_params->embed_dim = ndim;
     op_params->n_heads = nheads;
     op_params->head_dim = ndim / nheads;
+    op_params->ctx_win = ctx_win;
 
     tensor_create(out, name, (size_t[]){ctx_win, ndim}, 2, (Tensor*[]){qkv_proj}, 1, qkv_proj->d_type, OP_ATTENTION, op_params);
     return out;
@@ -34,19 +35,22 @@ Tensor *op_attention(Graph *graph, const char *name,
 void op_attention_forward(Context *ctx, Tensor *tensor){
     printf("Executing %s\n", op_name(tensor->op_type));
 
-    float *qkv_proj         = &ctx->mem[tensor->src[0]->data_offset];
-    size_t ctx_win          = tensor->src[0]->shape[0];
-    size_t qkv_embed_dim    = tensor->src[0]->shape[1];
-    size_t embed_dim        = qkv_embed_dim / 3;
-    float *query            = qkv_proj;
-    float *key              = qkv_proj  + ctx_win;
-    float *value            = key + ctx_win;
-    float *out              = &ctx->mem[tensor->data_offset];
-    float *scratch          = &ctx->mem[tensor->scratch_offset];
-    size_t nbytes_scratch   = tensor->nbytes_scratch;
+    AttentionParams * params = (AttentionParams*)tensor->op_params;
 
-    size_t n_heads = 12;
-    size_t head_dim = embed_dim / n_heads;
+
+
+    float *query    = &ctx->mem[tensor->src[0]->data_offset];
+    float *key      = &ctx->mem[tensor->src[1]->data_offset];
+    float *value    = &ctx->mem[tensor->src[2]->data_offset];
+    float *out      = &ctx->mem[tensor->data_offset];
+    float *scratch  = &ctx->mem[tensor->scratch_offset];
+
+
+    size_t ctx_win          = params->ctx_win;
+    size_t embed_dim        = params->embed_dim;
+    size_t n_heads = params->n_heads;
+    size_t head_dim = params->head_dim;
+    size_t nbytes_scratch   = tensor->nbytes_scratch;
 
     
     // printf("data_offset:        %zu\n", tensor->data_offset);
@@ -54,6 +58,7 @@ void op_attention_forward(Context *ctx, Tensor *tensor){
     // printf("scratch_offset:     %zu\n", tensor->scratch_offset);
     assert(nbytes_scratch > 0);
     
+
 
     kernel_multi_head_attention_cpu_f32_forward(query, key, value, out, scratch, ctx_win, embed_dim, n_heads, head_dim);
 }

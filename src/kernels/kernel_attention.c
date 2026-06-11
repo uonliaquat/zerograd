@@ -6,18 +6,19 @@
 #include <stdlib.h>
 
 void kernel_multi_head_attention_cpu_f32_forward(
-    float **query, float **key, float **value, 
-    float **out, float **scratch,
+    float *query, float *key, float *value, 
+    float *out, float *scratch,
     const size_t ctx_win, const size_t embed_dim, 
     const size_t n_heads, const size_t head_dim
 ){
         for(size_t head = 0; head < n_heads; head++){
-            float *q = query[head];
-            float *k = key[head];
-            float *v = value[head];
-            float * head_out = out[head];
+            float *q = query + (ctx_win*head_dim) * head;
+            float *k = key + (ctx_win*head_dim) * head;
+            float *v = value + (ctx_win*head_dim) * head;
 
-            float *k_t = scratch[head];
+            float * head_out = out + (ctx_win*head_dim) * head;
+
+            float *k_t = scratch;
 
 
             // printf("q\n");

@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Memory, Brick by Brick — A Course on Drepper's "What Every Programmer Should Know About Memory"</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        ink:'#0a0e16', panel:'#0f1525', panel2:'#141c30', line:'#243049',
+        l1:'#22c55e', l2:'#84cc16', l3:'#eab308', dram:'#ef4444',
+        accent:'#38bdf8', accent2:'#a78bfa', muted:'#8b9bb4',
+      },
+      fontFamily:{ mono:['ui-monospace','SFMono-Regular','Menlo','monospace'] }
+    }}
+  }
+</script>
+<style>
+  html,body{background:#0a0e16;color:#e6edf6;}
+  ::selection{background:#38bdf8;color:#04121f;}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:#0a0e16}
+  ::-webkit-scrollbar-thumb{background:#243049;border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:#38506e}
+
+  .modhead{cursor:pointer;user-select:none}
+  .lessonlink{transition:all .12s;border-left:3px solid transparent}
+  .lessonlink.active{background:#141c30;border-left-color:#38bdf8;color:#fff}
+  .lessonlink:hover{background:#11192b}
+
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  #lesson{animation:fade .25s ease}
+
+  .card{background:linear-gradient(180deg,#0f1525,#0c1220);border:1px solid #243049;border-radius:14px}
+  .pill{border:1px solid #243049;border-radius:999px}
+  .kbd{font-family:ui-monospace,monospace;background:#0b1120;border:1px solid #243049;border-radius:6px;padding:1px 7px;font-size:.78rem}
+  code,pre{font-family:ui-monospace,monospace}
+  pre{background:#06090f;border:1px solid #1c2740;border-radius:10px;overflow:auto}
+  .tok-key{color:#c792ea}.tok-fn{color:#82aaff}.tok-num{color:#f78c6c}
+  .tok-str{color:#c3e88d}.tok-cmt{color:#546688;font-style:italic}.tok-ty{color:#ffcb6b}
+  .glow-fast{box-shadow:0 0 0 1px #14532d,0 0 22px -6px #22c55e}
+  .glow-slow{box-shadow:0 0 0 1px #7f1d1d,0 0 22px -6px #ef4444}
+  .tag{font-size:.7rem;letter-spacing:.05em;text-transform:uppercase}
+  details>summary{cursor:pointer;list-style:none}
+  details>summary::-webkit-details-marker{display:none}
+  .mesi-node{transition:all .25s;cursor:pointer}
+  .mesi-node.active{filter:drop-shadow(0 0 10px currentColor)}
+  .mcell{transition:background .08s linear}
+
+  /* course content typography helpers */
+  .prose-c p{color:#c4cee0;line-height:1.75;margin-top:.75rem}
+  .prose-c h4{font-weight:700;margin-top:1.5rem;font-size:1.05rem}
+  .prose-c ul{margin-top:.6rem}
+  .prose-c li{color:#c4cee0;line-height:1.65;margin-top:.4rem}
+  .lead{font-size:1.05rem;color:#dbe4f0}
+  .analogy{border-left:3px solid #a78bfa;background:#a78bfa10;border-radius:0 10px 10px 0}
+  .brick{border:1px dashed #38506e;background:#38bdf809;border-radius:12px}
+  .warn{border-left:3px solid #ef4444;background:#ef444410;border-radius:0 10px 10px 0}
+  .win{border-left:3px solid #22c55e;background:#22c55e10;border-radius:0 10px 10px 0}
+  .objective{border-left:3px solid #38bdf8;background:#38bdf80d;border-radius:0 10px 10px 0}
+</style>
+</head>
+<body class="antialiased">
+
+<div class="flex min-h-screen">
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="w-80 shrink-0 border-r border-line bg-panel/60 backdrop-blur sticky top-0 h-screen overflow-y-auto hidden lg:flex flex-col">
+    <div class="px-5 py-5 border-b border-line">
+      <div class="text-[11px] tracking-widest text-muted uppercase">A course on</div>
+      <h1 class="text-base font-bold leading-tight mt-1">What Every Programmer Should<br>Know About Memory</h1>
+      <div class="text-xs text-muted mt-1">Ulrich Drepper · built brick by brick</div>
+      <div class="mt-3 text-[11px] text-muted">Progress</div>
+      <div class="h-1.5 w-full bg-panel2 rounded-full overflow-hidden mt-1">
+        <div id="progressBar" class="h-full bg-gradient-to-r from-l1 via-l3 to-dram transition-all" style="width:0%"></div>
+      </div>
+      <div id="progressTxt" class="text-[11px] text-muted mt-1"></div>
+    </div>
+    <nav id="nav" class="py-2 text-sm flex-1"></nav>
+    <div class="px-5 py-3 border-t border-line text-[11px] text-muted">
+      <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-sm bg-l1 inline-block"></span> fast / on-die</div>
+      <div class="flex items-center gap-2 mt-1"><span class="w-3 h-3 rounded-sm bg-dram inline-block"></span> slow / main-memory bottleneck</div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="flex-1 min-w-0">
+    <header class="sticky top-0 z-30 bg-ink/85 backdrop-blur border-b border-line">
+      <div class="px-4 sm:px-8 py-3 flex items-center gap-3">
+        <select id="mobileNav" class="lg:hidden bg-panel border border-line rounded-lg px-2 py-2 text-xs max-w-[55%]"></select>
+        <div id="crumb" class="text-xs text-muted flex-1 truncate"></div>
+        <div class="flex gap-2">
+          <button id="prevBtn" class="pill px-3 py-1.5 text-sm hover:bg-panel2">‹ Prev</button>
+          <button id="nextBtn" class="pill px-3 py-1.5 text-sm hover:bg-panel2 bg-accent text-ink font-semibold">Next ›</button>
+        </div>
+      </div>
+    </header>
+    <div id="lesson" class="px-4 sm:px-8 lg:px-14 py-9 max-w-4xl mx-auto"></div>
+    <div class="px-4 sm:px-8 lg:px-14 pb-16 max-w-4xl mx-auto flex justify-between">
+      <button id="prevBtn2" class="pill px-4 py-2 text-sm hover:bg-panel2">‹ Previous lesson</button>
+      <button id="nextBtn2" class="pill px-4 py-2 text-sm hover:bg-panel2 bg-accent text-ink font-semibold">Next lesson ›</button>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   COURSE DATA
+   Each module has lessons. Each lesson: {id, title, dur, html, hook?}
+   `hook(root)` wires up any interactive widgets in that lesson.
+   Content is intentionally dense and incremental — a real course.
+   ============================================================ */
+
+/* ---- small HTML helpers to keep lessons compact ---- */
+const Obj = (t)=>`<div class="objective p-4 my-4 text-sm"><div class="tag text-accent mb-1">In this lesson</div>${t}</div>`;
+const Brick = (t)=>`<div class="brick p-4 my-5"><div class="tag text-accent2 mb-1">🧱 Brick laid</div><div class="text-sm">${t}</div></div>`;
+const Analogy = (t)=>`<div class="analogy p-4 my-4 text-sm"><b class="text-accent2">Analogy.</b> ${t}</div>`;
+const Warn = (t)=>`<div class="warn p-4 my-4 text-sm"><b class="text-dram">Watch out.</b> ${t}</div>`;
+const Win = (t)=>`<div class="win p-4 my-4 text-sm"><b class="text-l1">Payoff.</b> ${t}</div>`;
+const Fig = (n,t)=>`<div class="text-xs text-muted mt-2 mb-1">▸ ${n}${t?` — ${t}`:''}</div>`;
+
+const COURSE = [
+/* ============================================================ MODULE 1 */
+{ module:"1 · Foundations — why memory is the story", lessons:[
+
+  {id:"why", title:"1.1 The problem nobody told you about", dur:"5 min", html:`
+    <div class="tag text-accent">Module 1 · Foundations</div>
+    <h2 class="text-3xl font-bold mt-1">The problem nobody told you about</h2>
+    <div class="prose-c">
+    ${Obj(`Why a 30-year-old hardware trend quietly decides how fast your code runs — and why Drepper wrote 114 pages about it.`)}
+    <p class="lead">When you learned to program, you were taught that the CPU executes instructions and memory holds data, and that reading a variable is "instant." That mental model is <b>wrong</b>, and the gap between it and reality is where most real-world performance is won or lost.</p>
+    <p>Here is the single fact the entire paper orbits around. Between roughly 1985 and 2005:</p>
+    <ul>
+      <li>CPU clock speed and instruction throughput improved by <b class="text-l1">~1000×+</b>.</li>
+      <li>DRAM <b>latency</b> (how long until a requested byte arrives) improved by only <b class="text-dram">~10×</b>.</li>
+    </ul>
+    <p>Those two curves diverged into a chasm engineers call the <b class="text-dram">Memory Wall</b>. A modern core running at ~3 GHz can issue several instructions <i>per nanosecond</i>. A read that misses every cache and goes to main memory takes on the order of <b>60–100 ns</b>. Do the arithmetic: the processor can retire <b>hundreds of instructions</b> in the time one stray memory access takes to come back.</p>
+    ${Analogy(`Your CPU is a master chef who can chop an ingredient in one second. But the pantry (DRAM) is a 5-minute walk away. If the chef walks to the pantry for every ingredient, it doesn't matter how fast he chops — the meal takes hours. The entire science of memory hierarchy is about keeping the right ingredients on the counter (cache) so the chef almost never has to walk.`)}
+    <p>Almost everything in this course — caches, cache lines, TLBs, prefetching, NUMA, the way you order a loop — is an attempt to <b>hide that walk</b>. Once you internalize this, you stop counting instructions and start counting <i>memory accesses</i>, which is what actually governs speed.</p>
+    ${Warn(`Compilers and CPUs are heroic about hiding this gap automatically (out-of-order execution, prefetchers). But they can only hide it when your <i>data layout and access pattern</i> cooperate. That cooperation is the programmer's job — and the subject of this course.`)}
+    ${Brick(`Performance is dominated not by how many instructions you run, but by how often you have to wait for memory. The hardware spends enormous effort hiding that wait; your job is to not defeat it.`)}
+    </div>`},
+
+  {id:"gap", title:"1.2 Putting numbers on the gap", dur:"6 min", html:`
+    <div class="tag text-accent">Module 1 · Foundations</div>
+    <h2 class="text-3xl font-bold mt-1">Putting numbers on the gap</h2>
+    <div class="prose-c">
+    ${Obj(`Concrete cycle costs for each level of the hierarchy, and the one ratio you should memorize.`)}
+    <p>Abstract claims don't build intuition — numbers do. Below are the approximate access costs Drepper uses, expressed in <b>CPU cycles</b> (so they stay meaningful regardless of clock speed). Hover/tap each bar.</p>
+    <div class="card p-6 my-5">
+      <div id="pyramid" class="space-y-2"></div>
+      <p id="pyramidNote" class="mt-4 text-sm text-muted min-h-[2.5rem]">Hover a tier.</p>
+    </div>
+    <p>Read those bars as a story: a register is free, an L1 hit is nearly free, and then each step outward gets dramatically more expensive until you fall off the cliff into DRAM. The number worth memorizing:</p>
+    <div class="card p-5 my-4 text-center">
+      <div class="text-dram text-3xl font-bold">L1 hit ≈ 4 cycles · DRAM miss ≈ 200+ cycles</div>
+      <div class="text-muted text-sm mt-1">A cache miss can cost <b>~50×</b> what a cache hit costs.</div>
+    </div>
+    <p>This is why "it's just one line of code" is meaningless for performance. One line that touches memory in a cache-friendly way and one that doesn't can differ by <b>50×</b> at the hardware level — for the exact same logic.</p>
+    ${Analogy(`Think of it as a tax bracket. Stay in L1 and you pay almost nothing. Spill to L2 and the rate jumps. Spill to DRAM and you're in the top bracket paying 50× — and you didn't even change what your program computes, only where the data sat.`)}
+    ${Brick(`Register ≈ 0, L1 ≈ 4, L2 ≈ 12, L3 ≈ 40, DRAM ≈ 200+ cycles. Every optimization in this course is about moving accesses leftward on that scale.`)}
+    </div>`,
+    hook(root){
+      const tiers=[
+        {n:'CPU register',cyc:'< 1',w:14,c:'bg-l1',note:'Lives in the execution core. Not really "memory access" at all — it is where computation happens.'},
+        {n:'L1 cache hit',cyc:'~4',w:26,c:'bg-l1',note:'Tiny per-core SRAM (~32 KB). The gold standard. Prefetchers and good layout aim to keep you here.'},
+        {n:'L2 cache hit',cyc:'~12',w:40,c:'bg-l2',note:'Still on-die, per-core (256 KB–1 MB). ~3× an L1 hit, but vastly cheaper than going off-die.'},
+        {n:'L3 / LLC hit',cyc:'~40',w:62,c:'bg-l3',note:'Large shared last-level cache (MBs). Also where coherency between cores is resolved (Module 4).'},
+        {n:'DRAM (full miss)',cyc:'~200+',w:96,c:'bg-dram',note:'Off-die main memory. Hundreds of cycles — enough to retire hundreds of instructions. THE bottleneck.'},
+      ];
+      const pyr=root.querySelector('#pyramid'), note=root.querySelector('#pyramidNote');
+      tiers.forEach(t=>{
+        const row=document.createElement('div');
+        row.className='flex items-center gap-3 cursor-pointer group';
+        row.innerHTML=`<div class="w-32 shrink-0 text-sm">${t.n}</div>
+          <div class="flex-1 h-8 rounded-md bg-panel2 overflow-hidden">
+            <div class="${t.c} h-full rounded-md flex items-center justify-end pr-2 text-[11px] font-mono text-ink/80 font-bold group-hover:brightness-125 transition-all" style="width:${t.w}%">${t.cyc} cyc</div>
+          </div>`;
+        const show=()=>note.innerHTML=`<b class="text-white">${t.n}:</b> ${t.note}`;
+        row.addEventListener('mouseenter',show); row.addEventListener('click',show);
+        pyr.appendChild(row);
+      });
+    }},
+
+  {id:"map", title:"1.3 The map for this course", dur:"4 min", html:`
+    <div class="tag text-accent">Module 1 · Foundations</div>
+    <h2 class="text-3xl font-bold mt-1">The map for this course</h2>
+    <div class="prose-c">
+    ${Obj(`The full route we'll take, so you always know which brick we're laying and why it sits where it does.`)}
+    <p>We build strictly bottom-up. Each module assumes the one before it. Here's the whole journey:</p>
+    <div class="grid sm:grid-cols-2 gap-3 my-5 text-sm">
+      <div class="card p-4"><b class="text-accent">M1 · Foundations</b><p class="text-muted mt-1">The memory wall and the cost numbers. <i>(you are here)</i></p></div>
+      <div class="card p-4"><b class="text-accent">M2 · Commodity hardware</b><p class="text-muted mt-1">How RAM physically works — DRAM cells, RAS/CAS, buses. <b>Why</b> memory is slow.</p></div>
+      <div class="card p-4"><b class="text-accent">M3 · CPU caches</b><p class="text-muted mt-1">Lines, associativity, address decode, writes, misses. <b>How</b> we hide the slowness.</p></div>
+      <div class="card p-4"><b class="text-accent">M4 · Multicore &amp; coherency</b><p class="text-muted mt-1">MESI, false sharing, atomics. What breaks when caches multiply.</p></div>
+      <div class="card p-4"><b class="text-accent2">M5 · Virtual memory &amp; TLB</b><p class="text-muted mt-1">Page tables, address translation, huge pages.</p></div>
+      <div class="card p-4"><b class="text-accent2">M6 · NUMA</b><p class="text-muted mt-1">When memory itself has a location.</p></div>
+      <div class="card p-4"><b class="text-accent2">M7 · What you can do</b><p class="text-muted mt-1">Concrete code: layout, loop order, tiling, prefetch.</p></div>
+      <div class="card p-4"><b class="text-accent2">M8 · Measuring it</b><p class="text-muted mt-1">perf, cachegrind — proving you actually helped.</p></div>
+    </div>
+    ${Analogy(`We're building a house. M2 is the foundation and soil (the hardware reality). M3 is the frame (caches). M4–6 are the plumbing and wiring (coherency, VM, NUMA). M7 is living in it well, and M8 is the inspection.`)}
+    ${Brick(`The course is bottom-up: understand the slow hardware first (M2), then every trick after it will feel inevitable rather than magical.`)}
+    </div>`},
+]},
+
+/* ============================================================ MODULE 2 */
+{ module:"2 · Commodity hardware — why memory is slow", lessons:[
+
+  {id:"topo", title:"2.1 The shape of a machine: buses & bridges", dur:"7 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">The shape of a machine</h2>
+    <div class="prose-c">
+    ${Obj(`The classic Northbridge/Southbridge layout, what the Front Side Bus is, and why this topology was a bottleneck waiting to happen.`)}
+    <p>Before we look at a memory chip, we need to see how it's wired to the CPU. Drepper starts with the structure that dominated commodity PCs for decades:</p>
+    <div class="card p-6 my-5 overflow-x-auto">
+      <svg viewBox="0 0 760 360" class="w-full min-w-[640px]">
+        <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#38bdf8"/></marker></defs>
+        <rect x="40" y="30" width="130" height="60" rx="8" fill="#0f1525" stroke="#22c55e"/><text x="105" y="58" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">CPU 0</text><text x="105" y="76" fill="#8b9bb4" font-size="10" text-anchor="middle">cores · caches</text>
+        <rect x="190" y="30" width="130" height="60" rx="8" fill="#0f1525" stroke="#22c55e"/><text x="255" y="58" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">CPU 1</text><text x="255" y="76" fill="#8b9bb4" font-size="10" text-anchor="middle">cores · caches</text>
+        <line x1="105" y1="90" x2="180" y2="150" stroke="#eab308" stroke-width="3" marker-end="url(#ar)"/>
+        <line x1="255" y1="90" x2="200" y2="150" stroke="#eab308" stroke-width="3" marker-end="url(#ar)"/>
+        <text x="335" y="120" fill="#eab308" font-size="11" font-weight="bold">FSB — shared by all CPUs</text>
+        <rect x="120" y="150" width="180" height="70" rx="8" fill="#141c30" stroke="#38bdf8"/><text x="210" y="180" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">Northbridge</text><text x="210" y="200" fill="#8b9bb4" font-size="10" text-anchor="middle">Memory Controller</text>
+        <line x1="210" y1="220" x2="210" y2="268" stroke="#ef4444" stroke-width="3" marker-end="url(#ar)"/><text x="222" y="248" fill="#ef4444" font-size="11">memory bus</text>
+        <rect x="70" y="268" width="90" height="44" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="115" y="295" fill="#e6edf6" font-size="11" text-anchor="middle">DRAM</text>
+        <rect x="170" y="268" width="90" height="44" rx="6" fill="#0f1525" stroke="#ef4444"/><text x="215" y="295" fill="#e6edf6" font-size="11" text-anchor="middle">DRAM</text>
+        <line x1="300" y1="185" x2="430" y2="185" stroke="#38bdf8" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="430" y="150" width="170" height="70" rx="8" fill="#141c30" stroke="#243049"/><text x="515" y="180" fill="#e6edf6" font-size="13" text-anchor="middle" font-weight="bold">Southbridge</text><text x="515" y="200" fill="#8b9bb4" font-size="10" text-anchor="middle">PCIe · SATA · USB</text>
+      </svg>
+      ${Fig('Figure 2.1','classic FSB topology — every CPU reaches memory through one shared Northbridge.')}
+    </div>
+    <h4>The three pieces</h4>
+    <ul>
+      <li><b class="text-white">FSB (Front Side Bus):</b> the highway connecting CPU(s) to the Northbridge. Critically, <b>all CPUs share it</b>.</li>
+      <li><b class="text-white">Northbridge:</b> the fast hub. It contains the <b>Memory Controller (MC)</b> — the only component that knows how to talk to DRAM.</li>
+      <li><b class="text-white">Southbridge:</b> the slow hub for I/O (disk, USB, network). It reaches memory <i>through</i> the Northbridge.</li>
+    </ul>
+    ${Warn(`Notice the chokepoint: every memory request from every core, plus DMA traffic from devices, funnels through one Northbridge and one memory bus. Add more cores and you don't get more memory bandwidth — you just have more customers fighting over the same counter.`)}
+    ${Brick(`Memory doesn't connect to the CPU directly; it connects through a memory controller, historically in a shared Northbridge. That sharing is the original bandwidth bottleneck.`)}
+    </div>`},
+
+  {id:"imc", title:"2.2 Why the bottleneck had to die (IMC & a peek at NUMA)", dur:"5 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">Killing the bottleneck</h2>
+    <div class="prose-c">
+    ${Obj(`How the industry escaped the shared FSB by moving the memory controller onto the CPU die — and the side effect that created NUMA.`)}
+    <p>The shared FSB couldn't scale. The fix was structural: take the memory controller <b>out of the Northbridge and put it on the CPU die itself</b> — the Integrated Memory Controller (IMC). AMD did this with HyperTransport; Intel followed with QPI/UPI.</p>
+    <h4>What changed</h4>
+    <ul>
+      <li>Each CPU socket now has its <b>own</b> memory controller and its <b>own</b> directly-attached DRAM. Bandwidth scales with sockets.</li>
+      <li>The "bus" became a <b>point-to-point interconnect</b> between sockets, not a shared bus.</li>
+    </ul>
+    ${Analogy(`Instead of one shared pantry the whole kitchen lines up for, every chef got their own private pantry at their station. Throughput multiplied. But now "the flour" might be in another chef's pantry across the room.`)}
+    <p>That side effect is the whole of Module 6: if memory is attached to a specific socket, then a core reading its <b>local</b> memory is fast, while reading another socket's <b>remote</b> memory must cross the interconnect and costs more. Memory access became <b>non-uniform</b> — <b class="text-accent2">NUMA</b>.</p>
+    ${Brick(`Moving the memory controller on-die solved the bandwidth bottleneck but made memory have a "location." Local memory is fast; remote memory is slower. Hold that thought for Module 6.`)}
+    </div>`},
+
+  {id:"sram-dram", title:"2.3 SRAM vs DRAM: one tradeoff explains everything", dur:"7 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">SRAM vs DRAM</h2>
+    <div class="prose-c">
+    ${Obj(`The two memory technologies, the transistor-count tradeoff between them, and why this single tradeoff is the reason a cache hierarchy exists at all.`)}
+    <p>There are two ways to build memory, and the entire hierarchy exists because neither one is good enough alone.</p>
+    <div class="grid md:grid-cols-2 gap-4 my-5">
+      <div class="card p-5 glow-fast">
+        <div class="font-bold text-l1 text-lg">SRAM — Static RAM</div>
+        <ul class="text-sm text-muted mt-2 space-y-1.5">
+          <li>~<b class="text-white">6 transistors</b> per bit (a latch).</li>
+          <li>Holds its value as long as powered — <b>no refresh</b>.</li>
+          <li><b>Fast</b> — value is actively driven, reads are quick &amp; non-destructive.</li>
+          <li>✗ <b>Big &amp; expensive</b> — 6T per bit means low density, high cost/Watt.</li>
+          <li>→ Used for <b>caches</b>. We can only afford KB–MB of it.</li>
+        </ul>
+      </div>
+      <div class="card p-5 glow-slow">
+        <div class="font-bold text-dram text-lg">DRAM — Dynamic RAM</div>
+        <ul class="text-sm text-muted mt-2 space-y-1.5">
+          <li><b class="text-white">1 transistor + 1 capacitor</b> per bit.</li>
+          <li>Charge leaks → must be <b>refreshed</b> constantly.</li>
+          <li><b>Slow</b> — tiny charge, sense amps must settle; reads are <b>destructive</b>.</li>
+          <li>✓ <b>Tiny &amp; cheap</b> — 1T1C is incredibly dense.</li>
+          <li>→ Used for <b>main memory</b>. We can afford GBs of it.</li>
+        </ul>
+      </div>
+    </div>
+    ${Analogy(`SRAM is a whiteboard: instantly readable, stays put, but takes a lot of wall space per word. DRAM is writing in sand: you can fit a whole beach of it cheaply, but the words fade (refresh) and reading them smudges them (destructive read).`)}
+    <p>This is the crux: SRAM is everything we want except <i>affordable in bulk</i>; DRAM is affordable in bulk but slow. So we build a <b>pyramid</b> — a little fast SRAM close to the core, backed by a lot of cheap slow DRAM. That pyramid is the memory hierarchy, and it only works because of <b>locality</b> (Module 3).</p>
+    ${Brick(`SRAM: fast, 6T/bit, tiny → caches. DRAM: slow, 1T1C, huge → main memory. The hierarchy exists precisely because no single technology is both fast and cheap.`)}
+    </div>`},
+
+  {id:"cell", title:"2.4 Inside a DRAM cell: leakage, refresh, destruction", dur:"7 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">Inside a single DRAM cell</h2>
+    <div class="prose-c">
+    ${Obj(`The physical cell — capacitor + transistor — and the three consequences (refresh, destructive read, slow sensing) that make DRAM inherently high-latency.`)}
+    <div class="card p-6 my-5 grid md:grid-cols-2 gap-6 items-center">
+      <svg viewBox="0 0 300 200" class="w-full">
+        <line x1="40" y1="20" x2="40" y2="180" stroke="#38bdf8" stroke-width="2"/><text x="14" y="105" fill="#38bdf8" font-size="10" transform="rotate(-90 18,105)">word line (row select)</text>
+        <line x1="40" y1="120" x2="260" y2="120" stroke="#a78bfa" stroke-width="2"/><text x="120" y="142" fill="#a78bfa" font-size="10">bit/sense line (column)</text>
+        <rect x="120" y="98" width="20" height="44" rx="3" fill="none" stroke="#e6edf6"/>
+        <line x1="142" y1="120" x2="198" y2="120" stroke="#243049" stroke-width="2"/>
+        <line x1="198" y1="106" x2="198" y2="134" stroke="#22c55e" stroke-width="3"/><line x1="210" y1="106" x2="210" y2="134" stroke="#22c55e" stroke-width="3"/>
+        <text x="186" y="160" fill="#22c55e" font-size="10">capacitor = 1 bit</text>
+      </svg>
+      <div class="text-sm text-muted space-y-2">
+        <p>One bit is a charge on a capacitor, gated by one transistor that connects it to the bit line when the word line selects its row. Beautifully dense — and that density has a price.</p>
+      </div>
+    </div>
+    <h4>Three consequences you must know</h4>
+    <ul>
+      <li>⚡ <b class="text-white">Leakage → refresh.</b> The capacitor leaks charge in milliseconds. The controller must read-and-rewrite <b>every row</b> thousands of times per second. Refresh cycles steal bandwidth and occasionally make a request wait.</li>
+      <li>⚡ <b class="text-white">Destructive read.</b> Sensing the charge drains the capacitor. So every read is actually read-then-write-back. This is built into the timing (it's part of why precharge exists — next lesson).</li>
+      <li>⚡ <b class="text-white">Tiny signal → slow sensing.</b> The charge is minuscule. <b>Sense amplifiers</b> must detect a tiny voltage difference and amplify it to a clean 0/1. Settling takes time — this is a core source of DRAM latency, and it's physics, not laziness.</li>
+    </ul>
+    ${Analogy(`Reading a DRAM bit is like checking how full a thimble of water is by dipping a sensor that spills the thimble in the process — you must then refill it (write-back), and reading the level accurately takes a moment to settle (sense amps).`)}
+    ${Brick(`A DRAM bit is a leaky capacitor. Therefore: it needs refresh, every read is destructive (and rewritten), and sensing the tiny charge is slow. DRAM latency is a consequence of choosing density over speed.`)}
+    </div>`},
+
+  {id:"access", title:"2.5 Reading DRAM step by step: RAS, CAS, precharge", dur:"10 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">A DRAM read, cycle by cycle</h2>
+    <div class="prose-c">
+    ${Obj(`The actual protocol to read a byte: address multiplexing, the RAS→CAS sequence, the timings tRCD/CL/tRP, and why this is where "memory is slow" becomes concrete.`)}
+    <p>DRAM is organized as a 2-D grid of cells: rows × columns. To save pins, the address is <b>multiplexed</b> — the same address lines carry the <b>row</b> first, then the <b>column</b>. This is why a memory module's speed is quoted as a series like <span class="kbd">tRCD-CL-tRP</span> (e.g. "16-18-18"). Step through it:</p>
+    <div class="card p-6 my-5">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <span class="text-sm text-muted">Click through the four phases of a single read.</span>
+        <div class="flex gap-2"><button id="dPrev" class="pill px-3 py-1.5 text-sm hover:bg-panel2">‹</button><button id="dNext" class="pill px-3 py-1.5 text-sm hover:bg-panel2 bg-accent text-ink font-semibold">Step ›</button></div>
+      </div>
+      <div id="dSteps" class="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+      <div class="mt-4 rounded-lg border border-line bg-panel2/40 p-4">
+        <div id="dTitle" class="font-semibold text-accent"></div>
+        <div id="dBody" class="text-sm text-muted mt-1"></div>
+      </div>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-2 text-xs my-4">
+      <div class="rounded border border-line p-3"><b class="text-white">tRCD</b> — RAS-to-CAS delay. After opening a row, you must wait this long before requesting a column.</div>
+      <div class="rounded border border-line p-3"><b class="text-white">CL (CAS latency)</b> — from column request to the first data word arriving.</div>
+      <div class="rounded border border-line p-3"><b class="text-white">tRP</b> — row precharge. Time to close the current row before a different row in the same bank can open.</div>
+    </div>
+    ${Warn(`The killer insight: a <b>random</b> access that hits a closed row pays the <b>full</b> tRP + tRCD + CL every time. A <b>sequential</b> access that stays within an already-open row pays almost nothing per word. This is the hardware root of "access memory sequentially," which we'll repeat for the rest of the course.`)}
+    ${Brick(`Reading DRAM = open the row (RAS, wait tRCD) → select column (CAS, wait CL) → data → close the row (precharge, tRP). The address is multiplexed row-then-column. Staying in an open row is cheap; jumping rows pays the full latency tax.`)}
+    </div>`,
+    hook(root){
+      const data=[
+        {t:'1 · RAS — open the row', b:'The row portion of the address is placed on the multiplexed address lines and the Row Address Strobe (RAS) is asserted. The whole selected row is read into the sense amplifiers — the "row buffer." You cannot read a column yet; you must wait tRCD.'},
+        {t:'2 · tRCD — sense amps settle', b:'RAS-to-CAS delay. The sense amps resolve the tiny capacitor charges into clean logic levels. Pure latency — no data moves yet. This delay is physics (settling time), not overhead.'},
+        {t:'3 · CAS — select the column', b:'The column portion of the address goes on the SAME address lines (multiplexed) and CAS is asserted. After CAS Latency (CL) the first data word appears. Subsequent words of a burst then stream out back-to-back — cheaply.'},
+        {t:'4 · Precharge — close the row', b:'Because the read was destructive, the row buffer is written back to the cells and the bank is precharged (closed). tRP must elapse before another row in this bank can be opened. Sequential access keeps the row open and SKIPS this cost.'},
+      ];
+      let s=0;
+      const wrap=root.querySelector('#dSteps');
+      data.forEach((d,i)=>{const c=document.createElement('div');c.className='rounded-lg border border-line p-3 text-xs text-center transition-all';c.textContent=d.t;wrap.appendChild(c);});
+      const render=()=>{Array.from(wrap.children).forEach((c,i)=>{c.classList.toggle('border-accent',i===s);c.classList.toggle('bg-accent/10',i===s);c.classList.toggle('opacity-40',i>s);});root.querySelector('#dTitle').textContent=data[s].t;root.querySelector('#dBody').textContent=data[s].b;};
+      root.querySelector('#dNext').onclick=()=>{s=(s+1)%data.length;render();};
+      root.querySelector('#dPrev').onclick=()=>{s=(s-1+data.length)%data.length;render();};
+      render();
+    }},
+
+  {id:"ddr", title:"2.6 From SDRAM to DDR: bursts, banks & bandwidth", dur:"6 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">Bursts, banks & how DDR earns its bandwidth</h2>
+    <div class="prose-c">
+    ${Obj(`How modern DRAM hides latency it can't remove — via bursts, multiple banks, and double-pumping (DDR) — and why this rewards sequential access.`)}
+    <p>The latency of opening a row (last lesson) is fixed by physics. So DRAM evolution focused on <b>bandwidth</b> and <b>overlap</b> instead — squeezing more useful data out per open-row event.</p>
+    <h4>Bursts</h4>
+    <p>Once a row is open, the column address auto-increments and the chip streams a <b>burst</b> of consecutive words with no further CAS commands. A burst of 8 means one CAS yields 8 words. The expensive part (RAS/tRCD) is amortized across the whole burst — but only if you actually use those consecutive words. (Remember this when we meet the <b>cache line</b>, which is exactly such a burst.)</p>
+    <h4>Banks</h4>
+    <p>A DRAM chip has several independent <b>banks</b>. While bank 0 is busy precharging, the controller can already be opening a row in bank 1. Interleaving addresses across banks <b>pipelines</b> the latency away. The OS and controller spread addresses across banks deliberately.</p>
+    <h4>DDR — double data rate</h4>
+    <p>SDRAM is clocked. <b>DDR</b> transfers data on <b>both</b> the rising and falling edge of the clock — doubling transfer rate without doubling clock frequency. DDR2/3/4/5 add deeper prefetch buffers (more bits fetched internally per access) and higher I/O clocks. Each generation widens the <b>bandwidth</b> firehose; none of them meaningfully cut the <b>latency</b> of a single random access.</p>
+    ${Warn(`This is the bandwidth/latency split that confuses people: DDR5 has enormous bandwidth, yet a single pointer-chase still stalls ~hundreds of cycles. Bandwidth helps streaming; it does nothing for a dependent random access. Only locality and prefetch help latency.`)}
+    ${Brick(`Modern DRAM hides latency it can't remove: bursts amortize row-open cost over consecutive words, banks pipeline independent accesses, and DDR doubles transfer rate. All three reward sequential, predictable access — and do little for random pointer chasing.`)}
+    </div>`},
+
+  {id:"dma", title:"2.7 DMA & who else is using your memory bus", dur:"4 min", html:`
+    <div class="tag text-accent">Module 2 · Commodity hardware</div>
+    <h2 class="text-3xl font-bold mt-1">DMA and bus contention</h2>
+    <div class="prose-c">
+    ${Obj(`Why your CPU isn't the only thing hammering memory, and how Direct Memory Access changes the picture.`)}
+    <p><b>Direct Memory Access (DMA)</b> lets devices — disk controllers, NICs, GPUs — read and write main memory <b>without</b> the CPU copying every byte. This is essential (the CPU would otherwise waste all its time shuttling I/O), but it means devices are <b>competing for the same memory controller and bus</b> as your cores.</p>
+    <ul>
+      <li>A burst of network or disk DMA can steal memory bandwidth right when your compute loop needs it.</li>
+      <li>DMA also interacts with caches: the memory a device writes may be stale in some core's cache, so coherency (Module 4) or explicit cache management is required.</li>
+    </ul>
+    ${Analogy(`The memory bus is a single-lane bridge. Your cores are cars — but so are the delivery trucks (DMA). Even if your code is perfect, a truck convoy can make you wait at the bridge.`)}
+    ${Brick(`Your cores share the memory subsystem with I/O devices via DMA. Real-world memory latency includes contention you didn't cause. This is another reason on-die controllers and NUMA (per-socket memory) matter.`)}
+    </div>`},
+]},
+
+/* ============================================================ MODULE 3 */
+{ module:"3 · CPU caches — how we hide the slowness", lessons:[
+
+  {id:"locality", title:"3.1 Locality — the reason caches work at all", dur:"6 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">Locality: the bet that makes caching work</h2>
+    <div class="prose-c">
+    ${Obj(`The two kinds of locality real programs exhibit, and why caching is a bet on them that almost always pays off.`)}
+    <p>A cache is small. It can't hold your whole dataset. So how can a tiny SRAM buffer speed up access to gigabytes of DRAM? Because real programs don't access memory randomly — they exhibit <b>locality</b>. Caching is a bet on two patterns:</p>
+    <div class="grid md:grid-cols-2 gap-4 my-5">
+      <div class="card p-5">
+        <div class="font-bold text-l1">Temporal locality</div>
+        <p class="text-sm text-muted mt-1">If you touch an address, you'll likely touch it <b>again soon</b>. (Loop counters, hot variables, a function called repeatedly.)</p>
+        <p class="text-xs text-muted mt-2">→ So: <b>keep recently-used data</b> in cache.</p>
+      </div>
+      <div class="card p-5">
+        <div class="font-bold text-l1">Spatial locality</div>
+        <p class="text-sm text-muted mt-1">If you touch an address, you'll likely touch <b>nearby</b> addresses soon. (Array iteration, struct fields, sequential code.)</p>
+        <p class="text-xs text-muted mt-2">→ So: <b>fetch neighbors too</b> (the cache line — next lesson).</p>
+      </div>
+    </div>
+    ${Analogy(`A librarian who notices you keep requesting the same shelf keeps that shelf's books on a nearby cart (temporal), and when you ask for one book she grabs the few next to it too, betting you'll want them (spatial). She's usually right — that's why the cart helps despite holding a fraction of the library.`)}
+    <p>The whole reason caches deliver, say, 95%+ hit rates on real code is that this bet is overwhelmingly correct. When your code <i>violates</i> locality (random access, huge strides, pointer chasing), the bet fails and you fall to DRAM speed — that's the failure mode we'll learn to avoid.</p>
+    ${Brick(`Caches work because programs reuse data (temporal) and access neighbors (spatial). Every cache optimization is really "make your access pattern more local so the hardware's bet keeps winning."`)}
+    </div>`},
+
+  {id:"hierarchy", title:"3.2 The cache hierarchy & real numbers", dur:"6 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">The hierarchy: L1, L2, L3</h2>
+    <div class="prose-c">
+    ${Obj(`The structure of a real multicore cache hierarchy, the size/speed tradeoff at each level, and what "inclusive" means.`)}
+    <p>We don't build one cache — we build several, each a compromise between the level inside it (smaller/faster) and outside it (bigger/slower). A typical modern multicore die:</p>
+    <div class="grid sm:grid-cols-4 gap-3 my-5 text-sm">
+      <div class="rounded-lg border border-l1 p-4 glow-fast"><div class="font-bold text-l1">L1 (I + D)</div><div class="text-muted mt-1">~32 KB each, <b>per core</b>, split instruction/data, ~4 cyc. Closest &amp; fastest.</div></div>
+      <div class="rounded-lg border border-l2 p-4"><div class="font-bold text-l2">L2</div><div class="text-muted mt-1">256 KB–1 MB, <b>per core</b>, unified, ~12 cyc.</div></div>
+      <div class="rounded-lg border border-l3 p-4"><div class="font-bold text-l3">L3 (LLC)</div><div class="text-muted mt-1">several–tens of MB, <b>shared</b> by all cores, ~40 cyc. The coherency point.</div></div>
+      <div class="rounded-lg border border-dram p-4 glow-slow"><div class="font-bold text-dram">DRAM</div><div class="text-muted mt-1">GBs, off-die, ~200+ cyc. The backstop.</div></div>
+    </div>
+    <h4>Two details that matter</h4>
+    <ul>
+      <li><b class="text-white">L1 is split, L2/L3 are unified.</b> Instructions and data have different access patterns, so L1 separates them (an instruction-cache section comes later). Beyond L1 they share space.</li>
+      <li><b class="text-white">Inclusive vs exclusive.</b> In an <i>inclusive</i> hierarchy, everything in L1 is also in L2/L3 — simplifies coherency (a core only needs to snoop the L3 to know if anyone has a line) at the cost of duplicated capacity. Vendors differ.</li>
+    </ul>
+    <p>The invariant to remember: each level is bigger and slower than the one inside it. A request checks L1, then L2, then L3, then DRAM, stopping at the first hit. Miss all the way down = full DRAM penalty.</p>
+    ${Brick(`Per-core L1 (split) and L2, shared L3, then DRAM. Bigger = slower at each step. A miss cascades outward until something hits, and missing everything costs the full ~200+ cycles.`)}
+    </div>`},
+
+  {id:"line", title:"3.3 The cache line — the atom of all memory traffic", dur:"7 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">The cache line</h2>
+    <div class="prose-c">
+    ${Obj(`The most important practical concept in the course: memory moves in fixed-size lines (usually 64 B), never single bytes — and the three huge consequences.`)}
+    <p>The hardware <b>never</b> transfers a single byte between cache and memory. It transfers a fixed-size block called a <b>cache line</b> — almost always <b>64 bytes</b> on modern x86. (Recall Module 2: this maps perfectly onto a DRAM burst.) Touch one byte and the hardware fetches all 64.</p>
+    <div class="card p-6 my-5">
+      <div class="text-xs text-muted mb-2">A 64-byte line. Hover it: touching <b>any</b> byte loads <b>all</b> of them.</div>
+      <div id="lineGrid" class="grid gap-0.5" style="grid-template-columns:repeat(16,1fr)"></div>
+    </div>
+    <h4>Three consequences that drive everything later</h4>
+    <ul>
+      <li>📦 <b class="text-l1">Spatial locality is literally free.</b> Reading 64 contiguous bytes costs the same as reading 1. Iterating an array sequentially gets 63 "free" bytes per miss. This is why sequential beats random by ~10×+.</li>
+      <li>📦 <b class="text-white">Alignment matters.</b> A value that straddles a 64-byte boundary lives in <b>two</b> lines → two fetches. Aligning hot data to line boundaries avoids this (Module 7).</li>
+      <li>📦 <b class="text-dram">False sharing exists.</b> Two cores writing two <i>different</i> variables that happen to sit in the <i>same</i> line will fight over that line — even though their data is unrelated (Module 4).</li>
+    </ul>
+    ${Analogy(`You can't buy one egg — eggs come by the dozen (the line). If your recipe uses eggs that are scattered one-per-carton across the store, you haul home 12× the eggs you need and most spoil (wasted bandwidth). Keep your eggs in one carton (contiguous) and every trip is efficient.`)}
+    ${Brick(`Memory moves in 64-byte lines, not bytes. Therefore sequential access is nearly free, alignment matters, and unrelated variables sharing a line can collide. Everything practical in this course traces back to the line.`)}
+    </div>`,
+    hook(root){
+      const g=root.querySelector('#lineGrid');
+      for(let i=0;i<64;i++){const d=document.createElement('div');d.className='aspect-square rounded-sm bg-l1/20 border border-l1/40';d.title='byte '+i;g.appendChild(d);}
+      g.addEventListener('mouseover',()=>Array.from(g.children).forEach(c=>c.classList.add('bg-l1/60')));
+      g.addEventListener('mouseout',()=>Array.from(g.children).forEach(c=>c.classList.remove('bg-l1/60')));
+    }},
+
+  {id:"lookup", title:"3.4 How a lookup works: tag, index, offset", dur:"7 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">Anatomy of a cache lookup</h2>
+    <div class="prose-c">
+    ${Obj(`How the cache decides, in ~4 cycles, whether an address is a hit — by slicing the address into offset, index, and tag.`)}
+    <p>When the core requests an address, the cache must answer "do I have this line?" almost instantly. It can't search — searching is slow. Instead it <b>slices the address</b> into three fields and uses them directly:</p>
+    <div class="card p-5 my-5">
+      <div class="flex w-full rounded-lg overflow-hidden border border-line text-center font-mono text-sm">
+        <div class="bg-accent2/30 text-accent2 py-3 flex-[3]">TAG</div>
+        <div class="bg-accent/30 text-accent py-3 flex-[2]">INDEX</div>
+        <div class="bg-l1/30 text-l1 py-3 flex-1">OFFSET</div>
+      </div>
+      <div class="flex text-[11px] text-muted mt-1"><div class="flex-[3]">which line (identity check)</div><div class="flex-[2]">which set/slot</div><div class="flex-1">which byte</div></div>
+    </div>
+    <ul>
+      <li><b class="text-l1">Offset</b> = lowest bits = which byte within the line. For a 64-byte line that's the low <b>6</b> bits (2⁶ = 64).</li>
+      <li><b class="text-accent">Index</b> = next bits = which <b>set</b> (slot) to look in. The cache jumps straight to that set — no search.</li>
+      <li><b class="text-accent2">Tag</b> = the remaining high bits = stored alongside the line. The cache compares the request's tag to the stored tag: <b>match = hit</b>, mismatch = miss.</li>
+    </ul>
+    ${Analogy(`A coat check: the <b>index</b> is the numbered hook your ticket points to (instant — no searching). The <b>tag</b> is your name written on the ticket, checked against the coat hanging there to be sure it's really yours. The <b>offset</b> is which pocket of the coat you want.`)}
+    <p>Why slice this way? Because <b>contiguous</b> addresses share a tag and differ only in offset/index — so a whole cache line maps to one place and consecutive lines spread evenly across sets. The next lessons (associativity) explain how many lines can share a set, and the interactive lets you decode a real address yourself.</p>
+    ${Brick(`A physical address = TAG | INDEX | OFFSET. Index picks the set instantly, tag confirms identity (hit/miss), offset picks the byte. No searching — that's how a lookup fits in ~4 cycles.`)}
+    </div>`},
+
+  {id:"assoc1", title:"3.5 Associativity I — direct-mapped & conflict misses", dur:"7 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">Associativity, part 1: direct-mapped</h2>
+    <div class="prose-c">
+    ${Obj(`The simplest cache organization, why it's fast and cheap, and the nasty failure mode (conflict misses) that motivates everything in the next lesson.`)}
+    <p>"Associativity" answers one question: <b>for a given address, which slots in the cache may hold its line?</b> The simplest answer is <b>direct-mapped</b>: each address maps to <b>exactly one</b> slot, chosen by its index bits.</p>
+    <div class="grid md:grid-cols-2 gap-4 my-5">
+      <div class="card p-5">
+        <div class="font-bold">The good</div>
+        <ul class="text-sm text-muted mt-1 space-y-1">
+          <li>✓ Lookup is trivial: compute index → check that one slot's tag. Fastest possible.</li>
+          <li>✓ Cheap hardware: one tag comparator.</li>
+        </ul>
+      </div>
+      <div class="card p-5">
+        <div class="font-bold text-dram">The fatal flaw: conflict misses</div>
+        <p class="text-sm text-muted mt-1">If two hot addresses happen to map to the <b>same</b> slot, they evict each other on every access — even if the rest of the cache is empty.</p>
+      </div>
+    </div>
+    <p>Concretely: suppose addresses A and B differ by exactly the cache size. They have the same index bits, so both want slot 7. A loop touching A then B then A then B... causes:</p>
+    <pre class="p-3 text-[12px] my-3"><code><span class="tok-cmt">// both map to slot 7</span>
+read A  <span class="tok-cmt">// miss, load A into slot 7</span>
+read B  <span class="tok-cmt">// miss, EVICT A, load B into slot 7</span>
+read A  <span class="tok-cmt">// miss again! EVICT B...  → 100% miss rate</span></code></pre>
+    ${Warn(`This is brutal because it's invisible in source code and depends on addresses. A classic trigger: iterating columns of a 2-D array whose row length is a power of two — every element in a column maps to the same set. Padding the array (making rows <b>not</b> a power of two) fixes it.`)}
+    ${Analogy(`A coat check with assigned hooks by the first letter of your name. If a convention of 500 "Smiths" arrives, they all fight over hook "S" while hooks A–R sit empty. The building is huge; the policy makes it useless.`)}
+    ${Brick(`Direct-mapped: one slot per address. Fast and cheap, but two hot addresses mapping to the same set thrash each other (conflict misses) regardless of total cache size. We need slots to have alternatives.`)}
+    </div>`},
+
+  {id:"assoc2", title:"3.6 Associativity II — set-associative + decode it yourself", dur:"10 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">Associativity, part 2: the real design</h2>
+    <div class="prose-c">
+    ${Obj(`The full spectrum (fully associative ↔ set-associative ↔ direct-mapped), why real CPUs pick N-way set-associative, and a hands-on decoder.`)}
+    <p>To kill conflict misses we give each address <b>more than one</b> candidate slot. Two extremes and the practical middle:</p>
+    <div class="grid md:grid-cols-3 gap-3 my-5 text-sm">
+      <div class="card p-4"><div class="font-bold">Direct-mapped</div><p class="text-muted mt-1">1 slot per address. Fast, conflict-prone. (last lesson)</p></div>
+      <div class="card p-4"><div class="font-bold">Fully associative</div><p class="text-muted mt-1">Any line in <b>any</b> slot. Zero conflict misses — but every slot's tag must be compared at once. Only feasible for tiny caches (e.g. TLBs).</p></div>
+      <div class="card p-4 border-accent2"><div class="font-bold text-accent2">N-way set-associative</div><p class="text-muted mt-1">Index picks a <b>set</b>; the line may sit in any of the set's <b>N ways</b>. "8-way" = 8 candidate slots. Only N tag compares. <b>What real CPUs use.</b></p></div>
+    </div>
+    <p>Set-associative is the sweet spot: with N ways, you need N addresses colliding before you get a conflict miss — and N=8 or 16 makes that rare in practice — while only paying for N parallel comparators. Now decode a real address and watch the fields move:</p>
+
+    <div class="card p-6 my-5">
+      <div class="font-semibold mb-3">🔧 Address decoder — N-way set-associative</div>
+      <div class="grid sm:grid-cols-3 gap-4 text-sm">
+        <label>Cache size (KB)<select id="cSize" class="mt-1 w-full bg-panel2 border border-line rounded px-2 py-1.5"><option>32</option><option>64</option><option>256</option><option>512</option><option>1024</option></select></label>
+        <label>Line size (B)<select id="cLine" class="mt-1 w-full bg-panel2 border border-line rounded px-2 py-1.5"><option>32</option><option selected>64</option><option>128</option></select></label>
+        <label>Ways<select id="cWays" class="mt-1 w-full bg-panel2 border border-line rounded px-2 py-1.5"><option>1</option><option>2</option><option>4</option><option selected>8</option><option>16</option></select></label>
+      </div>
+      <label class="block text-sm mt-4">Address (hex, 32-bit)<input id="cAddr" value="0xDEADBEEF" class="mt-1 w-full font-mono bg-panel2 border border-line rounded px-3 py-2 text-accent"/></label>
+      <div class="mt-5 text-xs text-muted mb-1">32-bit split (high → low):</div>
+      <div id="cBits" class="flex w-full rounded-lg overflow-hidden border border-line text-center font-mono text-xs"></div>
+      <div id="cLegend" class="flex w-full mt-1 text-[11px] text-muted"></div>
+      <div id="cOut" class="mt-5 grid sm:grid-cols-3 gap-3 text-sm"></div>
+      <div class="mt-3 text-xs text-muted">offset bits = log₂(line) · index bits = log₂(size ÷ line ÷ ways) · tag = the rest. Try ways=1 (direct-mapped) vs 16 and watch the index shrink and tag grow.</div>
+    </div>
+    ${Brick(`Real caches are N-way set-associative: index → one set, line may live in any of N ways. It's the engineered compromise between conflict-free (fully associative, too expensive) and fast/cheap (direct-mapped, conflict-prone).`)}
+    </div>`,
+    hook(root){
+      const log2=n=>Math.round(Math.log(n)/Math.log(2));
+      const dec=()=>{
+        const size=+root.querySelector('#cSize').value*1024, line=+root.querySelector('#cLine').value, ways=+root.querySelector('#cWays').value;
+        const sets=size/(line*ways), off=log2(line), idx=log2(sets), tag=32-off-idx;
+        let raw=root.querySelector('#cAddr').value.trim().replace(/^0x/i,''); let v=parseInt(raw,16); if(isNaN(v))v=0; v=v>>>0;
+        const bin=(v>>>0).toString(2).padStart(32,'0');
+        const bf=root.querySelector('#cBits'); bf.innerHTML='';
+        let pos=0;[['Tag',tag,'bg-accent2/30 text-accent2'],['Index',idx,'bg-accent/30 text-accent'],['Offset',off,'bg-l1/30 text-l1']].forEach(([n,b,cl])=>{if(b<=0)return;const s=document.createElement('div');s.className=cl+' py-2 border-r border-line';s.style.flex=b;s.textContent=bin.slice(pos,pos+b);s.title=n+': '+b+' bits';bf.appendChild(s);pos+=b;});
+        const lg=root.querySelector('#cLegend'); lg.innerHTML='';
+        [['Tag',tag,'text-accent2'],['Index',idx,'text-accent'],['Offset',off,'text-l1']].forEach(([n,b,cl])=>{if(b<=0)return;const s=document.createElement('div');s.className=cl;s.style.flex=b;s.textContent=`${n} (${b}b)`;lg.appendChild(s);});
+        const offV=v&(line-1), idxV=(v>>>off)&(sets-1), tagV=v>>>(off+idx);
+        root.querySelector('#cOut').innerHTML=`
+          <div class="rounded-lg border border-accent2 p-4"><div class="text-accent2 text-xs font-bold">TAG · ${tag} bits</div><div class="font-mono text-lg mt-1">0x${(tagV>>>0).toString(16).toUpperCase()}</div><div class="text-xs text-muted mt-1">compared on lookup → hit/miss</div></div>
+          <div class="rounded-lg border border-accent p-4"><div class="text-accent text-xs font-bold">INDEX · ${idx} bits</div><div class="font-mono text-lg mt-1">${idxV} <span class="text-muted text-sm">/ ${sets} sets</span></div><div class="text-xs text-muted mt-1">picks the set; ${ways} ways searched</div></div>
+          <div class="rounded-lg border border-l1 p-4"><div class="text-l1 text-xs font-bold">OFFSET · ${off} bits</div><div class="font-mono text-lg mt-1">${offV} <span class="text-muted text-sm">/ ${line} B</span></div><div class="text-xs text-muted mt-1">byte within the line</div></div>`;
+      };
+      ['cSize','cLine','cWays','cAddr'].forEach(id=>{const el=root.querySelector('#'+id);el.addEventListener('input',dec);el.addEventListener('change',dec);});
+      dec();
+    }},
+
+  {id:"writes", title:"3.7 Writes: write-through, write-back, allocate", dur:"6 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">What happens when you write</h2>
+    <div class="prose-c">
+    ${Obj(`Reads are only half the story. How caches handle writes — and why "write-back + write-allocate" is standard and sets up the coherency problem.`)}
+    <p>A read that hits is simple. A <b>write</b> raises a question: when do we update the slower level below? Two policies:</p>
+    <div class="grid md:grid-cols-2 gap-4 my-5">
+      <div class="card p-5"><div class="font-bold">Write-through</div><p class="text-sm text-muted mt-1">Write to cache <b>and</b> memory immediately. Simple, always consistent — but every write hits the slow bus. Wastes bandwidth on hot variables.</p></div>
+      <div class="card p-5 border-l1"><div class="font-bold text-l1">Write-back (standard)</div><p class="text-sm text-muted mt-1">Write only to the cache; mark the line <b>dirty</b>. Write to memory <b>later</b>, when the line is evicted. Far less bus traffic — repeated writes to a hot variable touch memory once.</p></div>
+    </div>
+    <p>And on a write <b>miss</b> (writing an address not currently cached):</p>
+    <ul>
+      <li><b class="text-white">Write-allocate:</b> fetch the line into cache first, then write. Pairs with write-back; good when you'll touch the line again.</li>
+      <li><b>No-write-allocate:</b> write straight to memory, skip the cache. Good for write-once streaming.</li>
+    </ul>
+    <p>Real CPUs default to <b>write-back + write-allocate</b>. That "dirty" bit is crucial: it means a cache line can hold a <b>newer</b> value than main memory. Now imagine multiple cores, each with their own cache, each possibly holding a different dirty value for the same address...</p>
+    ${Warn(`That last sentence is the entire problem of <b>cache coherency</b> — Module 4. Write-back caching is what makes multicore correctness hard, because the truth for an address might live in some core's private cache, not in memory.`)}
+    ${Brick(`Standard policy = write-back (mark dirty, flush on eviction) + write-allocate (fetch-then-write). A dirty line means cache holds newer data than memory — which is exactly why multicore needs a coherency protocol.`)}
+    </div>`},
+
+  {id:"3cs", title:"3.8 The 3 C's & seeing cache sizes in a curve", dur:"7 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">Misses, and the famous staircase</h2>
+    <div class="prose-c">
+    ${Obj(`A taxonomy of every cache miss (the "3 C's"), each one's fix, and Drepper's signature experiment where the cache sizes become visible as cliffs in a latency curve.`)}
+    <p>Every cache miss is one of three kinds. Naming them tells you the fix:</p>
+    <div class="grid sm:grid-cols-3 gap-4 my-5 text-sm">
+      <div class="card p-4"><b class="text-white">Compulsory</b><p class="text-muted mt-1">First-ever touch of a line. Cold, unavoidable in principle. <b>Fix:</b> prefetching (Module 7).</p></div>
+      <div class="card p-4"><b class="text-white">Capacity</b><p class="text-muted mt-1">Working set bigger than the cache. <b>Fix:</b> blocking/tiling to shrink the active set (Module 7).</p></div>
+      <div class="card p-4"><b class="text-white">Conflict</b><p class="text-muted mt-1">Too many hot lines map to one set. <b>Fix:</b> associativity, padding, layout (Module 3.5/3.6).</p></div>
+    </div>
+    <h4>The experiment that makes it visible</h4>
+    <p>Drepper's most memorable benchmark: walk through an array of size N (touching one element per cache line) and measure average time per access, sweeping N from tiny to huge. The result is a <b>staircase</b>: flat while the data fits in a cache level, then a sharp jump when it spills to the next level. You can literally <i>read the cache sizes off the graph.</i></p>
+    <div class="card p-6 my-5">
+      <div class="text-sm text-muted mb-2">Idealized working-set sweep (hover the regions):</div>
+      <svg viewBox="0 0 600 220" class="w-full" id="curve">
+        <line x1="50" y1="180" x2="580" y2="180" stroke="#243049"/><line x1="50" y1="20" x2="50" y2="180" stroke="#243049"/>
+        <text x="300" y="210" fill="#8b9bb4" font-size="11" text-anchor="middle">working set size (log) →</text>
+        <text x="20" y="100" fill="#8b9bb4" font-size="11" transform="rotate(-90 20,100)">ns / access →</text>
+        <!-- staircase polyline -->
+        <polyline points="60,170 180,170 180,150 320,150 320,120 460,120 460,55 560,45" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+        <g font-size="10">
+          <rect x="60" y="160" width="120" height="20" fill="#22c55e22"/><text x="120" y="155" fill="#22c55e" text-anchor="middle">fits L1</text>
+          <rect x="180" y="140" width="140" height="40" fill="#84cc1622"/><text x="250" y="135" fill="#84cc16" text-anchor="middle">fits L2</text>
+          <rect x="320" y="110" width="140" height="70" fill="#eab30822"/><text x="390" y="105" fill="#eab308" text-anchor="middle">fits L3</text>
+          <rect x="460" y="40" width="100" height="140" fill="#ef444422"/><text x="510" y="35" fill="#ef4444" text-anchor="middle">DRAM</text>
+        </g>
+      </svg>
+      ${Fig('Figure 3.8','each "step up" happens exactly when the working set outgrows a cache level. The cliffs ARE the cache sizes.')}
+    </div>
+    ${Win(`This is the most empowering idea in the course: cache effects aren't vague. They're measurable cliffs. Keep your working set left of a cliff (it fits in cache) and you stay fast; cross it and you pay. Tiling (Module 7) is literally the art of staying left of the cliff.`)}
+    ${Brick(`Misses are Compulsory, Capacity, or Conflict — each with a specific fix. And cache levels are real, visible cliffs in a latency-vs-working-set curve. Optimization = keep the active working set on the cheap side of a cliff.`)}
+    </div>`},
+
+  {id:"icache", title:"3.9 The instruction cache (the one people forget)", dur:"5 min", html:`
+    <div class="tag text-accent">Module 3 · CPU caches</div>
+    <h2 class="text-3xl font-bold mt-1">Your code is data too</h2>
+    <div class="prose-c">
+    ${Obj(`Why instructions get their own cache, and how code layout, inlining, and branches affect performance through the I-cache — not just the D-cache.`)}
+    <p>We've talked about data, but the CPU also fetches <b>instructions</b> from memory — and they live in their own <b>L1 instruction cache</b>, separate from the L1 data cache. Code has locality too, and it can miss.</p>
+    <h4>What hurts the I-cache</h4>
+    <ul>
+      <li><b class="text-white">Code bloat:</b> aggressive inlining or unrolling can <i>help</i> the pipeline but <i>blow up</i> code size, spilling the hot loop out of the I-cache. Bigger isn't always faster.</li>
+      <li><b class="text-white">Poor layout:</b> if a hot loop calls cold error-handling code interleaved in memory, the I-cache wastes lines on instructions that rarely run. Compilers fight this by splitting hot/cold paths (e.g. moving unlikely branches out of line).</li>
+      <li><b class="text-white">Branchy code:</b> the front-end prefetches instructions linearly; hard-to-predict branches break that stream and can cause I-cache misses plus pipeline flushes.</li>
+    </ul>
+    ${Analogy(`The I-cache is the sheet music on the conductor's stand. If the score is compact and in order, the orchestra never pauses. If it's padded with rarely-played passages interleaved everywhere, the conductor keeps flipping pages (misses) mid-performance.`)}
+    ${Brick(`Instructions are cached separately (L1-I). Code size and layout matter: keep hot paths small and contiguous, let the compiler push cold paths out of line. Over-inlining can hurt by overflowing the instruction cache.`)}
+    </div>`},
+]},
+
+/* ============================================================ MODULE 4..8: full framework, content expands next */
+{ module:"4 · Multicore & coherency (MESI)", placeholder:true, lessons:[
+  {id:"m4-intro", title:"4.x Coming next — MESI, false sharing, atomics", dur:"—", html:`
+    <div class="tag text-accent">Module 4 · Multicore</div>
+    <h2 class="text-3xl font-bold mt-1">Multicore & Cache Coherency</h2>
+    <div class="prose-c">
+    ${Obj(`This module is framed and ready to expand into full lessons (it carries over the interactive MESI machine from the previous build).`)}
+    <p>Module 3 ended on the time bomb: write-back caches mean a line's true value can live in a core's private cache, not memory. With many cores, the same line can exist in many caches at once. The lessons here:</p>
+    <ul>
+      <li><b>4.1</b> The coherency problem stated precisely.</li>
+      <li><b>4.2</b> The MESI states — Modified, Exclusive, Shared, Invalid (interactive state machine).</li>
+      <li><b>4.3</b> Transitions &amp; bus snooping; Read-For-Ownership.</li>
+      <li><b>4.4</b> Cache-line bouncing across the interconnect.</li>
+      <li><b>4.5</b> False sharing — the invisible 10–100× slowdown, and the padding fix.</li>
+      <li><b>4.6</b> Atomic operations &amp; the true cost of synchronization.</li>
+      <li><b>4.7</b> Hyperthreads sharing one core's caches.</li>
+    </ul>
+    ${Warn(`Placeholder lesson. The full, written-out Module 4 (with the interactive MESI diagram) is the next thing I'll populate — say the word and I'll expand it in place.`)}
+    </div>`},
+]},
+{ module:"5 · Virtual memory & the TLB", placeholder:true, lessons:[
+  {id:"m5-intro", title:"5.x Coming next — page tables, TLB, huge pages", dur:"—", html:`
+    <div class="tag text-accent">Module 5 · Virtual memory</div>
+    <h2 class="text-3xl font-bold mt-1">Virtual Memory & the TLB</h2>
+    <div class="prose-c">
+    ${Obj(`Framed and ready. Every address your program uses is virtual — translation itself costs memory accesses, and the TLB caches them.`)}
+    <ul>
+      <li><b>5.1</b> Why virtual memory exists (isolation, relocation).</li>
+      <li><b>5.2</b> Multi-level page tables &amp; the x86-64 four-level walk.</li>
+      <li><b>5.3</b> The TLB: caching translations; hit vs miss cost.</li>
+      <li><b>5.4</b> TLB reach, context-switch costs, ASIDs.</li>
+      <li><b>5.5</b> Huge pages — extending reach, shortening the walk.</li>
+    </ul>
+    ${Warn(`Placeholder — full lessons (with the page-walk diagram) ready to expand next.`)}
+    </div>`},
+]},
+{ module:"6 · NUMA", placeholder:true, lessons:[
+  {id:"m6-intro", title:"6.x Coming next — local vs remote memory", dur:"—", html:`
+    <div class="tag text-accent">Module 6 · NUMA</div>
+    <h2 class="text-3xl font-bold mt-1">NUMA — when memory has a location</h2>
+    <div class="prose-c">
+    ${Obj(`The payoff of Module 2.2: per-socket memory controllers mean local memory is fast and remote memory is slow.`)}
+    <ul>
+      <li><b>6.1</b> NUMA hardware &amp; interconnects (QPI/UPI/Infinity Fabric).</li>
+      <li><b>6.2</b> Local vs remote latency &amp; bandwidth.</li>
+      <li><b>6.3</b> OS policy: first-touch, and why init order matters.</li>
+      <li><b>6.4</b> Programming for NUMA — pinning, interleave, numactl/libnuma.</li>
+    </ul>
+    ${Warn(`Placeholder — ready to expand with the two-node diagram.`)}
+    </div>`},
+]},
+{ module:"7 · What you can do (your code)", placeholder:true, lessons:[
+  {id:"m7-intro", title:"7.x Coming next — layout, loop order, tiling, prefetch", dur:"—", html:`
+    <div class="tag text-accent">Module 7 · Optimization</div>
+    <h2 class="text-3xl font-bold mt-1">What the programmer can actually do</h2>
+    <div class="prose-c">
+    ${Obj(`Everything converges here into concrete code, including the animated matrix-multiply (naïve → transpose → tiled).`)}
+    <ul>
+      <li><b>7.1</b> Non-temporal writes — bypassing cache when you won't reuse.</li>
+      <li><b>7.2</b> Loop order &amp; the matrix-multiply case study (interactive).</li>
+      <li><b>7.3</b> Tiling/blocking — staying left of the cliff.</li>
+      <li><b>7.4</b> Data layout: alignment, SoA vs AoS, struct splitting.</li>
+      <li><b>7.5</b> Prefetching — hardware, software, helper threads.</li>
+      <li><b>7.6</b> Multithreading: avoiding false sharing in practice.</li>
+    </ul>
+    ${Warn(`Placeholder — the animated matrix-multiply demo from the prior build slots in here, expanded with full explanation.`)}
+    </div>`},
+]},
+{ module:"8 · Measuring it", placeholder:true, lessons:[
+  {id:"m8-intro", title:"8.x Coming next — perf, cachegrind, reading numbers", dur:"—", html:`
+    <div class="tag text-accent">Module 8 · Measurement</div>
+    <h2 class="text-3xl font-bold mt-1">Proving you actually helped</h2>
+    <div class="prose-c">
+    ${Obj(`Optimization without measurement is guessing. The tools and counters Drepper relies on.`)}
+    <ul>
+      <li><b>8.1</b> Hardware performance counters &amp; <span class="kbd">perf stat</span>.</li>
+      <li><b>8.2</b> cachegrind / callgrind simulation.</li>
+      <li><b>8.3</b> Reading miss rates, and what "good" looks like.</li>
+    </ul>
+    ${Warn(`Placeholder — ready to expand.`)}
+    </div>`},
+]},
+];
+
+/* ============================================================ APP ENGINE */
+(function(){
+  "use strict";
+  // flatten lessons into an ordered list, keep module grouping for nav
+  const flat=[]; COURSE.forEach((m,mi)=>m.lessons.forEach((l,li)=>flat.push({...l,mi,li,module:m.module,placeholder:m.placeholder})));
+  const nav=document.getElementById('nav'), mobileNav=document.getElementById('mobileNav');
+  const seen=new Set();
+
+  // build sidebar (collapsible modules)
+  COURSE.forEach((m,mi)=>{
+    const wrap=document.createElement('div');
+    wrap.className='border-b border-line/50';
+    const head=document.createElement('div');
+    head.className='modhead px-5 py-2.5 text-xs font-semibold flex items-center justify-between '+(m.placeholder?'text-muted':'text-accent');
+    head.innerHTML=`<span>${m.module}</span><span class="text-muted">▾</span>`;
+    const body=document.createElement('div'); body.className='pb-1';
+    m.lessons.forEach((l,li)=>{
+      const idx=flat.findIndex(f=>f.id===l.id);
+      const a=document.createElement('a');
+      a.href='#'; a.dataset.idx=idx;
+      a.className='lessonlink block pl-7 pr-4 py-2 text-[13px] text-muted';
+      a.textContent=l.title;
+      a.onclick=e=>{e.preventDefault();go(idx);};
+      body.appendChild(a);
+    });
+    head.onclick=()=>{const hidden=body.style.display==='none';body.style.display=hidden?'':'none';head.querySelector('span:last-child').textContent=hidden?'▾':'▸';};
+    wrap.appendChild(head); wrap.appendChild(body); nav.appendChild(wrap);
+
+    // mobile optgroup
+    const og=document.createElement('optgroup'); og.label=m.module;
+    m.lessons.forEach(l=>{const idx=flat.findIndex(f=>f.id===l.id);const o=document.createElement('option');o.value=idx;o.textContent=l.title;og.appendChild(o);});
+    mobileNav.appendChild(og);
+  });
+
+  const links=Array.from(nav.querySelectorAll('.lessonlink'));
+  const lessonEl=document.getElementById('lesson');
+  let cur=-1;
+
+  function go(i){
+    i=Math.max(0,Math.min(flat.length-1,i));
+    cur=i; const L=flat[i];
+    lessonEl.innerHTML=L.html;
+    if(typeof L.hook==='function'){ try{ L.hook(lessonEl); }catch(e){ console.error(e); } }
+    links.forEach(a=>a.classList.toggle('active',+a.dataset.idx===i));
+    mobileNav.value=i;
+    document.getElementById('crumb').textContent=L.module+'  ·  '+L.title;
+    seen.add(i);
+    const pct=Math.round(seen.size/flat.length*100);
+    document.getElementById('progressBar').style.width=pct+'%';
+    document.getElementById('progressTxt').textContent=`${seen.size} / ${flat.length} lessons viewed`;
+    // ensure the active link's module body is visible
+    const ll=links.find(a=>+a.dataset.idx===i); if(ll){const body=ll.parentElement; body.style.display=''; body.previousSibling; }
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  const next=()=>go(cur+1), prev=()=>go(cur-1);
+  ['nextBtn','nextBtn2'].forEach(id=>document.getElementById(id).onclick=next);
+  ['prevBtn','prevBtn2'].forEach(id=>document.getElementById(id).onclick=prev);
+  mobileNav.onchange=e=>go(+e.target.value);
+  document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;if(e.key==='ArrowRight')next();if(e.key==='ArrowLeft')prev();});
+  go(0);
+})();
+</script>
+</body>
+</html>

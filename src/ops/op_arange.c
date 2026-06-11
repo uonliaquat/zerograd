@@ -16,11 +16,11 @@ size_t op_arange_scratch_bytes(const Tensor *tensor){
 }
 
 Tensor *op_arange(Graph *graph, const char *name, const size_t n){
-
     Tensor *out = graph_alloc_node(graph);
     tensor_create(out, "token.indices", (size_t[]){n}, 1, NULL, 0, DTYPE_I32, OP_ARANGE, NULL);
     return out;
 }
+
 void op_arange_forward(Context *ctx, Tensor *tensor){
     printf("Executing %s\n", op_name(tensor->op_type));
     int *out = &ctx->mem[tensor->data_offset];
