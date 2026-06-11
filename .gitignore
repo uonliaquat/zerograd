@@ -1,0 +1,46 @@
+# Build outputs
+/build/
+/*.o
+/*.so
+/*.a
+/*.dylib
+/*.dll
+/*.exe
+
+# macOS
+.DS_Store
+
+# Xcode / LLDB debug artifacts
+*.dSYM/
+*.dSYM
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# VS Code
+.vscode/
+
+# CLion / JetBrains
+.idea/
+
+# Logs
+*.log
+
+# Coverage
+.coverage
+htmlcov/
+
+# Temporary files
+tmp/
+temp/

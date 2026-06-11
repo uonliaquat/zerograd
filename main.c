@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "./inc/models/gpt2.h"
 #include "./inc/graph/graph.h"
+#include "./inc/graph/layout.h"
 
 typedef enum DType DType;
 int main(){
@@ -16,13 +17,15 @@ int main(){
         .qkv_bias = true,
         .dtype = DTYPE_F32
     };
+
     
-    Graph graph = graph_init(274);
+    Graph graph = graph_init(280);
     build_graph_gpt2(&config, &graph);
-    // size_t nbytes = graph_plan_memory(&graph);
-    // graph.ctx = context_init(nbytes);
+
+    size_t nbytes = graph_plan_memory(&graph);
+    graph.ctx = context_init(nbytes);
     // graph_load_weights(&graph, "/Users/uonliaquat/workspace/zerograd/gpt2.zg", "/Users/uonliaquat/Downloads/gpt2.safetensors");
-    
+    // graph_print(&graph);
     // //set input
     // Tensor *token_ids = &graph.nodes[0];
     // int *token_ids_data = ((int*)((char*)graph.ctx.mem + token_ids->data_offset));

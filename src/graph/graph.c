@@ -24,30 +24,6 @@ Tensor *graph_alloc_node(Graph *graph){
     return node;
 }
 
-// size_t graph_plan_memory(Graph *graph){
-//     //assuming the graph is topologically sorted
-//     size_t data_offset = 0;
-//     size_t scratch_offset = 0;
-//     size_t scratch_bytes = 0;
-//     size_t activation_bytes = 0;
-//     for(size_t i = 0; i < graph->size; i++){
-
-//         graph->nodes[i].data_offset = data_offset;
-//         // graph->nodes[i].scratch_offset = data_offset - scratch_offset;
-//         // printf("%s | %zu\n",    graph->nodes[i].name,   graph->nodes[i].data_offset);
-//         scratch_bytes = 0;
-//         if(graph->nodes[i].op_type != OP_NONE){
-//             scratch_bytes = OpTable[graph->nodes[i].op_type].scratch_bytes();
-//             graph->nodes[i].nbytes_scratch = scratch_bytes;
-
-//         }
-//         activation_bytes = graph->nodes[i].nbytes;
-//         data_offset += scratch_bytes + activation_bytes;
-//         graph->nodes[i].scratch_offset = graph->nodes[i].scratch_offset - scratch_bytes;
-//     } 
-//     return data_offset;
-// }
-
 
 size_t graph_plan_memory(Graph *graph){
     //assuming the graph is topologically sorted
@@ -139,16 +115,16 @@ void graph_load_weights(Graph *graph, const char *model_filename, const char *we
     fclose(weights_f);
 }
 
-void graph_print_weights(const Graph *graph){
-    for(size_t i = 0; i < 20; i++){
-        tensor_print_weights(&graph->ctx, &graph->nodes[i]);
-    }
-}
+// void graph_print_weights(const Graph *graph){
+//     for(size_t i = 0; i < 20; i++){
+//         tensor_print_weights(&graph->ctx, &graph->nodes[i]);
+//     }
+// }
 
 void graph_print(const Graph *graph){
     tensor_print_header();
     for(size_t i = 0; i < graph->capacity; i++){
-        tensor_print(&graph->nodes[i]);
+        tensor_print(&graph->ctx, &graph->nodes[i]);
     }
 }
 

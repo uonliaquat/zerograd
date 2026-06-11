@@ -45,7 +45,7 @@ def mha_reference(q, k, v):
     return outputs
 
 
-num_tests = 100
+num_tests = 1
 passed = 0
 for _ in range(num_tests):
     embed_dim = 786

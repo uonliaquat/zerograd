@@ -57,9 +57,9 @@ void tensor_create(
     void *op_params
 );
 
-void tensor_print_header();
-void tensor_print(const Tensor *t);
-void tensor_print_weights(const Context *ctx, const Tensor *t);
+void tensor_print_header(void);
+void tensor_print(const Context *ctx, const Tensor *t);
+// void tensor_print_weights(const Context *ctx, const Tensor *t);
 
 static inline size_t dtype_size(DType d_type){
     switch(d_type){

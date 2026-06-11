@@ -5,15 +5,18 @@
 
 
 static inline size_t kernel_multi_head_attention_cpu_f32_scratch_bytes(
-    const size_t n_heads, const size_t ctx_win, const size_t emebd_dim
+    const size_t n_heads, const size_t ctx_win, const size_t embed_dim
 ) {
-    size_t head_dim = emebd_dim / n_heads;
-    return (((ctx_win * head_dim) + (ctx_win * ctx_win)) * n_heads) * sizeof(float);
+    size_t head_dim = embed_dim / n_heads;
+    size_t per_head =
+          ctx_win * head_dim   /* k_t      */
+        + ctx_win * ctx_win    /* qk_t     */
+        + ctx_win * head_dim;  /* head_out */
+    return per_head * sizeof(float);
 }
 
 void kernel_multi_head_attention_cpu_f32_forward(
-    float *query, float *key, float *value, 
-    float *out, float *scratch,
+    float *q, float *k, float *v, float *out, float *scratch,
     const size_t ctx_win, const size_t embed_dim, 
     const size_t n_heads, const size_t head_dim
 );

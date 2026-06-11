@@ -6,10 +6,12 @@ SHARED_FLAGS = -O0 -shared -fPIC
 EXECUTABLE = main
 LIBRARY = build/libkernels.dylib
 
+SRCS = main.c $(shell find src -name '*.c')
+
 .PHONY: build build_tests run run_tests clean
 
 build:
-	$(CC) $(DEBUG_FLAGS) main.c src/**/*.c -o $(EXECUTABLE)
+	$(CC) $(DEBUG_FLAGS) $(SRCS) -o $(EXECUTABLE)
 
 build_tests:
 	mkdir -p build
