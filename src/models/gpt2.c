@@ -52,9 +52,9 @@ void build_graph_gpt2(GPT2Config *config, Graph *graph){
         Tensor *v_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "v.weight"), config->ndim, config->ndim, dtype);
         Tensor *v_bias    = op_bias(graph, layer_name(buff, sizeof(buff), i, "v.bias"), config->ndim, dtype);
 
-        Tensor *q_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "q.proj"), q_weight, q_bias, ln1_out, true);
-        Tensor *k_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "k.proj"), k_weight, k_bias, ln1_out, true);
-        Tensor *v_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "v.proj"), v_weight, v_bias, ln1_out, true);
+        Tensor *q_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "q.proj"), q_weight, q_bias, ln1_out, false);
+        Tensor *k_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "k.proj"), k_weight, k_bias, ln1_out, false);
+        Tensor *v_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "v.proj"), v_weight, v_bias, ln1_out, false);
 
 
         // Tensor *qkv_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "qkv.weight"), config->ndim, config->ndim*3, dtype);

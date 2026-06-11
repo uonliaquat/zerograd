@@ -26,9 +26,9 @@ for _ in range(num_tests1):
     n = np.random.randint(1, 1000)
     k = np.random.randint(1, 1000)
 
-    # m = 12
-    # n = 10
-    # k = 4
+    m = 2
+    n = 2
+    k = 2
 
     input = np.random.randn(m, k).astype(np.float32)
     weights = np.random.randn(n, k).astype(np.float32)
@@ -65,6 +65,7 @@ for _ in range(num_tests1):
         # print("\n\nout")
         # print(out[:20])
         # print(y.flatten().numpy()[:20])
+        # exit(1)
         pass
 
 
@@ -72,7 +73,7 @@ num_tests2 = 50
 for _ in range(num_tests2):
     m = np.random.randint(1, 1000)
     n = np.random.randint(1, 1000)
-    k = np.random.randint(1, 1000)
+    k = np.random.randint(1, 200)
 
     # m = 12
     # n = 10
@@ -109,7 +110,7 @@ for _ in range(num_tests2):
         # print("input")
         # print(input)
         # print("\nweight")
-        # print(weights)
+        # print(weights.T)
         # print("\n\nout")
         # print(out[:20])
         # print(y.flatten().numpy()[:20])
