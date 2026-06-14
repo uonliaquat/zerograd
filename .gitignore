@@ -1,46 +1,56 @@
-# Build outputs
+# Build artifacts
 /build/
-/*.o
-/*.so
-/*.a
-/*.dylib
-/*.dll
-/*.exe
+/bin/
+/out/
+/dist/
 
 # macOS
 .DS_Store
 
-# Xcode / LLDB debug artifacts
+# Debug symbols
 *.dSYM/
-*.dSYM
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Object files
+*.o
+*.obj
+*.a
+*.so
+*.dylib
 
-# Jupyter
+# Executables
+main
+*.exe
+
+# Model files
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.gguf
+*.bin
+*.zg
+
+# Generated notebooks/checkpoints
 .ipynb_checkpoints/
-
-# Vim
-*.swp
-*.swo
-*~
-
-# VS Code
-.vscode/
-
-# CLion / JetBrains
-.idea/
 
 # Logs
 *.log
 
-# Coverage
-.coverage
-htmlcov/
-
 # Temporary files
-tmp/
-temp/
+*.tmp
+*.cache
+
+# Python
+__pycache__/
+*.pyc
+
+# VSCode
+.vscode/
+
+# CLion
+.idea/
+cmake-build-*/
+
+# Generated reports
+cpumemory_dashboard.html
+cpumemory_course.html
