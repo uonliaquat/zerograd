@@ -54,7 +54,6 @@ size_t graph_plan_memory(Graph *graph){
 
 void graph_execute(Graph *graph){
     for(size_t i = 0; i < graph->size; i++){
-        // printf("%s\n", graph->nodes[i].name);
         if(graph->nodes[i].op_type == OP_NONE) continue;
         OpTable[graph->nodes[i].op_type].forward(&graph->ctx, &graph->nodes[i]);
     }

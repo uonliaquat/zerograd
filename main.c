@@ -1,15 +1,18 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "./inc/models/gpt2.h"
 #include "./inc/graph/graph.h"
 #include "./inc/graph/layout.h"
 
 typedef enum DType DType;
-int main(){
-    
-    printf("Running inference engine\n");
+int main(int argc, char *argv[]){
+    if(argc < 2){
+        printf("Uasege: %s \"prompt\"\n", argv[0]);
+        return 1;
+    }
 
     GPT2Config config = { 
-        .ctx_win = 1024,
+        .ctx_win = 7,
         .ndim = 768,
         .vocab_size = 50257,
         .nheads = 12,
@@ -35,10 +38,15 @@ int main(){
         // token_indices_data[i] = i;
     }
 
+    for(size_t i = 1; i < argc; i++){
+        token_ids_data[i-1] = atoi(argv[i]);
+        // token_indices_data[i] = i;
+    }
+
     
     graph_execute(&graph);
     //graph_print(&graph);
-    // graph_write(&graph, "my_model.safetensors");
+    graph_write(&graph, "my_model.safetensors");
     // graph_free(&graph);
     return 0;
 }
