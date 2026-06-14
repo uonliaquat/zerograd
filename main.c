@@ -37,9 +37,8 @@ int main(){
 
     
     graph_execute(&graph);
-    // graph_print(&graph);
-    // graph_print_weights(&graph);
-    graph_write(&graph, "my_model.safetensors");
+    //graph_print(&graph);
+    // graph_write(&graph, "my_model.safetensors");
     // graph_free(&graph);
     return 0;
 }
