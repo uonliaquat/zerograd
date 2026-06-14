@@ -34,7 +34,7 @@ Tensor *op_attention(Graph *graph, const char *name,
     op_params->head_dim = op_params->embed_dim  / nheads;
     op_params->ctx_win = q->shape[0];
 
-    tensor_create(out, name, (size_t[]){op_params->ctx_win, op_params->embed_dim}, 2, (Tensor*[]){q, k, v}, 3, q->d_type, OP_ATTENTION, op_params);
+    tensor_create(out, name, (size_t[]){op_params->ctx_win, op_params->embed_dim}, 2, (Tensor*[]){q, k, v}, 3, q->d_type, OP_ATTENTION, op_params, TENSOR_ACTIVATION);
     return out;
 }
 

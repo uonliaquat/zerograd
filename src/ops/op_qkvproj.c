@@ -24,9 +24,9 @@ Tensor *op_qkv_proj(
     // op_params->is_bias = bias != NULL ? true : false;
 
     if(bias != NULL)
-        tensor_create(out, name, (size_t[]){rows, cols}, 2, (Tensor*[]){weight, bias, input}, 3, input->d_type, OP_QKV_PROJ, NULL);
+        tensor_create(out, name, (size_t[]){rows, cols}, 2, (Tensor*[]){weight, bias, input}, 3, input->d_type, OP_QKV_PROJ, NULL, TENSOR_ACTIVATION);
     else
-        tensor_create(out, name, (size_t[]){rows, cols}, 2, (Tensor*[]){weight, input}, 2, input->d_type, OP_QKV_PROJ, NULL);
+        tensor_create(out, name, (size_t[]){rows, cols}, 2, (Tensor*[]){weight, input}, 2, input->d_type, OP_QKV_PROJ, NULL, TENSOR_ACTIVATION);
     return out;
 }
 

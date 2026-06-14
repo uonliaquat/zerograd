@@ -23,7 +23,7 @@ Tensor *op_add(Graph *graph, const char *name, Tensor *src1, Tensor *src2){
     size_t cols = src2->shape[1];
     Tensor *out = graph_alloc_node(graph);
     
-    tensor_create(out, name, (size_t[]){rows, cols}, 2, (Tensor*[]){src1, src2}, 2, src1->d_type, OP_ADD, NULL);
+    tensor_create(out, name, (size_t[]){rows, cols}, 2, (Tensor*[]){src1, src2}, 2, src1->d_type, OP_ADD, NULL, TENSOR_ACTIVATION);
     return out;
 }
 

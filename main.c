@@ -8,7 +8,7 @@ int main(){
     
     printf("Running inference engine\n");
 
-    GPT2Config config = {
+    GPT2Config config = { 
         .ctx_win = 1024,
         .ndim = 768,
         .vocab_size = 50257,
@@ -19,26 +19,27 @@ int main(){
     };
 
     
-    Graph graph = graph_init(280);
+    Graph graph = graph_init(346);
     build_graph_gpt2(&config, &graph);
 
     size_t nbytes = graph_plan_memory(&graph);
+    printf("nbytes=%zu\n", nbytes);
     graph.ctx = context_init(nbytes);
-    // graph_load_weights(&graph, "/Users/uonliaquat/workspace/zerograd/gpt2.zg", "/Users/uonliaquat/Downloads/gpt2.safetensors");
-    // graph_print(&graph);
+    graph_load_weights(&graph, "/Users/uonliaquat/workspace/zerograd/gpt2_split.safetensors");
     // //set input
-    // Tensor *token_ids = &graph.nodes[0];
-    // int *token_ids_data = ((int*)((char*)graph.ctx.mem + token_ids->data_offset));
+    Tensor *token_ids = &graph.nodes[0];
+    int *token_ids_data = ((int*)((char*)graph.ctx.mem + token_ids->data_offset));
     // // int *token_indices_data = ((int*)((char*)graph.ctx.mem + token_indices->data_offset));
-    // for(size_t i = 0; i < token_ids->shape[0]; i++){
-    //     token_ids_data[i] = 0;
-    //     // token_indices_data[i] = i;
-    // }
+    for(size_t i = 0; i < token_ids->shape[0]; i++){
+        token_ids_data[i] = 0;
+        // token_indices_data[i] = i;
+    }
 
     
-    // graph_execute(&graph);
+    graph_execute(&graph);
+    // graph_print(&graph);
     // graph_print_weights(&graph);
-    // graph_write(&graph, "my_model.safetensors");
+    graph_write(&graph, "my_model.safetensors");
     // graph_free(&graph);
     return 0;
 }

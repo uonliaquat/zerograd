@@ -40,6 +40,7 @@ void build_graph_gpt2(GPT2Config *config, Graph *graph){
     
     //Transfromer Block
     for(size_t i = 0; i < config->nlayers; i++){
+        // printf("========================== LAYER %zu ==========================\n", i);
         Tensor *ln1_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "ln1.weight"), 1, config->ndim, dtype);
         Tensor *ln1_bias    = op_bias(graph, layer_name(buff, sizeof(buff), i, "ln1.bias"), config->ndim, dtype);
         Tensor *ln1_out     = op_layernorm(graph, layer_name(buff, sizeof(buff), i, "ln1.out"), ln1_weight, ln1_bias, input_embed);
@@ -52,14 +53,10 @@ void build_graph_gpt2(GPT2Config *config, Graph *graph){
         Tensor *v_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "v.weight"), config->ndim, config->ndim, dtype);
         Tensor *v_bias    = op_bias(graph, layer_name(buff, sizeof(buff), i, "v.bias"), config->ndim, dtype);
 
-        Tensor *q_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "q.proj"), q_weight, q_bias, ln1_out, false);
-        Tensor *k_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "k.proj"), k_weight, k_bias, ln1_out, false);
-        Tensor *v_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "v.proj"), v_weight, v_bias, ln1_out, false);
+        Tensor *q_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "q.proj"), q_weight, q_bias, ln1_out, true);
+        Tensor *k_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "k.proj"), k_weight, k_bias, ln1_out, true);
+        Tensor *v_proj    = op_linear(graph, layer_name(buff, sizeof(buff), i, "v.proj"), v_weight, v_bias, ln1_out, true);
 
-
-        // Tensor *qkv_weight  = op_weight(graph, layer_name(buff, sizeof(buff), i, "qkv.weight"), config->ndim, config->ndim*3, dtype);
-        // Tensor *qkv_bias    = op_bias(graph, layer_name(buff, sizeof(buff), i, "qkv.bias"), config->ndim*3, dtype);
-        // Tensor *qkv_proj    = op_qkv_proj(graph, layer_name(buff, sizeof(buff), i, "qkv.proj"), qkv_weight, qkv_bias, ln1_out);
         
         Tensor *attn_out    = op_attention(graph, layer_name(buff, sizeof(buff), i, "attn.out"), config->nheads, q_proj, k_proj, v_proj);
         Tensor *attn_proj_weight = op_weight(graph, layer_name(buff, sizeof(buff), i, "attn.proj.weight"), config->ndim, config->ndim, dtype);
@@ -90,10 +87,6 @@ void build_graph_gpt2(GPT2Config *config, Graph *graph){
     Tensor *ln_out      = op_layernorm(graph, "ln.out", ln_weight, ln_bias, input_embed);
 
     Tensor *lm_head     = op_linear(graph, "lm.head", wte, NULL, ln_out, false);
-}
-
-
-void plan_layout_gpt2(){
 
 }
 

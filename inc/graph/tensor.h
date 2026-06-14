@@ -14,6 +14,12 @@ typedef enum DType {
 } DType;
 
 
+typedef enum TensorType{
+    TENSOR_WEIGHT,
+    TENSOR_BIAS,
+    TENSOR_ACTIVATION,
+    TENSOR_CONST
+} TensorType;
 
 typedef struct Tensor {
 
@@ -43,6 +49,8 @@ typedef struct Tensor {
     //OP configuration (How to compute)
     void *op_params;
 
+    TensorType kind;
+
 } Tensor;
 
 void tensor_create(
@@ -54,7 +62,8 @@ void tensor_create(
     const size_t nsrc,
     const DType d_type,
     const OpType op_type,
-    void *op_params
+    void *op_params,
+    TensorType kind
 );
 
 void tensor_print_header(void);

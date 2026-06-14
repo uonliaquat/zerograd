@@ -18,7 +18,7 @@ size_t op_index_scratch_bytes(const Tensor *tensor){
 
 Tensor *op_index(Graph *graph, const char *name, const size_t vocab_size, const size_t ndim, Tensor *wte, Tensor *token_ids){
     Tensor *out = graph_alloc_node(graph);
-    tensor_create(out, name, (size_t[]){vocab_size, ndim}, 2, (Tensor*[]){wte, token_ids}, 2, wte->d_type, OP_INDEX,  NULL);
+    tensor_create(out, name, (size_t[]){vocab_size, ndim}, 2, (Tensor*[]){wte, token_ids}, 2, wte->d_type, OP_INDEX,  NULL, TENSOR_ACTIVATION);
     return out;
 }
 void op_index_forward(Context *ctx, Tensor *tensor){

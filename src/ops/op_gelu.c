@@ -16,7 +16,7 @@ size_t op_gelu_scratch_bytes(const Tensor *tensor){
 void *op_gelu(Graph *graph, const char *name, Tensor *src)
 {
     Tensor *out = graph_alloc_node(graph);
-    tensor_create(out, name, src->shape, src->ndim, (Tensor*[]){src}, 1, src->d_type, OP_GELU, NULL);
+    tensor_create(out, name, src->shape, src->ndim, (Tensor*[]){src}, 1, src->d_type, OP_GELU, NULL, TENSOR_ACTIVATION);
     return out;
 }
 void op_gelu_forward(Context *ctx, Tensor *tensor){

@@ -1,6 +1,6 @@
 #include "../../inc/prims/matmul.h"
 
-
+#include <stdlib.h>
 void matmul_cpu_f32(float *mat1, float *mat2, float *out, 
     size_t rows_mat1, size_t cols_mat1, size_t rows_mat2, size_t cols_mat2,
     bool trans_weight

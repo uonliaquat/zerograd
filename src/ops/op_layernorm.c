@@ -24,7 +24,7 @@ Tensor *op_layernorm(Graph *graph, const char *name,
         Tensor *out = graph_alloc_node(graph);
         LayerNormParams *op_params = calloc(1, sizeof(LayerNormParams));
         op_params->eps = 1e-5;
-        tensor_create(out, name, (size_t[]){ctx_win, ndim}, 2, (Tensor*[]){weight, bias, input}, 3, input->d_type, OP_LAYER_NORM, op_params);
+        tensor_create(out, name, (size_t[]){ctx_win, ndim}, 2, (Tensor*[]){weight, bias, input}, 3, input->d_type, OP_LAYER_NORM, op_params, TENSOR_ACTIVATION);
         return out;
     }
 

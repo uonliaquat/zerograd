@@ -17,7 +17,7 @@ size_t op_arange_scratch_bytes(const Tensor *tensor){
 
 Tensor *op_arange(Graph *graph, const char *name, const size_t n){
     Tensor *out = graph_alloc_node(graph);
-    tensor_create(out, "token.indices", (size_t[]){n}, 1, NULL, 0, DTYPE_I32, OP_ARANGE, NULL);
+    tensor_create(out, "token.indices", (size_t[]){n}, 1, NULL, 0, DTYPE_I32, OP_ARANGE, NULL, TENSOR_CONST);
     return out;
 }
 

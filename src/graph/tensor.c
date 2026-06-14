@@ -4,6 +4,14 @@
 #include "../../inc/ops/op_linear.h"
 
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdarg.h>
+#include <math.h>
+#include <unistd.h>      /* isatty       */
+#include <sys/ioctl.h>   /* TIOCGWINSZ   */
+
 void tensor_create(
     Tensor *out,
     const char *name, 
@@ -13,7 +21,8 @@ void tensor_create(
     const size_t nsrc,
     const DType d_type,
     const OpType op_type,
-    void *op_params
+    void *op_params,
+    TensorType kind
 ){
 
     static size_t token_curr_id = 0;
@@ -48,19 +57,11 @@ void tensor_create(
     out->d_type = d_type;
     out->op_type = op_type;
     out->op_params = op_params;
+    out->kind = kind;
 
 }
 
 
-
-#include <stdio.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <math.h>
-#include <unistd.h>      /* isatty       */
-#include <sys/ioctl.h>   /* TIOCGWINSZ   */
 
 
 #define PREVIEW_N 4      /* values shown from each end */
