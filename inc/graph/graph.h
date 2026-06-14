@@ -21,7 +21,7 @@ Graph graph_init(size_t capacity);
 void graph_free(Graph *graph);
 Tensor *graph_alloc_node(Graph *graph);
 size_t graph_plan_memory(Graph *graph);
-void graph_execute(Graph *graph);
+void graph_execute(Graph *graph, size_t no_tokens);
 Tensor *graph_find_node(Graph *graph, const char *name);
 void graph_load_weights(Graph *graph, const char *filename);
 void graph_print(const Graph *graph);

@@ -12,7 +12,7 @@ int main(int argc, char *argv[]){
     }
 
     GPT2Config config = { 
-        .ctx_win = 7,
+        .ctx_win = 1024,
         .ndim = 768,
         .vocab_size = 50257,
         .nheads = 12,
@@ -44,9 +44,9 @@ int main(int argc, char *argv[]){
     }
 
     
-    graph_execute(&graph);
+    graph_execute(&graph, argc-1);
     //graph_print(&graph);
-    graph_write(&graph, "my_model.safetensors");
+    // graph_write(&graph, "my_model.safetensors");
     // graph_free(&graph);
     return 0;
 }

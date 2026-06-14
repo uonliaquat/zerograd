@@ -52,19 +52,33 @@ size_t graph_plan_memory(Graph *graph){
 
 
 
-void graph_execute(Graph *graph){
-    for(size_t i = 0; i < graph->size; i++){
-        if(graph->nodes[i].op_type == OP_NONE) continue;
-        OpTable[graph->nodes[i].op_type].forward(&graph->ctx, &graph->nodes[i]);
-    }
-    printf("\n\nDone Executing Graph\n");
+void graph_execute(Graph *graph, size_t no_tokens){
+    size_t max_new_tokens = 20;
+    size_t new_tokens[max_new_tokens];
+    printf("%s\n", graph->nodes[0].name);
+    for(size_t t = 0; t < max_new_tokens; t++){
+        for(size_t i = 0; i < graph->size; i++){
+            if(graph->nodes[i].op_type == OP_NONE) continue;
+            OpTable[graph->nodes[i].op_type].forward(&graph->ctx, &graph->nodes[i]);
+        }
+        printf("\n\nDone Executing Graph\n");
 
-    Tensor *lm_head = &graph->nodes[graph->size-1];
-    float *base = (float*)((char*)graph->ctx.mem + lm_head->data_offset);
-    float *logits = &base[(lm_head->shape[0]-1) * lm_head->shape[1]];
-    size_t vocab_size = lm_head->shape[1];
-    size_t next_token_id = sample_token(SAMPLING_GREEDY, logits, vocab_size);
-    printf("next_token_id: %zu\n", next_token_id);
+        Tensor *lm_head = &graph->nodes[graph->size-1];
+        float *base = (float*)((char*)graph->ctx.mem + lm_head->data_offset);
+        //float *logits = &base[(lm_head->shape[0]-1) * lm_head->shape[1]];
+        float *logits = &base[(no_tokens-1) * lm_head->shape[1]];
+        size_t vocab_size = lm_head->shape[1];
+        size_t next_token_id = sample_token(SAMPLING_GREEDY, logits, vocab_size);
+        printf("next_token_id: %zu\n", next_token_id);
+        new_tokens[t] = next_token_id;
+        int *token_ids_base = (int*)((char*)graph->ctx.mem + graph->nodes[0].data_offset);
+        token_ids_base[no_tokens++] = next_token_id;
+    }
+    printf("\n\n\n");
+    for(size_t i = 0; i < max_new_tokens; i++){
+        printf("%zu ", new_tokens[i]);
+    }
+    printf("\n\n");
 }
 
 Tensor *graph_find_node(Graph *graph, const char *name){
