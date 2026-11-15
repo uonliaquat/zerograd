@@ -1,5 +1,5 @@
-## This is the complete rewrite of the zerograd engine, the previous 2 branches had implemented GPT2 only and the architecture had a lot of flaws so that needs to be improved here. 
-### These are the steps at very high level that we'll be building
+#### This is the complete rewrite of the zerograd engine, the previous 2 branches had implemented GPT2 only and the architecture had a lot of flaws so that needs to be improved here. 
+##### These are the steps at very high level that we'll be building
 
 1. **Model definition:** We'll have the .json or .txt template file for every different family of LLM. It'll be a hand written file per model family
 2. **Graph Construction:** Once we've the template file per model family, we'll take that along with the .config of the model it self and create 2 virtual graph (1 is for prefill and 1 is for decode) in memory using Tensor and Ops
